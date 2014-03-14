@@ -1,0 +1,57 @@
+; docformat = 'rst'
+;
+;+
+;   The purpose of this program is to calculate the lower hybrid frequency::
+;
+;       \omega_{lh} = \sqrt{\frac{1}{\Omega_{i} \Omega_{e}} + \frac{1}{\Omega_{i}^{2}}}
+;
+; :Categories:
+;   Physics Utilties
+;
+; :Params:
+;       B:                  in, required, type=fltarr
+;                           Magnitude of the magnetic field, |B|, in units of nano-Tesla (nT).
+;       N:                  in, required, type=numeric array
+;                           Plasma density in units of particles per centimeter cubed (cm^{-3}).
+;
+; :Keywords:
+;       PARTICLE:           in, optional, type=string, default='H+'
+;                           The name of the particle for which the cyclotron frequency
+;                               is to be calculated. Options are::
+;                                   'H+'
+;                                   'He+'
+;                                   'O+'
+;                                   'e-'
+;
+; :Returns:
+;       OMEGA_LH:           Cyclotron frequency in Hertz (rad/sec)
+;
+; :Author:
+;   Matthew Argall::
+;       University of New Hampshire
+;       Morse Hall, Room 113
+;       8 College Rd.
+;       Durham, NH, 03824
+;       matthew.argall@wildcats.unh.edu
+;
+; :History:
+;   Modification History::
+;       01/29/2012  -   Written by Matthew Argall
+;       07/15/2013  -   Units are now assumed to be nT and cm^-3. Angular frequency is
+;                           returned, not frequency. - MRA
+;-
+function w_lower_hybrid, B, n_i
+    compile_opt idl2
+    on_error, 2
+
+;---------------------------------------------------------------------
+;CALCULATE THE LOWER HYBRID FREQUENCY ////////////////////////////////
+;---------------------------------------------------------------------
+
+	;compute the lower_hybrid frequency
+	omega_lh = sqrt(1 / (w_cyclotron(B, /electron) * w_cyclotron(B, /ion)) + $
+					1 / (w_plasma(n_i, /ion)^2))
+	
+	return, omega_lh
+
+end
