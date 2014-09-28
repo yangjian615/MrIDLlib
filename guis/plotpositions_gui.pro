@@ -46,6 +46,7 @@
 ; :History:
 ;	Modification History::
 ;       09/24/2013  -   Written by Matthew Argall
+;       2014/04/16  -   O[XY]MARGIN and [XY]GAP changed to floating point values.
 ;-
 ;*****************************************************************************************
 ;+
@@ -64,9 +65,6 @@ function plotPositions_gui_position, event
         widget_control, event.top, get_uvalue=pstate
         widget_control, event.id,  get_uvalue=uval
         widget_control, event.id,  get_value=value
-        
-        ;make the value an integer
-        value = fix(value[0], type=3)
         
         ;store the value in the proper state location
         case uval.tag of
@@ -154,16 +152,16 @@ end
 ;       LAYOUT:             in, optional, type=intarr(2)
 ;                           Specifies the number of columns and rows [ncols,nrows] within
 ;                               the layout.
-;       XGAP:               in, optional, type=integer
+;       XGAP:               in, optional, type=float
 ;                           The horizontal space between plots, in multiples of the
 ;                               character width.
-;       XMARGIN:            in, optional, type=intarr(2)
+;       XMARGIN:            in, optional, type=fltarr(2)
 ;                           The width of the margins in the horizontal direction. Margins
 ;                               are specified in multiples of the character width.
-;       YGAP:               in, optional, type=integer
+;       YGAP:               in, optional, type=float
 ;                           The vertical space between plots, in multiples of the
 ;                               character height.
-;       YMARGIN:            in, optional, type=intarr(2)
+;       YMARGIN:            in, optional, type=fltarr(2)
 ;                           The width of the margins in the vertical direction. Margins
 ;                               are specified in multiples of the character height.
 ;+
@@ -179,11 +177,11 @@ YGAP = ygap
 ;Check Inputs ////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
 
-    if n_elements(layout) eq 0 then layout = ['1','1'] else layout = strmid(string(layout), 2)
-    if n_elements(xmargin) eq 0 then xmargin = ['10', '3'] else xmargin = strmid(string(xmargin), 2)
-    if n_elements(ymargin) eq 0 then ymargin = ['4', '2'] else ymargin = strmid(string(ymargin), 2)
-    if n_elements(xgap) eq 0 then xgap = '10' else xgap = strmid(string(xgap), 2)
-    if n_elements(ygap) eq 0 then ygap = '5' else ygap = strmid(string(ygap), 2)
+    if n_elements(layout)  eq 0 then layout  = ['1','1']       else layout  = string(layout, FORMAT='(i0)')
+    if n_elements(xmargin) eq 0 then xmargin = ['10.0', '3.0'] else xmargin = string(xmargin, FORMAT='(f0.2)')
+    if n_elements(ymargin) eq 0 then ymargin = ['4.0', '2.0']  else ymargin = string(ymargin, FORMAT='(f0.2)')
+    if n_elements(xgap)    eq 0 then xgap    = '10.0'          else xgap    = string(xgap, FORMAT='(f0.2)')
+    if n_elements(ygap)    eq 0 then ygap    = '5.0'           else ygap    = string(ygap, FORMAT='(f0.2)')
 
 ;---------------------------------------------------------------------
 ;Make the Top Level Base /////////////////////////////////////////////
@@ -210,23 +208,23 @@ YGAP = ygap
 	        
 	        '0, LABEL, Layout', $
 	        '1, BASE, , ROW, FRAME=3', $
-	        '0, INTEGER, ' + layout[0] + ', LABEL_TOP=Cols, WIDTH=3, TAG=' + unames[0] + ', EVENT=plotPositions_gui_position', $
-	        '2, INTEGER, ' + layout[1] + ', LABEL_TOP=Rows, WIDTH=3, TAG=' + unames[1] + ', EVENT=plotPositions_gui_position', $
+	        '0, INTEGER, ' + layout[0] + ', LABEL_TOP=Cols, WIDTH=5, TAG=' + unames[0] + ', EVENT=plotPositions_gui_position', $
+	        '2, INTEGER, ' + layout[1] + ', LABEL_TOP=Rows, WIDTH=5, TAG=' + unames[1] + ', EVENT=plotPositions_gui_position', $
 	        
 	        '0, LABEL, Margins', $
 	        '1, BASE, , COLUMN, FRAME=3', $
 	        '1, BASE, , ROW', $
-	        '0, INTEGER, ' + xmargin[0] + ', LABEL_TOP=Left, WIDTH=3, TAG=' + unames[2] + ', EVENT=plotPositions_gui_position', $
-	        '2, INTEGER, ' + xmargin[1] + ', LABEL_TOP=Right, WIDTH=3, TAG=' + unames[3] + ', EVENT=plotPositions_gui_position', $
+	        '0, FLOAT, ' + xmargin[0] + ', LABEL_TOP=Left, WIDTH=5, TAG=' + unames[2] + ', EVENT=plotPositions_gui_position', $
+	        '2, FLOAT, ' + xmargin[1] + ', LABEL_TOP=Right, WIDTH=5, TAG=' + unames[3] + ', EVENT=plotPositions_gui_position', $
 	        '1, BASE, , ROW', $
-	        '0, INTEGER, ' + ymargin[0] + ', LABEL_TOP=Bottom, WIDTH=3, TAG=' + unames[4] + ', EVENT=plotPositions_gui_position', $
-	        '2, INTEGER, ' + ymargin[1] + ', LABEL_TOP=Top, WIDTH=3, TAG=' + unames[5] + ', EVENT=plotPositions_gui_position', $
+	        '0, FLOAT, ' + ymargin[0] + ', LABEL_TOP=Bottom, WIDTH=5, TAG=' + unames[4] + ', EVENT=plotPositions_gui_position', $
+	        '2, FLOAT, ' + ymargin[1] + ', LABEL_TOP=Top, WIDTH=5, TAG=' + unames[5] + ', EVENT=plotPositions_gui_position', $
 	        '2, LABEL, ,', $
 	        
 	        '0, LABEL, Gaps', $
 	        '1, BASE, , ROW, FRAME=3', $
-	        '0, INTEGER, ' + xgap + ', LABEL_TOP=X, WIDTH=3, TAG=' + unames[6] + ', EVENT=plotPositions_gui_position', $
-	        '2, INTEGER, ' + ygap + ', LABEL_TOP=Y, WIDTH=3, TAG=' + unames[7] + ', EVENT=plotPositions_gui_position']
+	        '0, FLOAT, ' + xgap + ', LABEL_TOP=X, WIDTH=5, TAG=' + unames[6] + ', EVENT=plotPositions_gui_position', $
+	        '2, FLOAT, ' + ygap + ', LABEL_TOP=Y, WIDTH=5, TAG=' + unames[7] + ', EVENT=plotPositions_gui_position']
 
 	posForm = cw_form(tlb, desc, ids=posIDs, uname='posForm')
        
@@ -234,8 +232,8 @@ YGAP = ygap
 ;Create an OK and CANCEL button //////////////////////////////////////
 ;---------------------------------------------------------------------
        
-    okBase = widget_base(tlb, /row)
-    okButton = widget_button(okBase, value='OK', event_pro='plotPositions_gui_ok')
+    okBase       = widget_base(tlb, /row)
+    okButton     = widget_button(okBase, value='OK', event_pro='plotPositions_gui_ok')
     cancelButton = widget_button(okBase, value='Cancel', event_pro='plotPositions_gui_cancel')
        
 ;---------------------------------------------------------------------
@@ -246,11 +244,11 @@ YGAP = ygap
 	widget_control, tlb, /realize
 
 	;Create a state structure
-	state = {layout:  fix(layout, type=3), $
-             xmargin: fix(xMargin, type=3), $
-             ymargin: fix(yMargin, type=3), $
-             xgap:    fix(xgap, type=3), $
-             ygap:    fix(ygap, type=3), $
+	state = {layout:  fix(layout,  TYPE=3), $
+             xmargin: fix(xMargin, TYPE=4), $
+             ymargin: fix(yMargin, TYPE=4), $
+             xgap:    fix(xgap,    TYPE=4), $
+             ygap:    fix(ygap,    TYPE=4), $
              posIDs:  posIDs}
 
 	;Set a pointer to the state structure as the user value of the top-level base

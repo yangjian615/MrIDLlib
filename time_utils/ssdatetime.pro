@@ -74,7 +74,6 @@ function ssDateTime, sDateTime, eDateTime
 ;-----------------------------------------------------------------------------------------
 ;Same Dates //////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------
-    
     ;For the same date...
     if nSame gt 0 then begin
         ;Start-time in seconds since midnight
@@ -115,7 +114,9 @@ function ssDateTime, sDateTime, eDateTime
         ;Subtract to get the total number of seconds elapsed
         seconds_between[iDiff] = start_seconds + nDaySec + end_seconds
     endif
-        
+    
+    ;Return a scalar?
+    if n_elements(seconds_between) eq 1 then seconds_between = seconds_between[0]
     return, seconds_between
 end
 
@@ -172,7 +173,6 @@ print, ''
 ;Two dates: 1 set on different days, 1 set on the same day.
 sDateTime = '2013-01-01T23:59:58.000'
 eDateTime = ['2013-01-03T00:00:06.000', '2013-01-15T00:00:23.000']
-stop
 sBetween = ssDateTime(sDateTime, eDateTime)
 
 print, '---------------------------------------'

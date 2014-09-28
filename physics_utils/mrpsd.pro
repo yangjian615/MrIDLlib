@@ -74,11 +74,14 @@
 ;                           keyword to NDIFF and allow differences of order N with the
 ;                           use of MrTS_Diff. Remove the TIME keyword and let it be passed
 ;                           out in the _REF_EXTRA keyword if it is present. - MRA
+;       2014/09/10  -   Now properly return (dt/N)*|fft|^2, instead of |fft|. - MRA
 ;-
 function MrPSD, data, nfft, dt, nshift, $
 DIMENSION = dimension, $
 FREQUENCIES = frequencies, $
 NDIFF = nDiff, $
+T0 = t0, $
+TIME = time, $
 _REF_EXTRA = extra
     compile_opt idl2
 
@@ -111,7 +114,8 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 
     ;Take the FFT
-    data_fft = MrFFT(temporary(data_temp), nfft, dt, nshift, $
+    ;   - Normalize by time later
+    data_fft = MrFFT(temporary(data_temp), nfft, 1.0, nshift, $
                      TIME=time, $
                      FREQUENCIES=frequencies, $
                      DIMENSION=dimension, $
@@ -123,7 +127,8 @@ _REF_EXTRA = extra
 
     ;The FFT is returned with dimensions arranged as (time, frequency[, component]).
     ;IDL ignores the trailing "*" if there is no 3rd dimension.
-    psd = abs(data_fft[*, posFreqs, *]) ;* 1.0/(nfft*dt) 
+    time = dt*time + t0
+    psd  = (dt/nfft) * abs(data_fft[*, posFreqs, *])^2
 
     return, psd
 end

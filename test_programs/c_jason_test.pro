@@ -101,7 +101,7 @@ LMN_FRAME = lmn_frame
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = error_message()
+        void = cgErrorMSG()
 
         ;Plotting window
         if obj_valid(eBulk_win) then obj_destroy, eBulk_win
@@ -140,10 +140,10 @@ LMN_FRAME = lmn_frame
     ;Set the x-axis range based on the input times.
     xrange = hms_to_ssm([sTime, eTime])
     if n_params() eq 6 then xrange = time_to_distance(xrange, vMP, di, ti)
-                         
+
     ;Create the window. Build it, but do not realize it yet.
-    MyWin = MrWindow(XSIZE=500, YSIZE=700, XMARGIN=[12,15], YGAP=0, REFRESH=0, $
-                     BUFFER=buffer, NAME="Jason's Window")
+    MyWin = MrWindow(XSIZE=500, YSIZE=700, OXMARGIN=[12,15], YGAP=0, REFRESH=0, $
+                     BUFFER=buffer, NAME='e- Bulk Heating')
 
 ;---------------------------------------------------------------------
 ;Create all of the Plots /////////////////////////////////////////////
@@ -156,16 +156,15 @@ LMN_FRAME = lmn_frame
                       DIRECTORY=directory, LMN_FRAME=lmn_frame)
 
     ;If successful
-;    Bvec_plot = MyWin['Bxyz']
-;    if obj_valid(Bvec_plot) then begin
-;        ;Create a legend
-;        Bvec_legend = MrLegend(LOCATION=8, $
-;                                      TARGET=Bvec_plot, $
-;                                      TITLE=components, $
-;                                      COLOR=color, $
-;                                      LENGTH=0, $
-;                                      /CURRENT)
-;    endif
+    Bvec_plot = MyWin['Bxyz']
+    if obj_valid(Bvec_plot) then begin
+        ;Create a legend
+        Bvec_legend = MrLegend(LOCATION=8, $
+                               TARGET=Bvec_plot, $
+                               TITLE=components, $
+                               COLOR=color, $
+                               LENGTH=0)
+    endif
 
     ;-----------------------
     ; Spacecraft Potential |
@@ -235,7 +234,10 @@ LMN_FRAME = lmn_frame
 ;---------------------------------------------------------------------
 
     ;Get the object references of all of the plots
-    MyWin -> SetGlobal, XRANGE=xrange, XTICKFORMAT='(a1)', XTITLE='', TITLE=''
+    allPlots = MyWin -> Get(/ALL, ISA=['MRIMAGE', 'MRPLOT'], COUNT=nPlots)
+    for i = 0, nPlots-1 do begin
+        allPlots[i] -> SetProperty, XRANGE=xrange, XTICKFORMAT='(a1)', XTITLE='', TITLE=''
+    endfor
 
 ; Adds titles back to plots (JRS)
 ;    MyWin['Ion E Flux'] -> SetProperty, TITLE='', XRANGE=xrange, $

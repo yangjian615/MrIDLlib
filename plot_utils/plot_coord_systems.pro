@@ -26,10 +26,13 @@
 ;                               x' = A * x
 ;
 ;                           then Frame = A
-;       AXES_LABELS:    in, optional, type=strarr(3)
-;                       Labels to be placed on the FRAME coordinate system axes.
+;       REF_FRAME:      in, optional, type=3x3 Float, default=identity(3)
+;                       Reference frame from which to view `FRAME`. `FRAME` and REf_FRAME
+;                           must be rotations from a common coordinate system.
 ;
 ; :Keywords:
+;       AXES_LABELS:    in, optional, type=strarr(3)
+;                       Labels to be placed on the FRAME coordinate system axes.
 ;       AX:             in, optional, type=float, default=30
 ;                       This keyword specifies the angle of rotation, about the X axis,
 ;                           in degrees towards the viewer. This changes the orientation
@@ -57,10 +60,15 @@
 ;       11/01/2012  -   Swapped the foreground and background colors: now black on white
 ;       07/09/2013  -   Added the AZ and AX keywords. - MRA
 ;       2014/01/30  -   Replaced Load_Color with cgColor. - MRA
+;       2014/03/14  -   AXIS_LABELS is now a keyword. Added the REF_FRAME param. - MRA
+;       2014/03/29  -   Added the FILENAME keyword, use coyote graphics programs, Renamed
+;                           AXIS_LABELS to LABELS. - MRA
 ;-
-pro plot_coord_systems, frame, axes_labels, $
+pro plot_coord_systems, frame, ref_frame, $
+LABELS=labels, $
 AX = ax, $
 AZ = az, $
+FILENAME=filename, $
 COLORS = colors
     compile_opt idl2
     
@@ -72,29 +80,17 @@ COLORS = colors
         return
     endif
     
-    if n_elements(ax) eq 0 then ax = 30
-    if n_elements(az) eq 0 then az = -30
-    if n_params() eq 1 then axes_labels = ["X'", "Y'", "Z'"]
-    ncolors = n_elements(colors)
-    
-    ;To plot black on white in 24-bit color mode, we must get a hexidecimaml number.
-    ;If the decomposed state is off (8-bit mode) then load white and black into indices
-    ;1 and 2 of the current color table
-    device, get_decomposed=decomposed_state
-    if decomposed_state eq 1 then begin
-        if ncolors eq 0 then colors = cgColor(['blue', 'dark_green', 'red'])
-        white = cgColor('white')
-        black = cgColor('black')
-    endif else begin
-        loadct, r, g, b, /get
-        if ncolors eq 0 then colors = cgColor(['blue', 'dark_green', 'red'], ITOP=itop)
-    
-        bw = cgColor(['white', 'black'], BOTTOM=itop)
-        white = bw[0]
-        black = bw[1]
-    endelse
-    
+    ;Defaults
+    if n_elements(ax)       eq 0 then ax     = 30
+    if n_elements(az)       eq 0 then az     = -30
+    if n_elements(labels)   eq 0 then labels = ["X'", "Y'", "Z'"]
+    if n_elements(filename) eq 0 then filename = ''
+    fileroot = cgRootName(filename, DIRECTORY=directory, EXT=ext)
+    ext = strupcase(ext)
+
     ;the reference coordinate system is the identity matrix
+    ncolors = n_elements(colors)
+    colors = cgColor(['Blue', 'Forest Green', 'Red'])
     ref_labels = ['X', 'Y', 'Z']
     
     ;create a circle of radius r=1
@@ -105,91 +101,119 @@ COLORS = colors
     xy = [[0, 2], $     ;z vs. x
           [0, 1], $     ;y vs. x
           [1, 2]]       ;z vs. y
+          
+    ;If a reference frame was given, find the difference between the two frames
+    ;
+    ;   Ax = x'    =>   x = A^-1 x'     =>   B^-1 x" = A^-1 x'
+    ;   Bx = x"    =>   x = B^-1 x"               x" = B A^-1 x'
+    ;                   
+    if n_elements(ref_frame) gt 0 $
+        then frameOut = frame ## invert(ref_frame) $
+        else frameOut = frame
     
 ;---------------------------------------------------------------------
-;2D Plots /////.//////////////////////////////////////////////////////
+;2D Plots ////////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
+
+    ;Setup the post-script device
+    if filename ne '' then begin
+        fileOut = directory + fileroot + '_2D.' + ext
+        hasIM = cgHasImageMagick()
+        if hasIM then cgPS_Open, fileOut
+    endif
     
     ;get the positions of the plots
-    window, 1
-    positions = MrLayout([3,1], XGAP=9, ASPECT=1.0)
+    if (!d.flags and 256) ne 0 then window, 1, XSIZE=800, YSIZE=350
+    positions = MrLayout([3,1], XGAP=9, ASPECT=1.0, CHARSIZE=1.5, WDIMS=[800,350])
 
     for i = 0, 2 do begin
         x0 = replicate(0,3)
-        x1 = transpose(frame[*, xy[0,i]])
+        x1 = transpose(frameOut[*, xy[0,i]])
         y0 = replicate(0,3)
-        y1 = transpose(frame[*, xy[1,i]])
+        y1 = transpose(frameOut[*, xy[1,i]])
         
         if i gt 0 then noerase=1
         
         ;Draw a circle of r=1 inside the plotting region to give an idea of the length of
         ;each unit vector in FRAME.
-        plot, x, y, $
-              COLOR=black, BACKGROUND=white, $
-              XTITLE=ref_labels[xy[0,i]], XRANGE=[-1,1], $
-              YTITLE=ref_labels[xy[1,i]], YRANGE=[-1,1], $
-              position=reform(positions[*,i,0]), NOERASE=noerase
-        oplot, x, -y, COLOR=black
+        cgPlot, x, y, $
+                XTITLE=ref_labels[xy[0,i]], XRANGE=[-1,1], $
+                YTITLE=ref_labels[xy[1,i]], YRANGE=[-1,1], $
+                position=positions[*,i,0],  NOERASE=noerase
+        cgOPlot, x, -y
         
         ;draw each unit vector in FRAME a different colored arrow
-        arrow, x0[0], y0[0], x1[0], y1[0], /DATA, COLOR=colors[0]
-        arrow, x0[1], y0[1], x1[1], y1[1], /DATA, COLOR=colors[1]
-        arrow, x0[2], y0[2], x1[2], y1[2], /DATA, COLOR=colors[2]
+        cgArrow, x0[0], y0[0], x1[0], y1[0], /DATA, COLOR=colors[0]
+        cgArrow, x0[1], y0[1], x1[1], y1[1], /DATA, COLOR=colors[1]
+        cgArrow, x0[2], y0[2], x1[2], y1[2], /DATA, COLOR=colors[2]
         
         ;plot FRAME's labels on each arrow
-        xyouts, x1, y1, axes_labels, /DATA, CHARSIZE=1.5, COLOR=colors
+        cgText, x1, y1, labels, /DATA, CHARSIZE=1.5, COLOR=colors
     endfor
     
 ;---------------------------------------------------------------------
 ;3D Plot /////////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
+
+    ;Setup the post-script device
+    if filename ne '' then begin
+        fileOut = directory + fileroot + '_3D.' + ext
+        hasIM = cgHasImageMagick()
+        if hasIM then cgPS_Open, fileOut
+    endif
     
-    window, 2
     ;make a 3D plot
-    surface, fltarr(2,2), /NODATA, $
-             COLOR=black, BACKGROUND=white, $
-             XRANGE=[-1,1], YRANGE=[-1,1], ZRANGE=[-1,1], /SAVE, $
-             XSTYLE=5, YSTYLE=5, ZSTYLE=5, AZ=az, AX=ax
+    if (!d.flags and 256) ne 0 then window, 2
+    cgSurf, fltarr(2,2), /NODATA, $
+            XRANGE=[-1,1], YRANGE=[-1,1], ZRANGE=[-1,1], /SAVE, $
+            XSTYLE=5, YSTYLE=5, ZSTYLE=5, ROTZ=az, ROTX=ax, CHARSIZE=3, $
+            POSITION=[0,0,1,1]
     
     ;draw the axes so that they intersect at the origin, not so that they are bordering
     ;the plotting region
-    axis, 0, /XAXIS, COLOR=black, /T3D
-    axis, 0, /YAXIS, COLOR=black, /T3D
-    axis, 0, /ZAXIS, COLOR=black, /T3D
+    cgAxis, 0, /XAXIS, /T3D
+    cgAxis, 0, /YAXIS, /T3D
+    cgAxis, 0, /ZAXIS, /T3D
     
     ;label each axis
-    xyouts, 1, 0, Z=0, 'X', COLOR=black, /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
-    xyouts, 0, 1, Z=0, 'Y', COLOR=black, /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
-    xyouts, 0, 0, Z=1, 'Z', COLOR=black, /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
+    cgText, 1, 0, Z=0, 'X', /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
+    cgText, 0, 1, Z=0, 'Y', /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
+    cgText, 0, 0, Z=1, 'Z', /DATA, /T3D, CHARSIZE=3, TEXT_AXES=2
     
     ;draw the new frame
     tri_arrow, [replicate(0,1,3), transpose(frame[*,0])], $
                [replicate(0,1,3), transpose(frame[*,1])], $
                [replicate(0,1,3), transpose(frame[*,2])], $
-               COLOR=colors, LABEL=axes_labels, /DATA
+               COLOR=colors, LABEL=labels, /DATA
     
     ;draw lines connecting the new frame to the old frame to better visualize the
     ;relationship
     for i = 0, 2 do begin
         ;draw a line over to the z-axis
-        plots, [frame[i,0], 0], [frame[i,1], 0], [frame[i,2], frame[i,2]], $
+        plots, [frameOut[i,0], 0], [frameOut[i,1], 0], [frameOut[i,2], frameOut[i,2]], $
                COLOR=colors[i], LINESTYLE=2, /DATA, /T3D
         
         ;draw a line down to the xy-plane
-        plots, [frame[i,0], frame[i,0]], [frame[i,1], frame[i,1]], [frame[i,2], 0], $
+        plots, [frameOut[i,0], frameOut[i,0]], [frameOut[i,1], frameOut[i,1]], [frameOut[i,2], 0], $
                COLOR=colors[i], LINESTYLE=2, /DATA, /T3D
         
         ;draw a line from the xy-plane to the x-axis
-        plots, [frame[i,0], frame[i,0]], [frame[i,1], 0], [0, 0], $
+        plots, [frameOut[i,0], frameOut[i,0]], [frameOut[i,1], 0], [0, 0], $
                COLOR=colors[i], LINESTYLE=2, /DATA, /T3D
         
         ;draw a line from the xy-plane to the y-axis
-        plots, [frame[i,0], 0], [frame[i,1], frame[i,1]], [0, 0], $
+        plots, [frameOut[i,0], 0], [frameOut[i,1], frameOut[i,1]], [0, 0], $
                COLOR=colors[i], LINESTYLE=2, /DATA, /T3D
     endfor
-    
-    ;reset the color table if need be
-    if decomposed_state eq 0 then loadct, r, g, b
+
+	;Write to file
+	if filename ne '' then begin
+	    if hasIM then begin
+	        if ext eq 'PS' $
+	            then cgPS_Close $
+	            else cgPS_Close, FILETYPE=ext, /DELETE_PS
+	    endif else void = cgSnapShot(FILENAME=fileOut, /NODIALOG)
+	endif
 end
 
 
@@ -204,4 +228,10 @@ A = [[ 0.8451,  0.2598,  0.4673], $
      
 ;Then to see how the x' frame looks within the frame of x,
 plot_coord_systems, A
+
+
+
+
+
+
 end

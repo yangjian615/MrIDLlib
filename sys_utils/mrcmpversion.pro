@@ -21,8 +21,10 @@
 ;       Utility
 ;
 ; :Params:
-;       VERSION1:           in, required, type=string
-;                           The version of idl to be compared against `VERSION2`.
+;       VERSION1:           in, optional, type=string
+;                           The version of idl to be compared against `VERSION2`. If not
+;                               given, the current IDL version release will be returned.
+;                               This is the same as !Version.Release.
 ;       VERSION2:           in, optional, type=string, default=!version.release
 ;                           The version if IDL to be compared against `VERSION1`. If not
 ;                               provided, but `VERSION1` is, then the current version will
@@ -49,10 +51,14 @@
 ; :History:
 ;   Modification History::
 ;       2013/11/11  -   Written by Matthew Argall
+;       2014/07/16  -   If VERSION1 is not given, return the current IDL version.
 ;-
 function MrCmpVersion, version1, version2
 	compile_opt idl2
 	on_error, 2
+	
+	;Return the current version?
+	if n_elements(version1) eq 0 then return, !version.release
 	
 	;If VERSION2 was not given, use the current version
 	if n_elements(version2) eq 0 then version2 = !version.release

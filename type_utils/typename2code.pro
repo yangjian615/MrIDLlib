@@ -26,31 +26,32 @@
 ; :History:
 ;	Modification History::
 ;       2014/03/03  -   Written by Matthew Argall.
+;       2015/04/19  -   Vector of type names can be given.
 ;-
 function TypeName2Code, type
     compile_opt strictarr
     on_error, 2
     
-    ;Type-Name?
-    case strupcase(type) of
-        'UNDEFINED': typeCode = 0
-        'BYTE':      typeCode = 1
-        'INT':       typeCode = 2
-        'LONG':      typeCode = 3
-        'FLOAT':     typeCode = 4
-        'DOUBLE':    typeCode = 5
-        'COMPLEX':   typeCode = 6
-        'STRING':    typeCode = 7
-        'STRUCT':    typeCode = 8
-        'DCOMPLEX':  typeCode = 9
-        'POINTER':   typeCode = 10
-        'OBJREF':    typeCode = 11
-        'UINT':      typeCode = 12
-        'ULONG':     typeCode = 13
-        'LONG64':    typeCode = 14
-        'ULONG64':   typeCode = 15
-        else: message, 'Type name does not exist: "' + type + '".'
-    endcase
+    ;Make sure a string array was given.
+    if size(type, /TNAME) ne 'STRING' then $
+        message, 'TYPE must be a STRING'
+        
+    ;Uppercase
+    _type = strupcase(type)
     
-    return, typeCode
+    ;Names of all IDL datatypes
+    type_names = ['UNDEFINED', 'BYTE', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'COMPLEX', $
+                  'STRING', 'STRUCT', 'DCOMPLEX', 'POINTER', 'OBJREF', 'UINT', 'ULONG', $
+                  'LONG64', 'ULONG64']
+    
+    ;Sort them alphabetically. Locate matches
+    iSort     = sort(type_names)
+    iMatch    = value_locate(type_names[iSort], _type)
+    type_code = iSort[iMatch]
+
+    ;Make sure no rounding occured
+    tf_pass = min(_type eq type_names[type_code])
+    if tf_pass eq 0 then message, 'Invalid type name given.'
+    
+    return, type_code
 end

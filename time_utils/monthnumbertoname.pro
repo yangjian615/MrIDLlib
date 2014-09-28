@@ -44,6 +44,7 @@ ABBR = abbr, $
 UPPERCASE=uppercase, $
 LOWERCASE=lowercase
     compile_opt strictarr
+    on_error, 2
     
     ;Error handling
     catch, the_error

@@ -33,7 +33,7 @@ function magnetic_pressure, B
     on_error, 2
     
     ;Determine if B is a vector or scalar (magnitude) array
-    if MrIsA(B, /ROW, /COLUMN) $
+    if MrIsA(B, /ROW) || MrIsA(B, /COLUMN) || MrIsA(B, /SCALAR) $
         then magnitude = 1 $
         else magnitude = 0
 

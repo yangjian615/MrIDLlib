@@ -141,9 +141,9 @@ DIMENSIONS=dimensions
 ;---------------------------------------------------------------------
 ;YMIN ////////////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-    case nXmin of
+    case nYmin of
         1:               Ymin = replicate(y0, dims)
-        dims[0]:         Ymin = rebin(reform(y0), dims)
+        dims[1]:         Ymin = rebin(reform(y0, 1, dims[1]), dims)
         
         ;Make sure DELTAX_MINUS is not transposed and its dimensions are the right size
         dims[0]*dims[1]: begin
@@ -160,9 +160,9 @@ DIMENSIONS=dimensions
 ;---------------------------------------------------------------------
 ;YMAX ////////////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-    case nXmin of
+    case nYmax of
         1:               Ymax = replicate(y1, dims)
-        dims[0]:         Ymax = rebin(reform(y1, /OVERWRITE), dims)
+        dims[1]:         Ymax = rebin(reform(y1, 1, dims[1]), dims)
         
         ;Make sure DELTAX_MINUS is not transposed and its dimensions are the right size
         dims[0]*dims[1]: begin

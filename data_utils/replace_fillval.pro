@@ -57,6 +57,7 @@
 ;       05/24/2013  -   Interpolation can be performed instead of merely replacing the
 ;                           fill value. Parameters X and XOUT were added, as well as the
 ;                           _EXTRA keyword. Ensure that FILLVAL is a scalar. - MRA
+;       2014/09/10  -   FILLVAL can now be NAN, INF, -INF. - MRA
 ;-
 function replace_fillval, data, fillval, x, $
 REPLACE_VALUE = replace_value, $
@@ -73,18 +74,19 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 
    ;Find index locations of the fill value
-   bad_pts = where(data eq fillval[0], nBad, COMPLEMENT=good_pts, NCOMPLEMENT=nGood)
-   if nBad eq 0 then return, data
+    if finite(fillval) $
+        then bad_pts = where(data eq fillval[0], nBad, COMPLEMENT=good_pts, NCOMPLEMENT=nGood) $
+        else bad_pts = where(finite(data) eq 0,  nBad, COMPLEMENT=good_pts, NCOMPLEMENT=nGood)
+    if nBad eq 0 then return, data
    
-   ;Make the output array
-   if keyword_set(no_copy) then replaced_data = temporary(data) $
-                           else replaced_data = data
+    ;Make the output array
+    if keyword_set(no_copy) then replaced_data = temporary(data) $
+                            else replaced_data = data
 
 ;-----------------------------------------------------
 ;REPLACE THE FILL VALUE \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     if n_elements(x) eq 0 then begin
-    
         replaced_data[bad_pts] = replace_value
 
 ;-----------------------------------------------------

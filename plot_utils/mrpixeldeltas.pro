@@ -116,6 +116,7 @@ DIMENSIONS=dimensions
 
     ;Make sure X has the same number of elements as IMAGE
     case nx of
+        1:       xx = replicate(x, dims)
         dims[0]: xx = rebin(reform(x), dims)
         dims[0]*dims[1]: begin
             xDims = size(x, /DIMENSIONS)
@@ -130,6 +131,7 @@ DIMENSIONS=dimensions
 
     ;Make sure Y has the same number of elements as IMAGE
     case ny of
+        1:       yy = replicate(y, dims)
         dims[1]: yy = rebin(reform(y, 1, dims[1]), dims)
         dims[0]*dims[1]: begin
             yDims = size(y, /DIMENSIONS)
@@ -185,7 +187,7 @@ DIMENSIONS=dimensions
 ;---------------------------------------------------------------------
     case ndy0 of
         1:       dY_minus = replicate(dy0, dims)
-        dims[0]: dY_minus = rebin(reform(dy0), dims)
+        dims[1]: dY_minus = rebin(reform(dy0, 1, dims[1]), dims)
 
         ;Make sure DELTAY_MINUS is not transposed and its dimensions are the right size
         dims[0]*dims[1]: begin
@@ -204,7 +206,7 @@ DIMENSIONS=dimensions
 ;---------------------------------------------------------------------
     case ndy1 of
         1:               dY_plus = replicate(dy1, dims)
-        dims[0]:         dY_plus = rebin(reform(dy1), dims)
+        dims[1]:         dY_plus = rebin(reform(dy1, 1, dims[1]), dims)
 
         ;Make sure DELTAY_MINUS is not transposed and its dimensions are the right size
         dims[0]*dims[1]: begin
@@ -217,7 +219,7 @@ DIMENSIONS=dimensions
         endcase
         else: message, 'DY1: Incorrect number of elements.'
     endcase
-    
+
 ;---------------------------------------------------------------------
 ;Outline Each Pixel //////////////////////////////////////////////////
 ;---------------------------------------------------------------------

@@ -116,8 +116,8 @@ DOUBLE = double
         zeros = where(r eq 0, nzeros, COMPLEMENT=positives, NCOMPLEMENT=npos)
         
         ;Take the log of positive values and set 0's to -inf
-        if npos gt 0 then log10_x[positives] = alog10(xtemp[positives])
-        if nzeros gt 0 then log10_x[zeros] = neg_inf_value
+        if npos   gt 0 then log10_x[positives] = alog10(xtemp[positives])
+        if nzeros gt 0 then log10_x[zeros]     = neg_inf_value
        
 ;---------------------------------------------------------------------
 ;Log of Real Numbers /////////////////////////////////////////////////
@@ -126,13 +126,13 @@ DOUBLE = double
     
         ;Find where x = 0 and where x <= 0. The former is a subset of the latter.
         zeros = where(xtemp eq 0, zero_count)
-        negs = where(xtemp le 0, neg_count, COMPLEMENT=positives, NCOMPLEMENT=npos)
+        negs  = where(xtemp le 0, neg_count, COMPLEMENT=positives, NCOMPLEMENT=npos)
         
         ;Take the log of all positive values. Set negative numbers equal to NaN and
         ;set 0's equal to infinity
-        if npos gt 0 then log10_x[positives] = alog10(xtemp[positives])
-        if neg_count gt 0 then log10_x[negs] = nan_value
-        if zero_count gt 0 then log10_x[zeros] = neg_inf_value
+        if npos       gt 0 then log10_x[positives] = alog10(xtemp[positives])
+        if neg_count  gt 0 then log10_x[negs]      = nan_value
+        if zero_count gt 0 then log10_x[zeros]     = neg_inf_value
     endelse
     
     return, log10_x

@@ -1,10 +1,10 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       DATATIME_TO_EPOCH
+;   MrLinstyle
 ;
 ;*****************************************************************************************
-;   Copyright (c) 2013, Matthew Argall                                                   ;
+;   Copyright (c) 2014, Matthew Argall                                                   ;
 ;   All rights reserved.                                                                 ;
 ;                                                                                        ;
 ;   Redistribution and use in source and binary forms, with or without modification,     ;
@@ -33,30 +33,32 @@
 ;
 ; PURPOSE:
 ;+
-;   Compare CDF epoch times.
+;   Given a linestyle name or number, determine the number accepted by the LINESTYLE
+;   direct graphics keyword. Note that a linestyle of 6 is not accepted by the keyword.
+;
+; :Categories:
+;    Graphics
 ;
 ; :Params:
-;       EPOCH:          in, required, type="CDF_EPOCH"\, "CDF_EPOCH16"\, "CDF_TIME_TT2000"
-;                       Epoch time to be compared against `BASE_EPOCH`.
-;       BASE_EPOCH:     in, required, type="CDF_EPOCH"\, "CDF_EPOCH16"\, "CDF_TIME_TT2000"
-;                       Check to see if `EPOCH` is less than, equal to, or greater than
-;                           this value.
-;       END_EPOCH:      in, optional, type=same as `BASE_EPOCH`
-;                       If given, comparison is `BASE_EPOCH` <= `EPOCH` <= `END_EPOCH`.
-;                           END_EPOCH must be same type and dimensionality as `EPOCH`.
+;       LINESTYLE:          in, required, type=string/integer
+;                           The name or number of the linestyle to use. Possible values are::
+;                               0   '-'     Solid
+;                               1   '.'     Dotted
+;                               2   '--'    Dashed
+;                               3   '-.'    Dash-dot
+;                               4   '-:'    Dash-dot-dot
+;                               5   '__'    Long dash
+;                               6   ' '     None
+;
+; :Keywords:
+;       NAMES:              in, optional, type=boolean, default=0
+;                           If set, the names of the linestyles will be returned.
 ;
 ; :Returns:
-;       RESULT:         If `END_EPOCH` was given::
-;                            1 - base_epoch <= epoch <= end_epoch
-;                            0 - otherwise
-;                       If `END_EPOCH` is /not/ given::
-;                            1 - epoch > base_epoch
-;                            0 - epoch = base_epoch
-;                           -1 - epoch < base_epoch
-;
-; :Uses:
-;   Uses the following external programs::
-;       MrCDFCmpVersion.pro
+;       STYLE:              Number representing the style of line to be used. Note that
+;                               6 (" ") is included to work with function graphics. This
+;                               number is not accepted by the direct graphics LINESTYLE
+;                               keyword and you must check for it.
 ;
 ; :Author:
 ;   Matthew Argall::
@@ -65,26 +67,48 @@
 ;       8 College Rd.
 ;       Durham, NH, 03824
 ;       matthew.argall@wildcats.unh.edu
-;       
+;
 ; :History:
-;   Modification History::
-;       2014/03/08  -   Written by Matthew Argall
+;     Change History::
+;       2014/09/19  -   Written by Matthew Argall
 ;-
-function MrCDF_Epoch_Compare, epoch, base_epoch, end_epoch
+;*****************************************************************************************
+;+
+;   The purpose of this method is to draw the ColorFill object to the display window.
+;-
+function MrLinestyle, linestyle, $
+NAMES=names
     compile_opt strictarr
     on_error, 2
     
+    ;Return the names?
+    if keyword_set(names) then begin
+        names = ['-', $
+                 '.', $
+                 '--', $
+                 '-.', $
+                 '-:', $
+                 '--', $
+                 ' ']
+        return, names
+    endif
     
-    if MrCDFCmpVersion('3.4') le 0 then begin
-        if n_elements(end_epoch) eq 0 $
-            then result = cdf_epoch_compare(epoch, base_epoch) $
-            else result = cdf_epoch_compare(epoch, base_epoch, end_epoch)
-    endif else begin
-        ;TO DO: add functionality for versions < 3.4
-        message, "For better performance, install the NASA's official CDF path for IDL.", /INFORMATIONAL
-        message, 'http://cdf.gsfc.nasa.gov/html/cdf_patch_for_idl.html', /INFORMATIONAL
-    endelse
+    ;Was a symbol used for the linestyle?
+    if size(linestyle, /TNAME) eq 'STRING' then begin
+        case linestyle of
+            '-':  style = 0
+            '.':  style = 1
+            '--': style = 2
+            '-.': style = 3
+            '-:': style = 4
+            '__': style = 5
+            ' ':  style = 6
+            else: message, 'Symbol name "' + linestyle + '" not recognized.'
+        endcase
+    endif else style = linestyle
     
-    ;Return the epoch time
-    return, result
+    ;Valid linestyle?
+    if style lt 0 || style gt 6 then message, 'LINESTYLE is out of range.'
+    
+    return, style
 end

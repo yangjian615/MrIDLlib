@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrCDF_Epoch_Type
+;       MrMean
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2014, Matthew Argall                                                   ;
@@ -31,52 +31,86 @@
 ;   DAMAGE.                                                                              ;
 ;*****************************************************************************************
 ;
-; PURPOSE:
+; PURPOSE
 ;+
-;       The purpose of this program is to determine the CDF epoch type of a given input.
-;       Known `CDF epoch types http://cdf.gsfc.nasa.gov/html/leapseconds.html` include::
-;           EPOCH
-;           EPOCH16
-;           CDF_TIME_TT2000
+;   A wrapper for IDL's Mean() function that contains a DIMENSION keyword for IDL
+;   versions pre-8.0.
 ;
-; :Categories:
-;       Time Utility
+; :Examples:
+;   See the example program at the end of this document::
+;       IDL> .r MrMean
 ;
 ; :Params:
-;   T_EPOCH:        in, required, type=double/dcomplex/long64
-;                   A[n array of] CDF times, either EPOCH, EPOCH16, or CDF_TIME_TT2000.
+;       X:              in, required, type=numeric
+;                   
+; :Keywords:
+;       DIMENSION:      in, optional, type=integer, default=0
+;                       The dimension, starting with 1, along which the mean should
+;                           be computed. The default, 0, averages over all dimensions. 
+;       DOUBLE:         in, optional, type=boolean, default=0
+;                       If set, all computations will be performed in double-precision.
+;       NAN:            in, optional, type=boolean, default=0
+;                       If set, NaNs will be excluded from the results.
 ;
 ; :Returns:
-;   EPOCH_TYPE:     Will return the type of the given CDF epoch time contained in `T_EPOCH`
+;       RESULT:         Mean of `X`.
 ;
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
 ;       Morse Hall, Room 113
-;       8 Collge Rd.
+;       8 College Rd.
 ;       Durham, NH, 03824
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :History:
 ;	Modification History::
-;       Written by  -   Matthew Argall 12 February 2012
-;       2014/01/19  -   For readability, use type names to check epoch values. - MRA
-;       2014/02/03  -   Renamed to MrCDF_Epoch_Type from MrCDF_Epoch. - MRA
+;       2014/04/05  -   Written by Matthew Argall
 ;-
-function MrCDF_Epoch_Type, t_epoch
+function MrMean, x, $
+DIMENSION=dimension, $
+DOUBLE=double, $
+NAN=nan
     compile_opt strictarr
     on_error, 2
+    
+    ;Use IDL's mean function for versions 8.0 and higher or if the DIMENSION keyword
+    ;was not given.
+    if MrCmpVersion('8.0') le 0 || n_elements(dimension) eq 0 $
+        then return, mean(x, DIMENSION=dimension, DOUBLE=double, NAN=nan)
 
-    ;Get the data-type of T_EPOCH
-    t_type = size(t_epoch, /TNAME)
+    ;Mean over all dimensions?
+    if dimension eq 0 then return, mean(x, DOUBLE=double, NAN=nan)
+
+    ;Mean over a specific dimension
+    dims = size(x, /DIMENSIONS)
+    N    = dims[dimension-1]
     
-    ;Pick the epoch type.
-    case t_type of
-        'DOUBLE': epoch_type = 'CDF_EPOCH'
-        'DCOMPLEX': epoch_type = 'CDF_EPOCH16'
-        'LONG64': epoch_type = 'CDF_TIME_TT2000'
-        else: message, 'Unknown Epoch Type: "' + t_type + '".'
-    endcase
-    
-    return, epoch_type
+    ;Compute the mean
+    result = total(x, dimension, DOUBLE=double, NAN=nan) / N
+
+    return, result
+end
+
+
+;---------------------------------------------------
+; Main Level Example Program (.r MrMean) ///////////
+;---------------------------------------------------
+
+;EXAMPLE 1
+;   Compute the mean of a vector
+x = indgen(10)
+xMean = MrMean(x)
+
+;EXAMPLE 2
+;   Mean over the second dimension of a matrix
+y = indgen(3,5)
+yMean = MrMean(y, DIMENSION=2)
+
+;Print Results
+print, '---------------------------------------------------------'
+print, FORMAT='(%"Mean of a Vector:     %5.1f")', xMean
+print, FORMAT='(%"Mean of Dimension 2: [%5.1f, %5.1f, %5.1f]")', yMean
+print, ''
+
 end

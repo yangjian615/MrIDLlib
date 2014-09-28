@@ -157,7 +157,7 @@ TYPE=type
     nano = strmid(decimal, 6, 3)
     pico = strmid(decimal, 9, 3)
     
-    ;convert to numeric type if requested.
+    ;Convert to numeric type if requested.
     if type ne 7 then begin
         hour = fix(hour, TYPE=type)
         minute = fix(minute, TYPE=type)
@@ -168,4 +168,14 @@ TYPE=type
         pico = fix(pico, TYPE=type)
     end
     
+    ;Return a scalar?
+    if nTimes eq 1 then begin
+        hour   = hour[0]
+        minute = minute[0]
+        second = second[0]
+        milli  = milli[0]
+        micro  = micro[0]
+        nano   = nano[0]
+        pico   = pico[0]
+    endif
 end

@@ -4,25 +4,17 @@
 ;
 ; PURPOSE:
 ;
-;       The purpose of this program is to calculate the time between samples of a time
-;       array.
+;       Compute the sampling interval of a dataset.
 ;
 ; :Categories:
 ;       FFT Utility
 ;
 ; :Params:
-;       TIME                in, required, type=int, default=N_ELEMENTS(DATA)
-;                           The number of points to use per FFT
-;       DT                  in, optional, type=float, default=1
-;                           The time between data samples. If not present, unit spacing
-;                               is assumed.
+;       TIME                in, required, type=numeric array
+;                           Array of times.
 ;                           
 ; :Returns:
-;       DF                  The difference in frequency between frequency bins.
-;
-; :Uses:
-;   Uses the following external programs::
-;       MrMode
+;       DT                  The sampling interval.
 ;       
 ; :Author:
 ;   Matthew Argall::
@@ -34,15 +26,30 @@
 ;
 ; :History:
 ;   Modification History::
-;       Written by:     Matthew Argall 27 November 2012
+;       Written by:     written by Matthew Argall
 ;-
 function dt_fft, time
 	compile_opt idl2
-	on_error, 2
-	
-	;calculate the frequency bin size.
-	npts = n_elements(time)
-	dt = MrMode(time[1:npts-1] - time[0:npts-2])
-	
-	return, dt
+	on_error, 2 
+
+    mode = keyword_set(mode)
+    
+    ;Use the mode.
+    if mode then begin
+        npts = n_elements(time)
+        dt = MrMode(time[1:npts-1] - time[0:npts-2])
+    
+    ;Use the average time between samples.
+    endif else begin
+
+        ;Calculate the mean different between points.
+        dt = moment(time[1:-1] - time[0:-2], MAXMOMENT=1, SDEV=sdev, _STRICT_EXTRA=extra)
+        dt = dt[0]
+    
+        ;Make sure the standard deviation is not of the same order as dt.
+        if sdev ge 0.1*dt then $
+            message, 'Standard deviation is > 10% of the sample period.', /INFORMATIONAL
+    endelse
+    
+    return, dt
 end

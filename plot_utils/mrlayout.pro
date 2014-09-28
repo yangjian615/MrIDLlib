@@ -40,8 +40,7 @@
 ;   Plot Utilities
 ;
 ; :Examples:
-;   See commented section at end of program to see the plotting region and plotting window::
-;
+;   Try the main level program at the end of this document::
 ;       IDL> .r MrLayout
 ;
 ;   Single plot, output in normal coordinates (Default)::
@@ -196,7 +195,7 @@
 ;       2013/11/22 - Added the OXMARGIN and OYMARGIN keywords. - MRA
 ;       2013/11/24 - Renamed from MrPlotLayout to MrLayout. - MRA
 ;       2013/11/28 - "index" values were returning positions in reverse order. Fixed.
-;                       `POSITIONS` is not a 4xN array, where plot positions are retreived
+;                       `POSITIONS` is now a 4xN array, where plot positions are retreived
 ;                       by "index" value, not [col,row]. - MRA
 ;       2014/02/10 - Added the P_AREAS, COL_HEIGHT, ROW_WIDTH, and WDIMS keywords.
 ;                       Removed the P_WINDOW keyword. Renamed [XY]Margin to O[XY]Margin
@@ -278,9 +277,9 @@ YGAP = ygap
 
 	;Default margins, gaps, and character size
     if keyword_set(square)         then aspect     = 1.0
-	if n_elements(ixmargin)   eq 0 then ixmargin   = [0.0,0.0]
-	if n_elements(iymargin)   eq 0 then iymargin   = [0.0,0.0]
-	if n_elements(oymargin)   eq 0 then oymargin   = [4.0, 2.0]
+	if n_elements(ixmargin)   eq 0 then ixmargin   = [ 0.0, 0.0]
+	if n_elements(iymargin)   eq 0 then iymargin   = [ 0.0, 0.0]
+	if n_elements(oymargin)   eq 0 then oymargin   = [ 4.0, 2.0]
 	if n_elements(oxmargin)   eq 0 then oxmargin   = [10.0, 3.0]
 	if n_elements(xgap)       eq 0 then xgap       = 14.0
 	if n_elements(ygap)       eq 0 then ygap       = 6.0
@@ -316,8 +315,8 @@ YGAP = ygap
             nCols-1: xspace = xgap
             else: message, 'XGap: Incorrect number of elements.'
         endcase
-        xspace = [0, xspace]
-    endif else xspace = 0
+        xspace = [0.0, xspace]
+    endif else xspace = 0.0
 	
 	;Y-Gaps
 	if nRows gt 1 then begin
@@ -325,10 +324,10 @@ YGAP = ygap
         case n_elements(ygap) of
             1:       yspace = replicate(ygap, nRows - 1)
             nRows-1: yspace = ygap
-            else: message, 'XGap: Incorrect number of elements.'
+            else: message, 'YGap: Incorrect number of elements.'
         endcase
-        yspace = [0, yspace]
-    endif else yspace = 0
+        yspace = [0.0, yspace]
+    endif else yspace = 0.0
 
 ;-----------------------------------------------------------------------------------------
 ;Calculate Margins and Areas \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -352,7 +351,7 @@ YGAP = ygap
 
     ;Offset between upper left corner of p_region and lower right corner of
     ;the plot area of each plot.
-    xoffset = total(plot_width + xspace, /CUMULATIVE)
+    xoffset = total(plot_width  + xspace, /CUMULATIVE)
     yoffset = total(plot_height + yspace, /CUMULATIVE)
 
 	;Calculate the areas in which the plots will be created.
@@ -446,15 +445,24 @@ end
 ;-----------------------------------------------------
 ;Main Level Example Program (.r MrGridLayout) \\\\\\\\
 ;-----------------------------------------------------
-;DO THE FOLLOWING TO SEE THE PLOTTING REGION, PLOTTING WINDOW, AND PLOT POSITIONS. 
-window, 1, xsize=1000, ysize=600
-ncols = 3
-nrows = 3
-charsize=1.0
-pos = MrLayout([ncols, nrows], OXMARGIN=[14,6], OYMARGIN=[2,4], $
-                               IXMARGIN=[2,2], IYMARGIN=[2,2], $
-                               XGAP=[14,6], YGAP=[6,12], $
-                               COL_WIDTH=[0.4, 0.25, 0.35], ROW_HEIGHT=[0.5, 0.25, 0.25], $
+;EXAMPLE
+;   Display the different parts of the plot window. 
+window, /FREE, xsize=1000, ysize=600
+ncols      = 3
+nrows      = 3
+oxmargin   = [14,6]
+oymargin   = [2,4]
+ixmargin   = [2,2]
+iymargin   = [2,2]
+xgap       = [14,6]
+ygap       = [6,12]
+col_width  = [0.4, 0.25, 0.35]
+row_height = [0.5, 0.25, 0.25]
+charsize   = 1.0
+pos = MrLayout([ncols, nrows], OXMARGIN=oxmargin, OYMARGIN=oymargin, $
+                               IXMARGIN=ixmargin, IYMARGIN=iymargin, $
+                               XGAP=xgap, YGAP=ygap, $
+                               COL_WIDTH=col_width, ROW_HEIGHT=row_height, $
                                P_REGION=p_region, P_AREAS=p_areas)
 
 ;[XY]MARGIN -- Bounded in blue by P_REGION. The space between the edge of the window
@@ -474,9 +482,30 @@ for ii = 0, nCols*nRows-1 do begin
            /NORMAL, COLOR=cgColor('red')
 endfor
 
+;Wait here to show the plot areas.
 wait, 1
 
+;Draw the plot axes.
 for ii=0,nCols*nRows-1 do $
     plot, !x.range, !y.range, position=pos[*,ii], /NOERASE, /NODATA, /NORMAL, $
           TITLE='title', XTITLE='xtitle', YTITLE='ytitle', CHARSIZE=charsize
+
+
+;EXAMPLE
+;   Create a 2x2 grid of plots
+ncols = 2
+nrows = 2
+xgap = 0.5
+ygap = 0.5
+charsize = 2.0
+pos = MrLayout([nCols, nRows], XGAP=xgap, YGAP=ygap, CHARSIZE=charsize)
+
+;Open a window
+window, /FREE
+
+for i = 0, ncols*nrows - 1 do $
+    plot, [0,1], [0,1], POSITION=pos[*,i], /NOERASE, /NODATA, /NORMAL, $
+          TITLE=title, XTITLE='X Title', YTITLE='Y Title', CHARSIZE=charsize
+
+
 end

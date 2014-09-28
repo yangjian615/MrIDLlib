@@ -50,7 +50,7 @@ function days_between, sDate, eDate
     if the_error ne 0 then begin
         catch, /cancel
         void = cgErrorMsg()
-        return, !null
+        return, !values.f_nan
     endif
 
     ;Get the year, month and day

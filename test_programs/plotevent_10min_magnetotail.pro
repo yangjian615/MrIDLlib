@@ -12,19 +12,51 @@ PRO plotevent
     ; define parameters
     stime = '2004-04-06T03:00:00'
     etime = '2004-04-06T06:00:00'
+;    stime = '2001-08-17T16:30:00'
+;    etime = '2001-08-17T16:40:00'
     sc = 4
-    title = '2004-04-06'
+    title = 'C4 - 2001-08-17'
     directory = '/Users/argall/Documents/Work/Data/20040406_030000_060000/'
+;    directory = '/home/shuster/MrPlot/GRLexhaust/2001_08_17/data/'
 ;    device,retain=2
     device,set_font = 'Helvetica Bold', /TT_FONT
-;    eigvecs = [[ 0.8546, -0.1878,  0.4841], $
-;           [ 0.1642,  0.9822,  0.0911], $
-;           [-0.4926,  0.0017,  0.8702]]
 
 
-    ; call Matt's MRPLOT script
+    ; ------------------------------------------------------------------------
+    ; MVA FRAME ROTATION INFORMATION (automatic calculation for magnetopause).
+    ; ------------------------------------------------------------------------
+    ;IDL Format for Copy + Paste
+    ; eigvecs = [[Nx, Ny, Nz], $
+    ;            [Mx, My, Mz], $
+    ;            [Lx, Ly, Lz]]
+    ;tstart = '16:20:00.040000'
+    ;tend =   '16:49:59.990000'
+    ;eigvals = [   51.4623,   247.4609,   683.9588]
+    eigvecs = [[ 0.0642,  0.5509, -0.8321], $
+               [-0.0062,  0.8340,  0.5517], $
+               [ 0.9979, -0.0303,  0.0569]]
+
+
+    ; --------------------------------------------------
+    ; MVA FRAME in magnetotail (swap L and N from above)
+    ; --------------------------------------------------
+    ; eigvecs = [[Lx, Ly, Lz], $
+    ;            [Mx, My, Mz], $
+    ;            [Nx, Ny, Nz]]
+    ;tstart = '16:20:00.040000'
+    ;tend =   '16:49:59.990000'
+    ;eigvals = [   51.4623,   247.4609,   683.9588]
+    eigvecs = [[ 0.9979, -0.0303,  0.0569], $
+               [-0.0062,  0.8340,  0.5517], $
+               [ 0.0642,  0.5509, -0.8321]]
+
+stop
+    ; --------------------------
+    ; Call Matt's MRPLOT script.
+    ; -------------------------
     j = c_jason(sc,stime,etime,directory=directory,lmn_frame=eigvecs)
-    
+
+
     ;Do not plot every time something changes.
     j -> Refresh, /DISABLE
 
@@ -39,20 +71,21 @@ PRO plotevent
 ;    j['ni'].ylog = 1
 
     ; All plots will be adjusted
-    j -> SetProperty, XMARGIN=[9,6]
-    j -> SetGlobal, XTICKS=4, XMINOR=5, XTICKLEN=0.1, FONT=1, CHARTHICK=2.0, CHARSIZE=3.0
+    j -> SetProperty, OXMARGIN=[9,6]
+    j -> SetGlobal, XTICKS=10, XMINOR=6, XTICKLEN=.05, FONT=1, CHARTHICK=2.0, CHARSIZE=3.0, $
+                    XTHICK=2, YTHICK=2
 
     ; Add horizontal lines to B and V plots
-    j['Bxyz'] -> SetProperty, YTICKLEN=1,YGRIDSTYLE=1, XTICKLEN=1, XGRIDSTYLE=1
-    j['Vi'] -> SetProperty, YTICKLEN=1,YGRIDSTYLE=1, XTICKLEN=1, XGRIDSTYLE=1
+    j['Bxyz'] -> SetProperty, YTICKLEN=1,YGRIDSTYLE=1;,XTICKLEN=1,XGRIDSTYLE=1
+    j['Vi'] -> SetProperty, YTICKLEN=1,YGRIDSTYLE=1;,XTICKLEN=1,XGRIDSTYLE=1
 
-    ; add tick lables to E 2D DSI plot:
     j['Vi'] -> SetProperty, TITLE='', XRANGE=xrange, $
-                                      XTITLE='UT (HH:MM:SS)', XTICKFORMAT='time_labels'
+                            XTITLE='UT (HH:MM:SS)', XTICKFORMAT='time_labels',$
+                            YTITLE='H+ Velocity!C(km s^-1)'
                                       
                                       
     ;Now turn refresh back on.
-    j -> Refersh
+    j -> Refresh
 
 ; ------------
 ; OLD COMMANDS

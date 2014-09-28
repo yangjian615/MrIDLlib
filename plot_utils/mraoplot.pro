@@ -109,7 +109,6 @@ _REF_EXTRA=extra
     compile_opt strictarr
     on_error, 2
 
-    dims = Size(x, /DIMENSIONS)
     setDefaultValue, dimension, 0
 
 ;---------------------------------------------------------------------
@@ -122,6 +121,7 @@ _REF_EXTRA=extra
 
     ;Make the independent variable index the chosen DIMENSION of Y.
     IF N_Params() EQ 1 THEN BEGIN
+        dims = Size(x, /DIMENSIONS)
         IF dimension EQ 0 $
             THEN indep = LindGen(N_Elements(dep)) $
             ELSE indep = LindGen(dims[dimension-1])
@@ -134,20 +134,27 @@ _REF_EXTRA=extra
     
     ;Make sure arrays were given, not scalars
     IF N_Elements(indep) EQ 1 THEN indep = [indep]
-    IF N_Elements(dep) EQ 1 THEN dep = [dep]
+    IF N_Elements(dep)   EQ 1 THEN dep   = [dep]
 
 ;---------------------------------------------------------------------
 ;Set Defaults ////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
+    nDims = Size(dep, /N_DIMENSIONS)
+    if nDims eq 1 then dimension = 0
+
     ;The dimension not being plotted.
+    ;   - Assume NDIMS=2
+    ;   - Take care if DIMENSION=1 and NDIMS=1
     case dimension of
         0: xdim = 0
         1: xdim = 2
         2: xdim = 1
     endcase
-        
+
     ;Number of defaults to use.
-    if xdim eq 0 then nDefaults = 1 else nDefaults = dims[xdim-1]
+    if (xdim eq 0) || (nDims eq 1) $
+        then nDefaults = 1 $
+        else nDefaults = dims[xdim-1]
 
     ;Pick a set of default colors so not everything is the same color.
     default_colors = ['opposite', 'Blue', 'Forest_Green', 'Red', 'Magenta', 'Orange']

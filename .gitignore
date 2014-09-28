@@ -2,3 +2,4 @@ exclude_MyLibraryIDL.txt
 test_programs/data
 test_programs/sav
 unclassified
+.DS_Store

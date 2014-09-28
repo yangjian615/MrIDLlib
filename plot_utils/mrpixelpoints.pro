@@ -58,6 +58,7 @@
 ; :History:
 ;   2013/11/16  -   Written by Matthew Argall
 ;                       Adapted from: `spectrogram.pro <http://sprg.ssl.berkeley.edu/~davin/idl/socware_old1/external/CDAWlib/spectrogram.pro>`
+;                                and: `align_center.pro <http://spdf.gsfc.nasa.gov/pub/software/cdawlib/source/align_center.pro>`
 ;                       which is part of the CDAWlib library.
 ;
 ;-
@@ -92,7 +93,22 @@ pro MrPixelPoints_CenterPixel, X0, Xmin1, Xmax1
         
         ;Select the finite values
         X = X0[iFinite]
-        nX = n_elements(X)
+        
+        ;
+        ; Original "align_center" code has 
+        ;
+        ;   nX = n_elements(X0)
+        ;
+        ; but I think this is a typo. This would imply that we are removing the grid cells
+        ; with NaNs in them entirely, thus increacing the size and shifting the center
+        ; of the remaining cells. By setting
+        ;
+        ;   nX = n_elements(X)
+        ;
+        ; we are interpolating over the NaNs, leaving the number of grid cells as well as
+        ; their size and center alone.
+        ;
+        nX = n_elements(X0)
         
         ;Check the spacing between points
         dx1 = abs(X[1]-X[0])
@@ -222,9 +238,11 @@ pro MrPixelPoints, image, x, y, Xmin, Ymin, Xmax, Ymax, $
         then dims = image $
         else dims = size(image, /DIMENSIONS)
     
-    nx = n_elements(x)
-    ny = n_elements(y)   
+    nx     = n_elements(x)
+    ny     = n_elements(y)   
     center = keyword_set(center)
+    xlog   = keyword_set(xlog)
+    ylog   = keyword_set(ylog)
 
     ;Make sure X has the same number of elements as IMAGE
     case nx of
@@ -269,7 +287,7 @@ pro MrPixelPoints, image, x, y, Xmin, Ymin, Xmax, Ymax, $
         ;Calculate the x-coordinate of the lower-left and upper-right corner of
         ;each pixel, centered on X.
         for i = 0L, dims[1]-1 do begin
-            ;Log spacing is taken care of in ALIGN_CENTER
+            ;Log spacing is taken care of in _CenterPixel
             MrPixelPoints_CenterPixel, Xmin[*,i], temp_xmin, temp_xmax
             Xmin[*,i] = temporary(temp_xmin)
             Xmax[*,i] = temporary(temp_xmax)

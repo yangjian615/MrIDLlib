@@ -36,31 +36,25 @@
 ; The purpose of this program is to check if a particular tag exists within a structure.
 ;
 ; :Categories:
-;
 ;   Structure Utilities
 ;
 ; :Examples:
-;
 ;   See the main level program at the end of this file.
-;
 ;       IDL> .r has_tag
 ;
 ; :Params:
-;
 ;       STRUCT:                 in, required, type=structure
 ;                               The structure for which all tags are to be returned.
 ;       SEARCH_TAGS:            in, required, type=string/strarr
 ;                               Tags to search for within `STRUCT`.
 ;
 ; :Keywords:
-;
 ;       RECURSE:                in, optional, type=Boolean, default=0
 ;                               Recurse into each substructure to search for the tag.
 ;       LEVEL:                  in, optional, type=int, default=!values.f_infinity
 ;                               The maximum recursion level. The root level is 0.
 ;
 ; :Returns:
-;
 ;       TF_TAGS                 Array the same size as `SEARCH_TAGS` with 1's indicating
 ;                                   that the tag exists within `STRUCT` and 0's indicating
 ;                                   that the tags are not present.
@@ -79,12 +73,10 @@
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :Copyright:
-;
 ;       Copyright 2013 by Matthew Argall
 ;
 ; :History:
 ;   Modification History::
-;
 ;       02/14/2013  -   Written by Matthew Argall
 ;       03/23/2013  -   Added LEVEL keyword. - MRA
 ;-
@@ -106,7 +98,7 @@ LEVEL=level
         else tags = tag_names(struct)
     
     ;Does the tag exist?
-    tf_tag = ismember(tags, search_tags)
+    tf_tag = IsMember(tags, search_tags)
     
     return, tf_tag
 end
@@ -114,7 +106,7 @@ end
 
 
 ;---------------------------------------------------
-; Main Level Example Program (.r dategen) //////////
+; Main Level Example Program (.r has_tag) //////////
 ;---------------------------------------------------
 ;create a structure with multiple sub-structures
 struct = {tagA: 'A', $
@@ -134,14 +126,16 @@ struct = {tagA: 'A', $
 search_tags = ['tagA', 'tag_b', 'aardvark', 'tagv']
 
 ;see if the structure has the desired tags
-tf_tags = has_tag(struct, search_tags)
+tf_tags   = has_tag(struct, search_tags)
 tf_tags_r = has_tag(struct, search_tags, /RECURSE)
 
 ;print the results
-print, format='(%"Search tags: %s, %s, %s, %s")', search_tags
-print, format='(%"Has tags (with recursion)?: %i, %i, %i, %i")', tf_tags
-print, format='(%"Has tags (w/o recursion)?:  %i, %i, %i, %i")', tf_tags_r
-print, format='(%"Tags in struct: %s, %s, %s")', search_tags[where(tf_tags_r eq 1)]
-print, format='(%"Tags not in struct: %s")', search_tags[where(tf_tags_r ne 1)]
+print, '--------------------------------------------------'
+print, format='(%"Search tags:                 %s, %s, %s, %s")', search_tags
+print, format='(%"Has tags (w/o recursion)?:   %i, %i, %i, %i")', tf_tags
+print, format='(%"Has tags (with recursion)?:  %i, %i, %i, %i")', tf_tags_r
+print, format='(%"Tags in struct:              %s, %s, %s")',     search_tags[where(tf_tags_r eq 1)]
+print, format='(%"Tags not in struct:          %s")',             search_tags[where(tf_tags_r ne 1)]
+print, ''
 
 end

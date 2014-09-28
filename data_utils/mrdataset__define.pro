@@ -69,6 +69,11 @@
 ;                           save results exclusively through the [GS]etData methods. - MRA
 ;       2014/01/28  -   Added the _OverloadBracketsRightSide, _OverloadBracketsLeftSide,
 ;                           _OverloadPrint, _Convert_Bounds, and PSD methods. - MRA
+;       2014/04/29  -   Added the Read_CDF and SetTimeRange methods. Removed the
+;                           _Convert_Bounds method.
+;       2014/05/02  -   File and variable information can be provided to the INIT method.
+;                           Data will not be read of the variable or time range have not
+;                           been defined yet. _OverloadBRS returns the correct data. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -137,11 +142,15 @@ DATASET=dataSet
             else: message, 'Subscript1 must be "DEPEND_" + 0-3.'
         endcase
         
-        ;Call the method again, without the string subscript, and with the proper
-        ;pointer passed in as a 
-        result = self -> _OverloadBracketsRightSide(isRange, subscript2, $
-                         subscript3, subscript4, subscript5, subscript6, $
-                         subscript7, subscript8, DATASET=dataSet)
+        ;Call the method on the desired dataset
+        if n_elements(isRange) eq 1 then begin
+            result = dataset -> GetArray()
+        endif else begin
+            result = dataset -> _OverloadBracketsRightSide(isRange[1:*], subscript2, $
+                                                 subscript3, subscript4, subscript5, $
+                                                 subscript6, subscript7, subscript8)
+        endelse
+        
         return, result
         
     endif else begin
@@ -149,7 +158,7 @@ DATASET=dataSet
     endelse
     
     ;Call the MrArray overload brackets method
-    result = objRef -> _OverloadBracketsRightSide(isRange, subscript1, subscript2, $
+    result = self.data -> _OverloadBracketsRightSide(isRange, subscript1, subscript2, $
                                                   subscript3, subscript4, subscript5, $
                                                   subscript6, subscript7, subscript8)
     
@@ -273,83 +282,44 @@ function MrDataSet::_OverloadPrint
                  FORMAT='(a-12, a11, i0, a1, a0, a2)')
 
     ;Help about the dat    
-    help, *self.data,     OUTPUT=dataHelp
-    help, *self.depend_0, OUTPUT=dep0Help
-    help, *self.depend_1, OUTPUT=dep1Help
-    help, *self.depend_2, OUTPUT=dep2Help
-    help, *self.depend_3, OUTPUT=dep3Help
+    h_data     = '[' + strjoin(strtrim(self.data.dimensions, 2), ', ') + ']'
+    h_depend_0 = '[' + strjoin(strtrim(self.depend_0.dimensions, 2), ', ') + ']'
+    h_depend_1 = '[' + strjoin(strtrim(self.depend_1.dimensions, 2), ', ') + ']'
+    h_depend_2 = '[' + strjoin(strtrim(self.depend_2.dimensions, 2), ', ') + ']'
+    h_depend_3 = '[' + strjoin(strtrim(self.depend_3.dimensions, 2), ', ') + ']'
 
     ;Concatenate all of the help together
     str = [[str], $
-           ['   DATA       ' + strtrim(dataHelp[1], 1)], $
-           ['   DEPEND_0   ' + strtrim(dep0Help[1], 1)], $
-           ['   DEPEND_1   ' + strtrim(dep1Help[1], 1)], $
-           ['   DEPEND_2   ' + strtrim(dep2Help[1], 1)], $
-           ['   DEPEND_3   ' + strtrim(dep3Help[1], 1)]]
+           ['   DATA       ' + h_data], $
+           ['   DEPEND_0   ' + h_depend_0], $
+           ['   DEPEND_1   ' + h_depend_1], $
+           ['   DEPEND_2   ' + h_depend_2], $
+           ['   DEPEND_3   ' + h_depend_3]]
     
     return, str
 end
 
 
 ;+
-;   The purpose of this method is to make the subscripts of the _OverloadBrackets*
-;   methods uniform by putting them in terms of [start, stop, step].
-;
-; :Params
-;       ISRANGE:            in, required, type=intarr
-;                           A vector that has one element for each Subscript argument
-;                               supplied by the user; each element contains a zero if the
-;                               corresponding input argument was a scalar index value or
-;                               array of indices, or a one if the corresponding input
-;                               argument was a subscript range.
-;       SUBSCRIPT1:         in, required, type=string,integer/intarr(3)
-;                           Index subscripts into object property. Alternatively, a scalar
-;                               string indicating which data array to access. Choices are::
-;                                   "DATA"
-;                                   "DEPEND_0"
-;                                   "DEPEND_1"
-;                                   "DEPEND_2"
-;                                   "DEPEND_3"
-;                               If not a string, "DATA" is assumed.
-;       SUBSCRIPT2:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT3:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT4:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT5:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT6:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT7:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;       SUBSCRIPT8:         in, required, type=integer/intarr(3)
-;                           Index subscripts into object property.
-;
-; :Returns:
-;       RESULT:             A 3xN array of subscripts in the form [start, stop, step].
-;                               N is the number of subscript parameters given.
+;   Clear data from the internal arrays.
 ;-
-function MrDataSet::_Convert_Bounds, isRange, subscript, $
-DIMENSION=dimension
+pro MrDataSet::Clear
+    compile_opt strictarr
+    
     ;Error handling
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
         void = cgErrorMsg()
-        return, [0,0,0]
+        return
     endif
     
-    if isRange eq 0 then begin
-        result = subscript
-    endif else begin
-        sub = subscript
-        if sub[1] lt 0 then sub[1] = dimension + sub[1]
-        result = linspace(sub[0], sub[1], 1L, /INTERVAL)
-    endelse
-    
-
-    return, result
+    ;Save the data
+    self.data     -> Clear
+    self.depend_0 -> Clear
+    self.depend_1 -> Clear
+    self.depend_2 -> Clear
+    self.depend_3 -> Clear
 end
 
 
@@ -650,7 +620,12 @@ end
 ; :Keywords:
 ;-
 pro MrDataSet::GetProperty, $
-DIMENSION=dimension
+DIMENSION=dimension, $
+FILENAME=filename, $
+FIRST_READ=first_read, $
+LAST_READ=last_read, $
+STIME=sTime, $
+ETIME=eTime
     compile_opt strictarr
     
     ;Error handling
@@ -661,7 +636,12 @@ DIMENSION=dimension
         return
     endif
     
-    if arg_present(dimension) then dimension = self.dimension
+    if arg_present(dimension)  then dimension  = self.dimension
+    if arg_present(first_read) then first_read = self.first_read
+    if arg_present(last_read)  then last_read  = self.last_read
+    if arg_present(filename)   then self.FileFinder -> GetProperty, PATTERN=filename
+    if arg_present(sTime)      then self.FileFinder -> GetProperty, ISO_START=sTime
+    if arg_present(eTime)      then self.FileFinder -> GetProperty, ISO_END=eTime
 end
 
 
@@ -1032,6 +1012,109 @@ _REF_EXTRA=extra
 end
 
 
+;+
+;   Read a CDF file.
+;
+;   This method should not be called directly. Instead, use the SetVariable and
+;   SetTimeRange methods.
+;
+; :Private:
+;
+; :Params:
+;       VNAME:          in, required, type=string
+;                       The variable name within the CDF file whose data is to be read.
+;-
+pro MrDataSet::Read_CDF, $
+BEFORE=before
+    compile_opt strictarr
+    
+    ;Error handling
+    catch, the_error
+    if the_error ne 0 then begin
+        catch, /cancel
+        if obj_valid(oCDF) then obj_destroy, oCDF
+        void = cgErrorMsg()
+        return
+    endif
+
+;---------------------------------------------------------------------
+;Inputs //////////////////////////////////////////////////////////////
+;---------------------------------------------------------------------
+    data     = keyword_set(data)
+    depend_0 = keyword_set(depend_0)
+    depend_1 = keyword_set(depend_1)
+    depend_2 = keyword_Set(depend_2)
+    depend_3 = keyword_set(depend_3)
+    if data + depend_0 + depend_1 + depend_2 + depend_3 eq 0 then depend_3 = 1
+    
+    ;Get the names of the files to read.
+    filenames = self.FileFinder -> GetFiles(NFILES=nFiles)
+    if nFiles eq 0 then return
+    
+    ;Variable to read
+    if self.variable eq '' then return
+    
+    ;Time interval to read
+    self.FileFinder -> GetProperty, ISO_START=sTime, ISO_END=eTime
+    if sTime eq '' || eTime eq '' then return
+    
+    ;Setup to append.
+    switch 1 of
+        depend_3: self.depend_3 -> Append, 1, /START, BEFORE=before
+        depend_2: self.depend_2 -> Append, 1, /START, BEFORE=before
+        depend_1: self.depend_1 -> Append, 1, /START, BEFORE=before
+        depend_0: self.depend_0 -> Append, 1, /START, BEFORE=before
+        data:     self.data     -> Append, 1, /START, BEFORE=before
+    endswitch
+
+;---------------------------------------------------------------------
+;Read Data ///////////////////////////////////////////////////////////
+;---------------------------------------------------------------------
+    for i = 0, nFiles - 1 do begin
+        oCDF = obj_new('CDF_File', filenames[i])
+
+        ;Read data from the file.
+        switch 1 of
+            depend_3: temp_data = oCDF -> Read(self.variable, temp_0, temp_1, temp_2, temp_3, $
+                                               REC_START=sTime, REC_END=eTime, $
+                                               PATTERN=self.time_pattern)
+            depend_2: temp_data = oCDF -> Read(self.variable, temp_0, temp_1, temp_2, $
+                                               REC_START=sTime, REC_END=eTime, $
+                                               PATTERN=self.time_pattern)
+            depend_1: temp_data = oCDF -> Read(self.variable, temp_0, temp_1, $
+                                               REC_START=sTime, REC_END=eTime, $
+                                               PATTERN=self.time_pattern)
+            depend_0: temp_data = oCDF -> Read(self.variable, temp_0, $
+                                               REC_START=sTime, REC_END=eTime, $
+                                               PATTERN=self.time_pattern)
+            data:     temp_data = oCDF -> Read(self.variable, $
+                                               REC_START=sTime, REC_END=eTime, $
+                                               PATTERN=self.time_pattern)
+        endswitch
+        obj_destroy, oCDF
+        
+        ;Append the data.
+        if n_elements(temp_3) gt 0 then self.depend_3 -> Append, temp_3, /NO_COPY
+        if n_elements(temp_2) gt 0 then self.depend_2 -> Append, temp_2, /NO_COPY
+        if n_elements(temp_1) gt 0 then self.depend_1 -> Append, temp_1, /NO_COPY
+        if n_elements(temp_0) gt 0 then self.depend_0 -> Append, temp_0, /NO_COPY
+        self.data -> Append, temp_data, /NO_COPY
+    endfor
+    
+    ;Finalize apend.
+    switch 1 of
+        depend_3: self.depend_3 -> Append, /FINISH
+        depend_2: self.depend_2 -> Append, /FINISH
+        depend_1: self.depend_1 -> Append, /FINISH
+        depend_0: self.depend_0 -> Append, /FINISH
+        data:     self.data     -> Append, /FINISH
+    endswitch
+
+    ;Store first and last times read.
+    self.first_read = MrCDF_Epoch_Encode(self['DEPEND_0',  0], PATTERN=self.time_pattern)
+    self.last_read  = MrCDF_Epoch_Encode(self['DEPEND_0', -1], PATTERN=self.time_pattern)
+end
+
 
 ;+
 ; :Params:
@@ -1122,11 +1205,11 @@ CLEAR=clear
     endif
 
     ;Restore the saved data.
-    self.data     = self.data_save[*]
-    self.depend_0 = self.depend_0_save[*]
-    self.depend_1 = self.depend_1_save[*]
-    self.depend_2 = self.depend_2_save[*]
-    self.depend_3 = self.depend_3_save[*]
+    self.data     -> SetArray, self.data_save
+    self.depend_0 -> SetArray, self.depend_0_save
+    self.depend_1 -> SetArray, self.depend_1_save
+    self.depend_2 -> SetArray, self.depend_2_save
+    self.depend_3 -> SetArray, self.depend_3_save
     
     ;Clear the check-point
     if keyword_set(clear) then begin
@@ -1293,11 +1376,201 @@ pro MrDataSet::Save
     endif
     
     ;Save the data
-    self.data_save     = self.data[*]
-    self.depend_0_save = self.depend_0[*]
-    self.depend_1_save = self.depend_1[*]
-    self.depend_2_save = self.depend_2[*]
-    self.depend_3_save = self.depend_3[*]
+    self.data_save     -> SetArray, self.data
+    self.depend_0_save -> SetArray, self.depend_0
+    self.depend_1_save -> SetArray, self.depend_1
+    self.depend_2_save -> SetArray, self.depend_2
+    self.depend_3_save -> SetArray, self.depend_3
+end
+
+
+;+
+;   Set the time range of the data interval. If the time range increases, more data will
+;   be read. If the time range decreases, data will be truncated. If the time range does
+;   not overlap with the current time interval, data will be replaced.
+;
+; :Params:
+;       STIME:          in, optional, type=string, default=''
+;                       Time at which the data interval should begin. If the empty string
+;                           is given, the current interval's start time is used. The
+;                           string is assumbed to be formatted as YYYY-MM-DDTHH:mm:SS.d,
+;                           where "d" can be any number of decimal places.
+;       ETIME:          in, optional, type=string, default=''
+;                       Time at which the data interval should end. If the empty string
+;                           is given, the current interval's end time is used. The
+;                           string is assumbed to be formatted as YYYY-MM-DDTHH:mm:SS.d,
+;                           where "d" can be any number of decimal places.
+;
+; :Keywords:
+;       PATTERN:        in, optional, type=string, default='%Y-%M-%dT%H:%m:$S%f'
+;                       If `STIME` and `ETIME` do not match the anticipated format, then
+;                           a formatting pattern can be supplied. See MrTimeTokensToRegex.pro
+;                           for details.
+;-
+pro MrDataSet::SetTimeRange, sTime, eTime, $
+PATTERN=pattern
+    compile_opt strictarr
+    
+    ;Error handling
+    catch, the_error
+    if the_error ne 0 then begin
+        catch, /cancel
+        void = cgErrorMsg()
+        return
+    endif
+    
+;---------------------------------------------------------------------
+; Check Inputs ///////////////////////////////////////////////////////
+;---------------------------------------------------------------------
+    ;Default to an ISO-1806 time with an unknown number of decimal points
+    _sTime = n_elements(sTime) eq 0 ? '' : sTime
+    _eTime = n_elements(eTime) eq 0 ? '' : eTime
+    if n_elements(pattern) eq 0 then pattern = '%Y-%M-%dT%H:%m:%S%f'
+    
+    ;Use the first and last times read?
+    if _sTime eq '' then _sTime = self.first_read
+    if _eTime eq '' then _eTime = self.last_read
+    
+    ;Convert inputs to the desired format
+    if pattern ne self.time_pattern then begin
+        MrTimeParser, _sTime, pattern, self.time_pattern, _sTime
+        MrTimeParser, _eTime, pattern, self.time_pattern, _eTime
+    endif
+    
+    ;Has a variable been defined?
+    ;   If not, simply set the time range and return.
+    if self.variable eq '' then begin
+        self.FileFinder -> SetProperty, ISO_START=_sTime, ISO_END=_eTime
+        return
+    endif
+    
+;---------------------------------------------------------------------
+; Intervals to Read //////////////////////////////////////////////////
+;---------------------------------------------------------------------
+    ;Figure out the epoch type of the current data
+    epoch_type = MrCDF_Epoch_Type(self['DEPEND_0', 0])
+
+    ;Convert to desired times to epochs for comparison
+    new_start = MrCDF_Epoch_Parse(_sTime, PATTERN=self.time_pattern, EPOCH_TYPE=epoch_type)
+    new_stop  = MrCDF_Epoch_Parse(_eTime, PATTERN=self.time_pattern, EPOCH_TYPE=epoch_type)
+    old_start = MrCDF_Epoch_Parse(self.first_read, PATTERN=self.time_pattern, EPOCH_TYPE=epoch_type)
+    old_stop  = MrCDF_Epoch_Parse(self.last_read,  PATTERN=self.time_pattern, EPOCH_TYPE=epoch_type)
+    
+    ;Compare the beginning and end of the new interval with those of the old interval.
+    before = MrCDF_Epoch_Compare(new_start, old_start)
+    after  = MrCDF_Epoch_Compare(new_stop,  old_stop)
+    
+;---------------------------------------------------------------------
+; Read New Interval //////////////////////////////////////////////////
+;---------------------------------------------------------------------
+    if ((before eq -1) && (MrCDF_Epoch_Compare(new_stop,  old_start) eq -1)) || $
+       ((after  eq  1) && (MrCDF_Epoch_Compare(new_start, old_stop)  eq  1)) $
+    then begin
+        ;Clear the data
+        self -> Clear
+        
+        ;Set the time interval
+        self.FileFinder -> SetProperty, ISO_START=_sTime, ISO_STOP=_eTime
+    
+        ;Read the data
+        self -> Read_CDF
+    
+;---------------------------------------------------------------------
+; Extend/Contract Current Interval ///////////////////////////////////
+;---------------------------------------------------------------------
+    endif else begin
+    
+        ;Read or trim before?
+        case before of
+            -1: read_before = [_sTime, self.first_read]
+             0: ;Do nothing
+             1: trim_before = [self.first_read, _sTime]
+        endcase
+    
+        ;Read or trim after?
+        case after of
+            -1: read_after = [self.last_read, _eTime]
+             0: ;Do nothing
+             1: trim_after = [_eTime, self.last_read]
+        endcase
+    
+        ;Read before
+        if n_elements(read_before) gt 0 then begin
+            ;Set the time range and read the data
+            self.FileFinder -> SetProperty, ISO_START=read_before[0], ISO_END=read_before[1]
+            self -> Read_CDF, /BEFORE
+        endif
+    
+        ;Read after
+        if n_elements(read_after) gt 0 then begin
+            ;Set the time range and read the data
+            self.FileFinder -> SetProperty, ISO_START=read_after[0], ISO_END=read_after[1]
+            self -> Read_CDF
+        endif
+    
+        ;Trim before
+        if n_elements(trim_before) then begin
+            ;Get the time data and compare it to the trimmed interval
+            t_epoch = self.depend_0 -> GetArray(/NO_COPY)
+            epoch_cmp = MrCDF_Epoch_Compare(t_epoch, trim_before[0], trim_before[1])
+            
+            ;Pick data outside of the trim range
+            iKeep = where(epoch_cmp eq 0, nKeep)
+            if nKeep eq 0 then message, 'No data to trim. Re-specify new data interval.'
+            
+            ;Set the data
+            self.depend_0 -> SetData, t_epoch[iKeep]
+            self.data     -> SetData, self.data[*,iKeep]
+        endif
+    
+        ;Trim after
+        if n_elements(trim_after) then begin
+            ;Get the time data and compare it to the trimmed interval
+            t_epoch = self.depend_0 -> GetArray(/NO_COPY)
+            epoch_cmp = MrCDF_Epoch_Compare(t_epoch, trim_after[0], trim_after[1])
+            
+            ;Pick data outside of the trim range
+            iKeep = where(epoch_cmp eq 0, nKeep)
+            if nKeep eq 0 then message, 'No data to trim. Re-specify new data interval.'
+            
+            ;Set the data
+            self.depend_0 -> SetData, t_epoch[iKeep]
+            self.data     -> SetData, self.data[*,iKeep]
+        endif
+    endelse
+end
+
+
+;+
+;   Set the name of the variable whose name is to be read. Changing variable names clears
+;   the current data and reads data associated with the new variable.
+;
+; :Params:
+;       VNAME:          in, required, type=string
+;                       Name of the variable whose data is to be read.
+;-
+pro MrDataSet::SetVariable, vname
+    compile_opt strictarr
+    
+    ;Error handling
+    catch, the_error
+    if the_error ne 0 then begin
+        catch, /cancel
+        void = cgErrorMsg()
+        return
+    endif
+    
+    ;Same variable given
+    if vname eq self.variable then return
+    
+    ;Clear the data
+    self -> Clear
+    
+    ;Read data for the new variable
+    self.variable = vname
+
+    ;Read the data        
+    self -> Read_CDF
 end
 
 
@@ -1360,11 +1633,18 @@ end
 ;   Set class properties.
 ;
 ; :Keywords:
-;       DIMENSION:          in, optional, type=int, default=biggest dimension
+;       DIMENSION:          in, optional, type=int
 ;                           The dimension of `DATA` over which analysis operations are to act.
+;       FILENAME:           in, optional, type=string
+;                           Name of the file to be read. Instead of a file name, it can
+;                               be a file pattern containing any token known to
+;                               MrTimeTokensToRegex.pro. Directories and file names will
+;                               be checked against the file pattern for matches. If give,
+;                               the variable and time interval will be reset.
 ;-
 pro MrDataSet::SetProperty, $
-DIMENSION = dimension
+DIMENSION = dimension, $
+FILENAME = filename
     compile_opt strictarr
     
     ;Error handling
@@ -1376,6 +1656,12 @@ DIMENSION = dimension
     endif
     
     if n_elements(dimension) gt 0 then self.dimension = dimension
+    
+    ;If the file pattern is set, reset everything
+    if n_elements(filename) gt 0 then begin
+        self.FileFinder -> SetProperty, ISO_START='', ISO_END='', PATTERN=filename
+        self.variable = ''
+    endif
 end
 
 
@@ -1409,6 +1695,8 @@ pro MrDataSet::cleanup
     obj_destroy, self.depend_3
     obj_destroy, self.depend_3_init
     obj_destroy, self.depend_3_save
+    
+    obj_destroy, self.FileFinder
 end
 
 
@@ -1433,7 +1721,13 @@ DEPEND_1=depend_1, $
 DEPEND_2=depend_2, $
 DEPEND_3=depend_3, $
 DIMENSION=dimension, $
-NO_COPY=no_copy
+ETIME=eTime, $
+FILENAME=filename, $
+NO_COPY=no_copy, $
+NO_REVERT=no_revert, $
+STIME=sTime, $
+TIME_PATTERN=time_pattern, $
+VARIABLE=variable
     compile_opt strictarr
     
     ;Error handling
@@ -1445,32 +1739,41 @@ NO_COPY=no_copy
     endif
 
     ;Create MrArray objects
-    data          = MrArray()
-    data_init     = MrArray()
-    data_save     = MrArray()
-    depend_0      = MrArray()
-    depend_0_init = MrArray()
-    depend_0_save = MrArray()
-    depend_1      = MrArray()
-    depend_1_init = MrArray()
-    depend_1_save = MrArray()
-    depend_2      = MrArray()
-    depend_2_init = MrArray()
-    depend_2_save = MrArray()
-    depend_3      = MrArray()
-    depend_3_init = MrArray()
-    depend_3_save = MrArray()
+    self.data          = MrArray()
+    self.data_init     = MrArray()
+    self.data_save     = MrArray()
+    self.depend_0      = MrArray()
+    self.depend_0_init = MrArray()
+    self.depend_0_save = MrArray()
+    self.depend_1      = MrArray()
+    self.depend_1_init = MrArray()
+    self.depend_1_save = MrArray()
+    self.depend_2      = MrArray()
+    self.depend_2_init = MrArray()
+    self.depend_2_save = MrArray()
+    self.depend_3      = MrArray()
+    self.depend_3_init = MrArray()
+    self.depend_3_save = MrArray()
+    self.filefinder    = MrFileFinder()
+
+    ;Set Properties
+    self.time_pattern = '%Y-%M-%dT%H:%m:%S.%1%2%3%4'
+    self -> SetProperty, FILENAME=filename, DIMENSION=dimension
 
     ;Set the data
     case n_params() of
-        0: ;Do nothing
-        1: self -> SetData, arg0, DEPEND_1=depend_1, DEPEND_2=depend_2, DEPEND_3=depend_3, NO_COPY=no_copy
-        2: self -> SetData, arg0, arg1, DEPEND_1=depend_1, DEPEND_2=depend_2, DEPEND_3=depend_3, NO_COPY=no_copy
+        0: begin
+            if n_elements(sTime) gt 0 && n_elements(eTime) gt 0 $
+                then self -> SetTimeRange, sTime, eTime, PATTERN=time_pattern
+            if n_elements(variable) gt 0 then self -> SetVariable, variable
+        endcase
+        
+        1: self -> SetData, arg0, DEPEND_1=depend_1, DEPEND_2=depend_2, DEPEND_3=depend_3, $
+                            NO_COPY=no_copy, NO_REVERT=no_revert
+        2: self -> SetData, arg0, arg1, DEPEND_1=depend_1, DEPEND_2=depend_2, DEPEND_3=depend_3, $
+                            NO_COPY=no_copy, NO_REVERT=no_revert
         else: message, 'Incorrect number of parameters.'
     endcase
-        
-    ;Set the filename for known filetypes
-    self -> SetProperty, DIMENSION=dimension
     
     return, 1
 end
@@ -1480,26 +1783,35 @@ end
 ;   The class definition statement.
 ;
 ; :Fields:
-;       DIMENSION:  Dimension of `Y` along which to apply analysis methods, when applicable.
-;       X:          Independent variable data associated with `Y`, manipulated as required.
-;       X_INIT:     Original input data for `X`
-;       X_SAVE:     `X` data at a particular saved state (see the Save method)
-;       Y:          Data to be analyzed.
-;       Y_INIT:     Original input data for `Y`
-;       Y_SAVE:     `Y` data at a particular saved state (see the Save method)
-;       Z:          Occasionally, an analysis method will turn `Y` into 3D data (i.e. a
-;                       spectrogram algorithm). In those cases, Z is the data associated
-;                       with the added dimension of `Y`. This is used for making images.
-;       Z_INIT:     Original input data for `Z`
-;       Z_SAVE:     `Z` data at a particular saved state (see the Save method)
-;       
+;       DATA:               Data to be analyzed
+;       DATA_INIT:          Original input data for `DATA`
+;       DATA_SAVE:          `DATA` at a particular saved state (see the Save method)
+;       DEPEND_0:           Data on which the first dimension of `DATA` depends. Usually time.
+;       DEPEND_0_INIT:      Original input data for `DEPEND_0`
+;       DEPEND_0_SAVE:      `DEPEND_0` at a particular saved state.
+;       DEPEND_1:           Data on which the second dimension of `DATA` depends.
+;       DEPEND_1_INIT:      Original input data for `DEPEND_0`
+;       DEPEND_1_SAVE:      `DEPEND_1` at a particular saved state.
+;       DEPEND_2:           Data on which the third dimension of `DATA` depends.
+;       DEPEND_2_INIT:      Original input data for `DEPEND_0`
+;       DEPEND_2_SAVE:      `DEPEND_2` at a particular saved state.
+;       DEPEND_3:           Data on which the fourth dimension of `DATA` depends.
+;       DEPEND_3_INIT:      Original input data for `DEPEND_0`
+;       DEPEND_3_SAVE:      `DEPEND_3` at a particular saved state.
+;       DIMENSION:          Dimension of `DATA` along which to apply analysis methods, when applicable.
+;       FILEFINDER:         A MrFileFinder object for locating files on the file system.
+;       FIRST_READ:         Time stamp of the first data point.
+;       LAST_READ:          Time stamp of the last data point.
+;       TIME_PATTERN:       String of tokens representing the time format.
+;       VARIABLE:           Variable name for which `DATA` is read.
 ;-
 pro MrDataSet__define
     compile_opt strictarr
     
     class = { MrDataSet, $
               inherits IDL_Object, $
-              dimension:     0, $
+              
+              ;Data Storage
               data:          obj_new(), $
               data_init:     obj_new(), $
               data_save:     obj_new(), $
@@ -1514,6 +1826,13 @@ pro MrDataSet__define
               depend_2_save: obj_new(), $
               depend_3:      obj_new(), $
               depend_3_init: obj_new(), $
-              depend_3_save: obj_new() $
+              depend_3_save: obj_new(), $
+              
+              dimension:     0, $
+              fileFinder:    obj_new(), $
+              first_read:    '', $
+              last_read:     '', $
+              time_pattern:  '', $
+              variable:      ''  $
             }
 end

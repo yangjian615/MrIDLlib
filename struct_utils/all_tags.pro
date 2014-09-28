@@ -12,17 +12,14 @@
 ; Essentially, this is a recursive extension of IDL's tag_names.pro.
 ;
 ; :Categories:
-;
 ;   Structure Utilities
 ;
 ; :Examples:
 ;
 ;   See the main level program at the end of this file::
-;
 ;       IDL> .r all_tags
 ;
 ; :Params:
-;
 ;       STRUCT:                 in, required, type=structure
 ;                               The structure for which all tags are to be returned.
 ;       ROOT:                   in, optional, type=int, default='root'
@@ -39,7 +36,6 @@
 ;                               The maximum recursion level. The root level is 0.
 ;
 ; :Returns:
-;
 ;       TAGS:                   A string array of tag names. If a tag is also a structure,
 ;                                   struct2, the tags of struct2 will be appended to the
 ;                                   structure name with a dot, ".".
@@ -53,7 +49,6 @@
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :Copyright:
-;
 ;       Copyright 2013 by Matthew Argall
 ;
 ; :History:
@@ -110,7 +105,7 @@ LEVEL=level
 	
 	;loop through all of the tags
 	for i = 0, ntags-1 do begin
-        if size(struct.(i), /TYPE) eq 8 then begin
+        if size(struct.(i), /TNAME) eq 'STRUCT' then begin
             temp_tags = all_tags(struct.(i), tags[i], current_level+1, TREE=tree, LEVEL=level)
             tags = [tags, temporary(temp_tags)]
         endif
@@ -140,7 +135,7 @@ struct = {tagA: 'A', $
 
 ;Get all of the tags
 tags_w_tree = all_tags(struct)
-tags_alone = all_tags(struct, TREE=0)
+tags_alone  = all_tags(struct, TREE=0)
 tags_level1 = all_tags(struct, LEVEL=1)
 
 ;Print the results

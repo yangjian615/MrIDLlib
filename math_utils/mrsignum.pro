@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MRCDF_EPOCH_ENCODE
+;       MrSigNum
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2014, Matthew Argall                                                   ;
@@ -31,71 +31,70 @@
 ;   DAMAGE.                                                                              ;
 ;*****************************************************************************************
 ;
-; PURPOSE:
+; PURPOSE
 ;+
-;       The purpose of this program is to create a wrapper for the `cdf_encode_epoch`, 
-;       `cdf_encode_epoch16` and `cdf_encode_tt2000.pro` functions. For options not
-;       available via the EPOCH keyword, see `epoch_to_datetime.pro`.
+;   A wrapper for IDL's SigNum function introduced in IDL 8.3.
 ;
-; :Categories:
-;       Time Utility, CDF Utility, Time Conversion
+; :Examples:
+;   See the example program at the end of this document::
+;       IDL> .r MrSigNum
 ;
 ; :Params:
-;   T_EPOCH:            in, required, type=double, dcomplex, long64
-;                       A[n array of] CDF times to be turned into strings. Accepted types
-;                           are::
-;                               EPOCH               -- Double
-;                               EPOCH16             -- DComplex
-;                               CDF_TIME_TT2000     -- Long64
-;
-; :Keywords:
-;   EPOCH:              in. optional, type=int, default=0
-;                       The format of the output::
-;                           0 - dd-mmm-yyyy hh:mm:ss.ccc                -- CDF_EPOCH
-;                             - dd-mmm-yyyy hh:mm:ss.ccc.uuu.nnn.ppp    -- CDF_EPOCH16
-;                             - dd-mmm-yyyy hh:mm:ss.ccccccccc          -- CDF_TIME_TT2000
-;                           1 - yyyymmdd.ttttttt                        -- CDF_EPOCH
-;                             - yyyymmdd.ttttttttttttttt                -- CDF_EPOCH16
-;                             - yyyymmdd.tttttttttt                     -- CDF_TIME_TT2000
-;                           2 - yyyymmddss                              -- [ALL]
-;                           3 - yyyy-mm-ddThh:mm:ss.cccZ                -- CDF_EPOCH
-;                             - yyyy-mm-ddThh:mm:ss.ccc.uuu.nnn.pppZ    -- CDF_EPOCH16
-;                             - yyyy-mm-ddThh:mm:ss.ccccccccc           -- CDF_TIME_TT2000
+;       X:          in, required, type=numeric
+;                   Determine the sign of each element. The sign is defined as::
+;                        1          - X > 0
+;                        0          - X = 0
+;                       -1          - X < 0
+;                        X / Abs(X) - X is complex
+;                        NaN        - X is NaN
+;                   
 ;
 ; :Returns:
-;   ENCODED_STRING:     A date string representing each of `T_EPOCH`.
+;       RESULT:     Sign of each element of `X`.
 ;
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
 ;       Morse Hall, Room 113
-;       8 Collge Rd.
+;       8 College Rd.
 ;       Durham, NH, 03824
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :History:
 ;	Modification History::
-;       Written by  -   Matthew Argall 12 February 2012
-;       2014/02/03  -   Renamed to MrCDF_Epoch_Encode from CDF_Epoch_Encode. - MRA
+;       2014/05/31  -   Written by Matthew Argall
+;       2014/09/02  -   Return the same type as X, if possible. - MRA
 ;-
-function MrCDF_Epoch_Encode, t_epoch, $
-EPOCH = epoch
+function MrSignum, x
     compile_opt strictarr
     on_error, 2
     
-    ;Set default values. Make sure EPOCH is a valid option.
-    if n_elements(epoch) eq 0 then epoch = 0
-    if epoch lt 0 || epoch gt 3 then message, 'EPOCH must be {0 | 1 | 2 | 3}.'
+    ;Use IDL's function introduced in IDL 8.3
+    if MrCmpVersion('8.3') le 0 then return, signum(x)
+    
+    ;Compute the sign.
+    ;   - Preserve datatype if possible
+    type  = size(x, /TYPE)
+    if MrIsA(x, /COMPLEX) $
+        then sign_x = x / abs(x) $
+        else sign_x = -(fix(x lt 0, TYPE=type)) + fix(x gt 0, TYPE=type)
+    
+    return, sign_x
+end
 
-    ;Determine the type of CDF epoch value given
-    epoch_type = MrCDF_Epoch_Type(t_epoch)
 
-    ;Encode epoch values
-    case epoch_type of
-        'CDF_EPOCH':       epoch_string = cdf_encode_epoch(t_epoch, EPOCH=epoch)
-        'CDF_EPOCH16':     epoch_string = cdf_encode_epoch16(t_epoch, EPOCH=epoch)
-        'CDF_TIME_TT2000': epoch_string = cdf_encode_tt2000(t_epoch, EPOCH=epoch)
-    endcase
-        
-    return, epoch_string
+;---------------------------------------------------
+; Main Level Example Program (.r MrSigNum) /////////
+;---------------------------------------------------
+
+;EXAMPLE 1
+;   Compute the mean of a vector
+x    = [-0.5, 0, 1.5]
+sign = MrSigNum(x) 
+
+;Print Results
+print, '---------------------------------------------------------'
+print, FORMAT='(%"Sign of [%0.1f, %0.1f %0.1f]:  [%i, %i, %i]")', x, sign
+print, ''
+
 end

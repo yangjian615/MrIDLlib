@@ -1,7 +1,11 @@
 ; docformat = 'rst'
 ;
 ;+
-;   The purpose of this program is to concatenate two arrays along a given dimension
+;   The purpose of this program is to concatenate two arrays along a given dimension.
+;
+; :Examples:
+;   Try the main level program at the end of this document::
+;       IDL> .r MrConcatenate
 ;
 ; :Categories:
 ;   Array Utility
@@ -33,6 +37,8 @@
 ;       2013-12-29  -   Problem when lists had a single element. Fixed. - MRA
 ;       2014/03/03  -   1D arrays were causing problems. Fixed.
 ;       2014/03/05  -   Added quick case for DIMENSION=2. - MRA
+;       2014/04/15  -   Made dimension juggling more readable. - MRA
+;       2014/05/22  -   IDL allows 3 levels of bracket concatenation. Use 3rd level. - MRA
 ;-
 function MrConcatenate, array1, array2, dimension
     compile_opt strictarr
@@ -65,17 +71,13 @@ function MrConcatenate, array1, array2, dimension
 ;-----------------------------------------------------
 ;Simple Cases \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    
-    ;Simplest case
-    if dimension eq 1 then begin
-        return, [array1, array2]
-    endif
-    
-    ;Second easiest case
-    if dimension eq 2 then begin
-        return, [[array1], [array2]]
-    endif
-    
+    case dimension of
+        1: return, [  array1  ,   array2  ]
+        2: return, [ [array1] ,  [array2] ]
+        3: return, [[[array1]], [[array2]]]
+        else: ;Continue below
+    endcase
+        
 ;-----------------------------------------------------
 ;Check Inputs \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -120,53 +122,53 @@ function MrConcatenate, array1, array2, dimension
     ;Concatenate the data
     data_out = [temporary(temparr1), temporary(temparr2)]
 
-    ;Put the dimension back where it was
-    if dimension ne 1 then begin
-        ;If a shallow dimension (of size 1) was transposed to the last dimension,
-        ;IDL truncates it. We need to put it back with a REFORM. This happens only if
-        ;   1. ARRAY1 is 1xN and DIMENSION=2 (already handled above)
-        ;   2. DIMENSION = N_DIMENSIONS and the second to last dimension is shallow.
-        if size(data_out, /N_DIMENSIONS) ne nDims1 then begin
-            ;Find the shallow dimensions
-            iShallow = where(dims1[iDimKeep-1] eq 1, nShallow, $
-                             COMPLEMENT=iDeep, NCOMPLEMENT=nDeep)
+    ;If a shallow dimension (of size 1) was transposed to the last dimension,
+    ;IDL truncates it. We need to put it back with a REFORM. This happens only if
+    ;   1. ARRAY1 is 1xN and DIMENSION=2 (already handled above)
+    ;   2. DIMENSION = N_DIMENSIONS and the second to last dimension is shallow.
+    if size(data_out, /N_DIMENSIONS) ne nDims1 then begin
+        ;Find the shallow dimensions
+        iShallow = where(dims1[iDimKeep-1] eq 1, nShallow, $
+                         COMPLEMENT=iDeep, NCOMPLEMENT=nDeep)
 
-            ;Remove all extra shallow dimensions
-            if nShallow gt 1 then data_out = reform(data_out)
-            
-            ;Put shallow dimensions first: [shallow, catDim, deep]
-            if nDeep gt 0 then begin
-                iDimKeep = iDimKeep[[iShallow, iDeep]]
-                data_out = reform(data_out, [replicate(1, nShallow), nCat, dims1[iDimKeep[nShallow:nShallow+nDeep-1]-1]])
-            endif else begin
-                data_out = reform(data_out, [replicate(1, nShallow), nCat])
-            endelse
-            
-            ;Order the dimensions properly -- map between the transposed,
-            ;concanated array dimensions and the input array dimensions
-            iout = intarr(nDims1)
-            iout[dimension-1] = nShallow
-            iout[iDimKeep[0:nShallow-1]-1] = indgen(nShallow)
-            if nDeep gt 0 then iout[iDimKeep[nShallow:nShallow+nDeep-1]-1] = indgen(nDeep) + nShallow + 1
-
-            data_out = transpose(data_out, iout)
-            
-        ;Last dimension is not shallow
+        ;Remove all extra shallow dimensions
+        if nShallow gt 1 then data_out = reform(data_out)
+        
+        ;Put shallow dimensions first: [shallow, catDim, deep]
+        if nDeep gt 0 then begin
+            shallowDims = dims1[iDimKeep[iShallow]-1]
+            deepDims    = dims1[iDimKeep[iDeep]-1]
+            unReform    = [shallowDims, nCat, deepDims]
+            data_out    = reform(data_out, unReform, /OVERWRITE)
         endif else begin
-            iout = bindgen(nDims1) + 1
-        
-            ;Dimensions that were not concatenated.
-            ikeep = where(histogram([1], MIN=1, MAX=nDims1) eq 0)
-        
-            ;Map the concatenated array dimensions to the non-concatenated array
-            ;   Location of the non-concatenated dimensions within the concatenated array.
-            ;   The concatenated dimension is now the leading dimension
-            iout[iDimKeep-1] = ikeep
-            iout[dimension-1] = 0
-            
-            data_out = transpose(data_out, iout)
+            shallowDims = dims[iDimKeep[iShallow]-1]
+            unReform    = [shallowDims, nCat]
+            data_out    = reform(data_out, unReform, /OVERWRITE)
         endelse
-    endif
+
+        ;Order the dimensions properly. Store current index values at old index locations.
+        ;   - Shallow dimensions first.
+        ;   - Then the transposed dimension
+        ;   - Then deep dimensions
+        unTranspose = bytarr(nDims1)
+        unTranspose[iDimKeep[iShallow]-1] = indgen(nShallow)
+        unTranspose[dimension-1] = nShallow
+        if nDeep gt 0 then unTranspose[iDimKeep[iDeep]-1] = indgen(nDeep) + nShallow + 1
+        
+        ;Un-transpose the data
+        data_out = transpose(data_out, unTranspose)
+        
+    ;Last dimension is not shallow
+    endif else begin
+        unTranspose = bytarr(nDims1)
+    
+        ;Dimensions that were not concatenated.
+        newTrail = where(histogram([1], MIN=1, MAX=nDims1) eq 0)
+        unTranspose[iDimKeep-1] = newTrail
+        unTranspose[dimension-1] = 0
+        
+        data_out = transpose(data_out, unTranspose)
+    endelse
 
     return, data_out
 end

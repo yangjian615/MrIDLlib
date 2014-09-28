@@ -63,6 +63,7 @@
 ;       09/30/2013:     Return the HMS tims to their input array if an error occurs. 
 ;                           Also, transpose the output array upon exit, if necessary. - MRA
 ;       2014/03/03:     Return a scalar if only one time was given. - MRA
+;       2014/07/19:     Return a row vector under all circumstances. - MRA
 ;-
 function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
     compile_opt idl2
@@ -82,20 +83,20 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
     nTimes = n_elements(hms_time_in)
     
     ;Get the sizes of the dimensions
-    hms_dims = size(hms_time_in, /dimensions)
-    hms_type = size(hms_time_in, /type)
+    hms_dims = size(hms_time_in, /DIMENSIONS)
+    hms_type = size(hms_time_in, /TYPE)
     
     ;If HMS_TIME is the only parameter given and it has more than one column
     if n_params() eq 1 && hms_dims[0] ge 1 then begin
         ;Then we must check to see if it is an Nx1 ('HH:MM:SS') array of times or an
         ;MxN array of times (['HH', 'MM', SS']). If it is the former then one of the
         ;following will be true.
-        ;   1. There are more than 7 columns
+        ;   1. There are more than 7 columns (i.e. it is a column vector)
         ;   2. HMS_TIME is a string of length > 2 (i.e., not '0' - '24' -- it is "HH:MM:SS...").
         ;   3. HMS_TIME is a number > 24 (i.e. not 0-24 for the hour -- it is HHMMSS...).
-        if hms_dims[0] gt 7 || $
-           (hms_type eq 7 and strlen(hms_time_in[0]) gt 2) || $
-           (hms_type ne 7 and fix(hms_time_in[0], type=3) gt 24) then begin
+        if (hms_dims[0] gt 7) || $
+           (hms_type    eq 7 and strlen(hms_time_in[0]) gt 2) || $
+           (hms_type    ne 7 and fix(hms_time_in[0], TYPE=3) gt 24) then begin
            
                 ;if any of the above conditions are met, then we must take the transpose
                 ;to make the array 1xN so as to fall within the proper condition below.
@@ -112,8 +113,8 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
     endif
 
     ;Get info about HMS_TIME.
-    hms_type = size(hms_time, /type)
-    hms_dims = size(hms_time, /dimensions)
+    hms_type = size(hms_time, /TYPE)
+    hms_dims = size(hms_time, /DIMENSIONS)
     
     ;Check number of dimension and inputs here so that we do not have to use a "break"
     ;or an "else" statement in the switches below.
@@ -139,13 +140,13 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
         if n_params() gt 1 then begin
             ;Change the inputs from strings to integers
             switch n_params() of
-                7: pico = fix(pico)
-                6: nano = fix(nano)
-                5: mico = fix(micro)
-                4: milli = fix(milli)
+                7: pico   = fix(pico)
+                6: nano   = fix(nano)
+                5: mico   = fix(micro)
+                4: milli  = fix(milli)
                 3: second = fix(second, TYPE=5)
                 2: minute = fix(minute)
-                1: hour = fix(hms_time)
+                1: hour   = fix(hms_time)
                 else: message, 'Incorrect number of arguments.'
             endswitch
         
@@ -156,13 +157,13 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
             ;Change the inputs from strings to integers
             ;NOTE: adding an ELSE statement executed as part of the switch.
             switch hms_dims[0] of
-                7: pico   = fix(hms_time[6,*])
-                6: nano   = fix(hms_time[5,*])
-                5: micro  = fix(hms_time[4,*])
-                4: milli  = fix(hms_time[3,*])
-                3: second = fix(hms_time[2,*], TYPE=5)
-                2: minute = fix(hms_time[1,*])
-                1: hour   = fix(hms_time[0,*])
+                7: pico   = fix(reform(hms_time[6,*]))
+                6: nano   = fix(reform(hms_time[5,*]))
+                5: micro  = fix(reform(hms_time[4,*]))
+                4: milli  = fix(reform(hms_time[3,*]))
+                3: second = fix(reform(hms_time[2,*], TYPE=5))
+                2: minute = fix(reform(hms_time[1,*]))
+                1: hour   = fix(reform(hms_time[0,*]))
 ;                else: message, 'If HMS_TIME is an NxM array, ensure N <= 7. Now, N = ' + $
 ;                               strtrim(string(hms_dims[0]), 2)
             endswitch
@@ -186,13 +187,13 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
             ;Change the inputs from strings to integers
             ;NOTE: adding an ELSE statement executed as part of the switch.
             switch hms_dims[0] of
-                7: pico = hms_time[6,*]
-                6: nano = hms_time[5,*]
-                5: micro = hms_time[4,*]
-                4: milli = hms_time[3,*]
-                3: second = hms_time[2,*]
-                2: minute = hms_time[1,*]
-                1: hour = hms_time[0,*]
+                7: pico   = reform(hms_time[6,*])
+                6: nano   = reform(hms_time[5,*])
+                5: micro  = reform(hms_time[4,*])
+                4: milli  = reform(hms_time[3,*])
+                3: second = reform(hms_time[2,*])
+                2: minute = reform(hms_time[1,*])
+                1: hour   = reform(hms_time[0,*])
 ;                else: message, 'If HMS_TIME is an NxM array, ensure N <= 7. Now, N = ' + $
 ;                               strtrim(string(hms_dims[0]), 2)
             endswitch
@@ -203,7 +204,7 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
         endif else if n_params() eq 1 and hms_dims[0] le 1 then begin
             second = hms_time mod 100
             minute = fix((hms_time mod 1e4) / 1e2)
-            hour = fix((hms_time mod 1e7) / 1e4)
+            hour   = fix((hms_time mod 1e7) / 1e4)
         endif
         
         ;The case of multiple inputs was taken care of already during the CHECK INPUTS
@@ -216,16 +217,15 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
 ;---------------------------------------------------------------------
     ;Piece together the fractional second
     second = second + double(milli)*1e-3 + double(micro)*1e-6 + $
-                      double(nano)*1e-9 + double(pico)*1e-12
+                      double(nano)*1e-9  + double(pico)*1e-12
     
     ;Calculate SSM
     t_ssm = hour*3600D + minute*60D + second
-    
+
     ;replace the input data
-    if tf_trans then begin
-        hms_time_in = transpose(temporary(hms_time))
-        t_ssm = transpose(t_ssm)
-    endif else hms_time_in = temporary(hms_time)
+    if tf_trans $
+        then hms_time_in = transpose(temporary(hms_time)) $
+        else hms_time_in = temporary(hms_time)
 
     ;Return the number of seconds since midnight.
     if nTimes eq 1 then t_ssm = t_ssm[0]

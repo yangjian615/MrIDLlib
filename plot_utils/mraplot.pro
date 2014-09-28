@@ -188,6 +188,9 @@ _REF_EXTRA = extra
 ;---------------------------------------------------------------------
 ;Set Defaults ////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
+    nDims = Size(dep, /N_DIMENSIONS)
+    if nDims eq 1 then dimension = 0
+    
     ;The dimension not being plotted.
     CASE dimension OF
         0: xdim = 0
@@ -200,6 +203,7 @@ _REF_EXTRA = extra
 
     ;Pick a set of default colors so not everything is the same color.
     default_colors = ['opposite', 'Blue', 'Forest_Green', 'Red', 'Magenta', 'Orange']
+    IF nDefaults GT 5 THEN default_colors = [default_colors, replicate('Black', nDefaults-5)]
     IF nDefaults EQ 1 THEN d_color = default_colors[0] ELSE d_color = default_colors[1:nDefaults]
 
     ;Set Defaults

@@ -71,12 +71,13 @@
 ;       10/09/2013  -   Added the BACKGROUND and OUTPUT_FNAME keywords. Removed keywords
 ;                           CBARR and CBKWDS. - MRA
 ;       2013-28-10  -   Remove BACKGROUND from polarization as well. - MRA
+;       2014-08-17  -   Added the CURRENT keyword. Updated to work with the current
+;                           version of MrWindow. - MRA
 ;-
 function MrPolPlot, data, nfft, dt, nshift, $
 BACKGROUND = background, $
+CURRENT = current, $
 DIMENSION = dimension, $
-DRAW = draw, $
-OREF = oRef, $
 OUTPUT_FNAME = output_fname, $
 RANGE = range, $
 POLARIZATION = polarization, $
@@ -95,12 +96,6 @@ _REF_EXTRA = extra
         
         ;Plotting Window
         if obj_valid(polWin) then obj_destroy, polWin
-        
-        ;Images
-        if (max(obj_valid(imArr)) eq 1) then obj_destroy, imArr
-        
-        ;Colorbars
-        if (max(obj_valid(cbArr)) eq 1) then obj_destroy, cbArr
             
         void = cgErrorMsg()
         return, MrNull('ObjRef')
@@ -113,37 +108,15 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
     
     ;Defaults -- NFFT, NSHIFT, DT, and DIMENSION will be handled by MrPSD.
-    if n_elements(t0) eq 0 then t0 = 0.0
+    current      = keyword_set(current)
+    coherency    = keyword_set(coherency)
+    ellipticity  = keyword_set(ellipticity)
+    intensity    = keyword_set(intensity)
+    kdotb_angle  = keyword_set(kdotb_angle)
+    polarization = keyword_set(polarization)
+    if n_elements(t0)           eq 0 then t0 = 0.0
     if n_elements(output_fname) eq 0 then output_fname = ''
-    oRef = keyword_set(oRef)
-    if n_elements(draw) eq 0 then draw = 1 else draw = keyword_set(draw)
-    
-    ;Save to file?
-    if output_fname ne '' then begin
-        display = 0
-        oRef = 0
-        add = 1
-    
-    ;If not...
-    endif else begin
-        if oRef eq 0 then display = draw else display = 0
-        if oRef eq 0 then add = 1 else add = 0
-    endelse
-    
-    ;Which data products will be kept?
-    if (oRef eq 0) then begin
-        coherency    = keyword_set(coherency)
-        ellipticity  = keyword_set(ellipticity)
-        intensity    = keyword_set(intensity)
-        kdotb_angle  = keyword_set(kdotb_angle)
-        polarization = keyword_set(polarization)
-    endif else begin
-        coherency    = arg_present(coherency)
-        ellipticity  = arg_present(ellipticity)
-        intensity    = arg_present(intensity)
-        kdotb_angle  = arg_present(kdotb_angle)
-        polarization = arg_present(polarization)
-    endelse
+    if n_elements(draw)         eq 0 then draw = 1 else draw = keyword_set(draw)    
     
     ;How many images will we make?
     nImages = coherency + ellipticity + intensity + kdotb_angle + polarization
@@ -158,8 +131,16 @@ _REF_EXTRA = extra
         nImages = 5
     endif
     
-    ;Create a window. Leave room for a colorbar.
-    polWin = MrWindow(BUILD=0, XMARGIN=[10,15], YSIZE=600, DISPLAY=display)
+    ;Create a window.
+    refresh_in = 1
+    if current then begin
+        polWin     = GetMrWindows(/CURRENT)
+        refresh_in = polWin.REFRESH
+        polWin    -> Refresh, /DISABLE
+    endif else begin
+        BUFFER = output_fname ne ''
+        polWin = MrWindow(OXMARGIN=[10,15], YSIZE=600, BUFFER=buffer, REFRESH=0)
+    endelse
     
 ;-----------------------------------------------------
 ;Calculate PSD \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -192,27 +173,24 @@ _REF_EXTRA = extra
     if (intensity eq 1) then begin
     
         ;Create the image
-        IntImage = polWin -> Image(intensity_data, time, frequencies, $
-                                   /AXES, $
-                                   /NAN, $
-                                   CTINDEX=13, $
-                                   RANGE=range, $
-                                   TITLE='Intensity', $
-                                   XTICKFORMAT='time_labels', $
-                                   XTITLE='Time (UT)', $
-                                   YTITLE='Frequency (Hz)', $
-                                   YLOG=ylog, $
-                                   DRAW=0, $
-                                   ADD=add)
-        
-        IntCB = polWin -> Colorbar(TITLE='Log Intensity!C(Units^2 * Hz)', $
-                                   TARGET=IntImage, $
-                                   DRAW=0, $
-                                   ADD=add)
-        
-        ;Return the object references?
-        if (add eq 0) then intensity = [IntImage, IntCB]
-    endif else undefine, intensity_data
+        IntImage = MrImage(intensity_data, time, frequencies, $
+                           /AXES, $
+                           /NAN, $
+                           MISSING_COLOR='Antique White', $
+                           CTINDEX=13, $
+                           RANGE=range, $
+                           TITLE='Intensity', $
+                           XTICKFORMAT='time_labels', $
+                           XTITLE='Time (UT)', $
+                           YTITLE='Frequency (Hz)', $
+                           YLOG=ylog, $
+                           /CURRENT)
+
+        IntCB = MrColorbar(TITLE='Log Intensity!C(Units^2 * Hz)', $
+                           TARGET=IntImage, $
+                           /CURRENT)
+    endif
+    intensity_data = !Null
 
 ;-----------------------------------------------------
 ;POLARIZATION \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -224,28 +202,24 @@ _REF_EXTRA = extra
         ;Reverse the Black->White colortable
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
         
-        PolIm = polWin -> Image(pzation_data, time, frequencies, $
-                                /AXES, $
-                                /NAN, $
-                                MISSING_COLOR='Antique White', $
-                                PALETTE=ctBW, $
-                                TITLE='Percent Polarization', $
-                                XTICKFORMAT='time_labels', $
-                                XTITLE='Time (UT)', $
-                                YTITLE='Frequency (Hz)', $
-                                YLOG=ylog, $
-                                DRAW=0, $
-                                ADD=add)
+        PolIm = MrImage(pzation_data, time, frequencies, $
+                        /AXES, $
+                        /NAN, $
+                        MISSING_COLOR='Antique White', $
+                        PALETTE=ctBW, $
+                        TITLE='Percent Polarization', $
+                        XTICKFORMAT='time_labels', $
+                        XTITLE='Time (UT)', $
+                        YTITLE='Frequency (Hz)', $
+                        YLOG=ylog, $
+                        /CURRENT)
 
-        PolCB = polWin -> Colorbar(TITLE='% Polarization', $
-                                   TARGET=PolIm, $
-                                   DRAW=0, $
-                                   ADD=add, $
-                                  _EXTRA=cbkwds)
-        
-        ;Return the object references?
-        if (add eq 0) then polarization = [PolIm, PolCB]
-    endif else undefine, pzation_data
+        PolCB = MrColorbar(TITLE='% Polarization', $
+                           TARGET=PolIm, $
+                           /CURRENT, $
+                          _EXTRA=cbkwds)
+    endif
+    pzation_data = !Null
 
 ;-----------------------------------------------------
 ;ELLIPTICITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -259,28 +233,24 @@ _REF_EXTRA = extra
         palette = MrCreateCT(/RWB, /REVERSE)
 
         ;Create the image
-        EllIm = polWin -> Image(ellipticity_data, time, frequencies, $
-                                /AXES, $
-                                /NAN, $
-                                MISSING_COLOR='Antique White', $
-                                PALETTE=palette, $
-                                TITLE='Ellipticity', $
-                                XTICKFORMAT='time_labels', $
-                                XTITLE='Time (UT)', $
-                                YTITLE='Frequency (Hz)', $
-                                YLOG=ylog, $
-                                DRAW=0, $
-                                ADD=add)
+        EllIm = MrImage(ellipticity_data, time, frequencies, $
+                        /AXES, $
+                        /NAN, $
+                        MISSING_COLOR='Antique White', $
+                        PALETTE=palette, $
+                        TITLE='Ellipticity', $
+                        XTICKFORMAT='time_labels', $
+                        XTITLE='Time (UT)', $
+                        YTITLE='Frequency (Hz)', $
+                        YLOG=ylog, $
+                        /CURRENT)
 
-        EllCB = polWin -> Colorbar(TITLE='Ellipticity', $
-                                   TARGET=EllIm, $
-                                   DRAW=0, $
-                                   ADD=add, $
-                                  _EXTRA=cbkwds)
-        
-        ;Return the object references?
-        if (add eq 0) then ellipticity = [EllIm, EllCB]
-    endif else undefine, ellipticity_data
+        EllCB = MrColorbar(TITLE='Ellipticity', $
+                           TARGET=EllIm, $
+                           /CURRENT, $
+                          _EXTRA=cbkwds)
+    endif
+    ellipticity_data = !Null
 
 ;-----------------------------------------------------
 ;K-DOT-B ANGLE \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -294,28 +264,24 @@ _REF_EXTRA = extra
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
         
         ;Create the image
-        kdbIm= polWin -> Image(kdotb_angle_data*!radeg, time, frequencies, $
-                               /AXES, $
-                               /NAN, $
-                               MISSING_COLOR='Antique White', $
-                               PALETTE=ctBW, $
-                               TITLE='Angle Between k and B', $
-                               XTICKFORMAT='time_labels', $
-                               XTITLE='Time (UT)', $
-                               YTITLE='Frequency (Hz)', $
-                               YLOG=ylog, $
-                               DRAW=0, $
-                               ADD=add)
+        kdbIm= MrImage(kdotb_angle_data*!radeg, time, frequencies, $
+                       /AXES, $
+                       /NAN, $
+                       MISSING_COLOR='Antique White', $
+                       PALETTE=ctBW, $
+                       TITLE='Angle Between k and B', $
+                       XTICKFORMAT='time_labels', $
+                       XTITLE='Time (UT)', $
+                       YTITLE='Frequency (Hz)', $
+                       YLOG=ylog, $
+                       /CURRENT)
         
-        kdbCB = polWin -> Colorbar(TITLE='k dot B!C(Deg)', $
-                                   TARGET=kdbIm, $
-                                   DRAW=0, $
-                                   ADD=add, $
-                                  _EXTRA=cbkwds)
-        
-        ;Return the object references?
-        if (add eq 0) then kdotb_angle = [kdbIm, kdbCB]
-    endif else undefine, kdotb_angle_data
+        kdbCB = MrColorbar(TITLE='k dot B!C(Deg)', $
+                           TARGET=kdbIm, $
+                           /CURRENT, $
+                          _EXTRA=cbkwds)
+    endif
+    kdotb_angle_data = !Null
 
 ;-----------------------------------------------------
 ;COHERENCY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -330,53 +296,42 @@ _REF_EXTRA = extra
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
         
         ;Create the image
-        CohIm = polWin -> Image(coherency_data, time, frequencies, $
-                                /AXES, $
-                                /NAN, $
-                                MISSING_COLOR='Antique White', $
-                                PALETTE=ctBW, $
-                                TITLE='Coherency', $
-                                XTICKFORMAT='time_labels', $
-                                XTITLE='Time (UT)', $
-                                YTITLE='Frequency (Hz)', $
-                                YLOG=ylog, $
-                                DRAW=0, $
-                                ADD=add)
+        CohIm = MrImage(coherency_data, time, frequencies, $
+                        /AXES, $
+                        /NAN, $
+                        MISSING_COLOR='Antique White', $
+                        PALETTE=ctBW, $
+                        TITLE='Coherency', $
+                        XTICKFORMAT='time_labels', $
+                        XTITLE='Time (UT)', $
+                        YTITLE='Frequency (Hz)', $
+                        YLOG=ylog, $
+                        /CURRENT)
         
-        CohCB = polWin -> Colorbar(TITLE='Coherency', $
-                                   TARGET=CohIm, $
-                                   DRAW=0, $
-                                   ADD=add, $
-                                  _EXTRA=cbkwds)
-        
-        ;Return the object references?
-        if (add eq 0) then coherency = [CohIm, CohCB]
-    endif else undefine, coherency_data
+        CohCB = MrColorbar(TITLE='Coherency', $
+                           TARGET=CohIm, $
+                           /CURRENT, $
+                          _EXTRA=cbkwds)
+    endif
+    coherency_data = !Null
     
 ;-----------------------------------------------------
 ;Return Window or Objects? \\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 
-    ;Return the object references?
-    if (oRef eq 1) then begin
-
-        ;Destroy the window we created
-        obj_destroy, polWin
-        return, obj_new()
-    
     ;Return a window
-    endif else if (oRef eq 0) and (output_fname eq '') then begin
+    if (output_fname eq '') then begin
+
         polWin -> SetProperty, YSIZE=nImages*120
-        if keyword_set(draw) then polWin -> RealizeGUI
+        polWin -> Refresh, DISABLE=~refresh_in
         return, polWin
         
     ;Output the plot to a file?
-    endif else if (output_fname ne '') then begin
+    endif else begin
         ;The plots need to be drawn first so that the TVRD can grab the image.
-        polWin -> Draw
-        polWin -> Output, output_fname
+        polWin -> Refresh
+        polWin -> Save, output_fname
         obj_destroy, polWin
         return, obj_new()
-    
-    endif else message, 'Invalid keyword combination.'
+    endelse
 end

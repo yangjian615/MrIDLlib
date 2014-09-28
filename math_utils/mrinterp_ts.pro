@@ -103,6 +103,8 @@
 ;       09/06/2013  -   Number of points is taken from the time arrays, since A and B may
 ;                           be arrays of more than one dimension. - MRA
 ;       09/20/2013  -   Renamed DT to DT_OUT to remove ambiguous keyword abbreviation. - MRA
+;       08/23/2013  -   Time arrays must have at least two points to calculate the
+;                           sampling interval. - MRA
 ;-
 ;*****************************************************************************************
 pro MrInterp_TS, A, B, t_A, t_B, A_out, B_out, t_out, $
@@ -158,11 +160,11 @@ DT_B = dt_B
     nB = n_elements(t_B)
     if (n_elements(A) eq 0) then message, '"A" must be provided.'
     if (n_elements(B) eq 0) then message, '"B" must be provided.'
-    if nA eq 0 then message, 't_A must be provided.'
-    if nB eq 0 then message, 't_B must be provided.'
+    if nA lt 2 then message, 't_A must be provided and have at least two elements.'
+    if nB lt 2 then message, 't_B must be provided and have at least two elements.'
     
     ;Defaults
-    if n_elements(no_copy) eq 0 then no_copy = 0
+    no_copy = keyword_set(no_copy)
     
     ;Copy the data
     pA = ptr_new(A, NO_COPY=no_copy)

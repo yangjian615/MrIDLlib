@@ -77,6 +77,7 @@
 ;       2013-01-14  -   Date converted to desired TYPE properly. MRA.
 ;       2013-10-23  -   If DATE was a column, StRegEx was returning a 3D array. Simplified
 ;                           things by using the EXTRACT keyword to StRegEx. - MRA
+;       2014-04-03  -   Return scalars if a scalar is given. - MRA
 ;-
 pro dissectDate, date, year, month, day, $
 TYPE=type
@@ -85,6 +86,7 @@ TYPE=type
 
     ;If a type was not given, then make it the same type as DATE
     date_type = size(date, /TYPE)
+    nDates = n_elements(date)
     if n_elements(type) eq 0 then type = date_type
     
 ;----------------------------------------------------
@@ -122,10 +124,17 @@ TYPE=type
     month = reform(subStrings[2,*])
     day   = reform(subStrings[3,*])
     
-    ;convert to numeric type if requested.
+    ;Convert to numeric type if requested.
     if type ne 7 then begin
         year = fix(year, TYPE=type)
         month = fix(month, TYPE=type)
         day = fix(day, TYPE=type)
+    endif
+    
+    ;Return scalars
+    if nDates eq 1 then begin
+        year  = year[0]
+        month = month[0]
+        day   = day[0]
     endif
 end

@@ -44,8 +44,11 @@
 ;       11/28/2011  -   Written by Matthew Argall
 ;       07/14/2013  -   Added check for magnitude or vector magnetic field. Units are
 ;                           now assumed to be nT and cm^-3 and km/s - MRA
+;       2014/08/20  -   Added the SPEED keyword. Scale data during calculations to reduce
+;                           the number of computations and the dynamic range of the data. - MRA
 ;-
-function alfven_velocity, B, n, m
+function alfven_velocity, B, n, m, $
+SPEED=speed
     compile_opt strictarr
     on_error, 2
 
@@ -58,6 +61,7 @@ function alfven_velocity, B, n, m
         then magnitude = 1B $
         else magnitude = 0B
 
+
     npts = n_elements(n)
 ;---------------------------------------------------------------------
 ;Calculate the Alfven Velocity ///////////////////////////////////////
@@ -65,20 +69,24 @@ function alfven_velocity, B, n, m
 
     ;the alfven velocity, v = B * (mu_0*m*n)^-(1/2)
     ;units: nT / sqrt(cm^3 * mu_0) = 1e-12 * m/s => must multiply result by 1e-12
+    ;       m / s -> 1e-3 km / s                 => Must multiply result by 1e-15
     mu_0 = constants('mu_0')    ;permeability of free space
     rho = m * n                 ;mass density of the plasma
 
     ;Alfven Speed
     if magnitude eq 1 then begin
-        v_A = B / sqrt(mu_0 * rho)
+        v_A = B / (sqrt(mu_0 * rho) * 1e15)
         
     ;Alfven Velocity
     endif else begin
         v_A = fltarr(3, npts)
-        v_A[0,*] = B[0,*] / sqrt(mu_0 * rho)
-        v_A[1,*] = B[1,*] / sqrt(mu_0 * rho)
-        v_A[2,*] = B[2,*] / sqrt(mu_0 * rho)
+        v_A[0,*] = B[0,*] / (sqrt(mu_0 * rho) * 1e15)
+        v_A[1,*] = B[1,*] / (sqrt(mu_0 * rho) * 1e15)
+        v_A[2,*] = B[2,*] / (sqrt(mu_0 * rho) * 1e15)
+        
+        ;Calculate the speed?
+        if keyword_set(speed) then v_A = magnitude_vec(v_A)
     endelse
 
-    return, v_A * 1e-15         ;m/s --> km/s (with factor of 1e-12 in there)
+    return, v_A
 end

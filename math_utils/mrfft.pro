@@ -222,15 +222,15 @@ WINDOW = window
     
     ;Keep array type the same.
     if n_elements(double) eq 0 then $
-        if MrIsA(data, 'double') then double = 1 else double = 0
+        if MrIsA(data, 'DOUBLE') then double = 1 else double = 0
     
     ;Set the output type
     if keyword_set(double) then out_type = 9 else out_type = 6
     
     ;Time stamp at the center of the packet or at the beginning?
-    if n_elements(t0) eq 0 then t0 = 0.0
-    if arg_present(time) then keep_time = 1 else keep_time = 0
-    if keyword_set(tcenter) then ct = 0.5 else ct = 0.0
+    if n_elements(t0) eq 0  then t0        = 0.0
+    if arg_present(time)    then keep_time = 1   else keep_time = 0
+    if keyword_set(tcenter) then ct        = 0.5 else ct        = 0.0
     
     ;Check how to window the data. Default to a "Hanning" window.
     if keyword_set(window) then begin
@@ -241,7 +241,6 @@ WINDOW = window
 ;-----------------------------------------------------
 ;FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-
     ;get the sampling frequency at which the data was recorded, the frequency spacing,
     ;the number of FFT intervals and an array of the frequency bins.
     ;sampling_rate = 1.0 / dt

@@ -140,9 +140,9 @@ RMATRIX = rMatrix
         if nDetrend eq 0 $
             then rMatrix_out = far_system(field_out, position, nFAR) $
             else rMatrix_out = far_system(mean_field, position, /ISMEAN)
-            
+
         ;Rotate into the FAR frame
-        field_out = rotate_vector(rMatrix, field_out)
+        field_out = rotate_vector(rMatrix_out, field_out)
     endif
 
 ;-----------------------------------------------------

@@ -10,8 +10,10 @@
 ;                       The names of the months.
 ;
 ; :Keywords:
-;       ABBR:           in, otpional, type=boolean, default=0
+;       ABBR:           in, optional, type=boolean, default=0
 ;                       Indicate that `NAMES` are 3-character abbreviated month names.
+;       TYPE:           in, optional, type=string/integer, default='STRING'
+;                       Variable type-name or type-code of the resulting `MONTH_NUMBERS`.
 ;
 ; :Returns:
 ;       MONTH_NUMBERS:  The number of the month corresponding to `NAMES`.
@@ -27,19 +29,19 @@
 ; :History:
 ;   Modification History::
 ;       2014/02/19  -   Written by Matthew Argall
+;       2014/03/19  -   Replace STRING with TYPE keyword. Strings are returned by default. - MRA
 ;-
 function MonthNameToNumber, names, $
 ABBR = abbr, $
-STRING=string
+TYPE = type
     compile_opt strictarr
-    
-    ;Error handling
-    catch, the_error
-    if the_error ne 0 then begin
-        catch, /cancel
-        void = cgErrorMsg()
-        return, ''
-    endif
+    on_error, 2
+
+    ;Default to strings
+    if n_elements(type) eq 0 then type = 7
+    if size(type, /TNAME) eq 'STRING' $
+        then tcode = typenameToCode(type) $
+        else tcode = type
 
     ;Names of the months
     if keyword_set(abbr) $
@@ -54,7 +56,11 @@ STRING=string
     month_numbers = iSorted[iMonths] + 1
 
     ;Return strings?
-    if keyword_set(string) then month_numbers = string(month_numbers, FORMAT='(i02)')
+    case tcode of
+        2: ;Do nothing
+        7: month_numbers = string(month_numbers, FORMAT='(i02)')
+        else: month_numbers = fix(month_numbers, TYPE=tcode)
+    endcase
     
     return, month_numbers
 end
