@@ -60,21 +60,18 @@ function cross_product, x, y
     nx = n_elements(x)
     ny = n_elements(y)
 
-    ;check the size of each array and compute the corss procuct
-    ;accordingly. if x and y are not compatible, then print a message
-    
     ;3 cross 3
     if (nx eq 3) and (ny eq 3) then begin
         x_cross_y = crossp(x, y)
     
     ;3 cross 3xN
-    endif else if (nx eq 3) and (yndims eq 2) and (ydims[1] eq 3) then begin
+    endif else if (nx eq 3) and (yndims eq 2) and (ydims[0] eq 3) then begin
         x_cross_y = [x[1]*y[2,*] - x[2]*y[1,*], $
                      x[2]*y[0,*] - x[0]*y[2,*], $
                      x[0]*y[1,*] - x[1]*y[0,*]]
                      
     ;3xN cross 3
-    endif else if (xndims eq 2) and (xdims[1] eq 3) and (ny eq 3) then begin
+    endif else if (xndims eq 2) and (xdims[0] eq 3) and (ny eq 3) then begin
         x_cross_y = [x[1,*]*y[2] - x[2,*]*y[1], $
                      x[2,*]*y[0] - x[0,*]*y[2], $
                      x[0,*]*y[1] - x[1,*]*y[0]]

@@ -73,6 +73,7 @@
 ;       2013-28-10  -   Remove BACKGROUND from polarization as well. - MRA
 ;       2014-08-17  -   Added the CURRENT keyword. Updated to work with the current
 ;                           version of MrWindow. - MRA
+;       2014-10-05  -   Set range of images to full range of quantity. Scale images. - MRA
 ;-
 function MrPolPlot, data, nfft, dt, nshift, $
 BACKGROUND = background, $
@@ -156,11 +157,7 @@ _REF_EXTRA = extra
                                   KDOTB_ANGLE = kdotb_angle_data, $
                                   COHERENCY = coherency_data, $
                                  _EXTRA = extra)
-    
-    ;Log Intensity
-    intensity_data = MrLog(intensity_data)
-    
-    ;Remove background signal?
+        ;Remove background signal?
     if n_elements(background) gt 0 $
         then iMissing = where(intensity_data le background, nMissing) $
         else nMissing = 0
@@ -171,24 +168,27 @@ _REF_EXTRA = extra
 
     ;Check for the intensity
     if (intensity eq 1) then begin
-    
         ;Create the image
         IntImage = MrImage(intensity_data, time, frequencies, $
                            /AXES, $
+                           /CURRENT, $
+                           /LOG, $
                            /NAN, $
-                           MISSING_COLOR='Antique White', $
-                           CTINDEX=13, $
-                           RANGE=range, $
-                           TITLE='Intensity', $
-                           XTICKFORMAT='time_labels', $
-                           XTITLE='Time (UT)', $
-                           YTITLE='Frequency (Hz)', $
-                           YLOG=ylog, $
-                           /CURRENT)
+                           /SCALE, $
+                           CTINDEX       = 13, $
+                           NAME          = 'Intensity', $
+                           MISSING_COLOR = 'Antique White', $
+                           RANGE         = range, $
+                           TITLE         = 'Intensity', $
+                           XTICKFORMAT   = 'time_labels', $
+                           XTITLE        = 'Time (UT)', $
+                           YTITLE        = 'Frequency (Hz)', $
+                           YLOG          = ylog)
 
-        IntCB = MrColorbar(TITLE='Log Intensity!C(Units^2 * Hz)', $
-                           TARGET=IntImage, $
-                           /CURRENT)
+        IntCB = MrColorbar(/CURRENT, $
+                           NAME      = 'CB: Intensity', $
+                           TITLE     = 'Intensity!C(Units$\up2$/Hz)', $
+                           TARGET    = IntImage)
     endif
     intensity_data = !Null
 
@@ -201,23 +201,28 @@ _REF_EXTRA = extra
         
         ;Reverse the Black->White colortable
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
-        
         PolIm = MrImage(pzation_data, time, frequencies, $
                         /AXES, $
+                        /CURRENT, $
                         /NAN, $
-                        MISSING_COLOR='Antique White', $
-                        PALETTE=ctBW, $
-                        TITLE='Percent Polarization', $
-                        XTICKFORMAT='time_labels', $
-                        XTITLE='Time (UT)', $
-                        YTITLE='Frequency (Hz)', $
-                        YLOG=ylog, $
-                        /CURRENT)
+                        /SCALE, $
+                        NAME          = 'Polarization', $
+                        MISSING_COLOR = 'Antique White', $
+                        PALETTE       = ctBW, $
+                        RANGE         = [0, 1], $
+                        TITLE         = 'Percent Polarization', $
+                        XTICKFORMAT   = 'time_labels', $
+                        XTITLE        = 'Time (UT)', $
+                        YTITLE        = 'Frequency (Hz)', $
+                        YLOG          = ylog)
 
-        PolCB = MrColorbar(TITLE='% Polarization', $
-                           TARGET=PolIm, $
-                           /CURRENT, $
-                          _EXTRA=cbkwds)
+        PolCB = MrColorbar(/CURRENT, $
+                           NAME          = 'CB: Polarization', $
+                           TITLE         = '% Polarization', $
+                           TARGET        = PolIm, $
+                           YMINOR        = 5, $
+                           YTICKINTERVAL = 0.5, $
+                          _EXTRA         = cbkwds)
     endif
     pzation_data = !Null
 
@@ -235,20 +240,26 @@ _REF_EXTRA = extra
         ;Create the image
         EllIm = MrImage(ellipticity_data, time, frequencies, $
                         /AXES, $
+                        /CURRENT, $
                         /NAN, $
-                        MISSING_COLOR='Antique White', $
-                        PALETTE=palette, $
-                        TITLE='Ellipticity', $
-                        XTICKFORMAT='time_labels', $
-                        XTITLE='Time (UT)', $
-                        YTITLE='Frequency (Hz)', $
-                        YLOG=ylog, $
-                        /CURRENT)
+                        /SCALE, $
+                        NAME          = 'Ellipticity', $
+                        MISSING_COLOR = 'Antique White', $
+                        PALETTE       = palette, $
+                        RANGE         = [-1,1], $
+                        TITLE         = 'Ellipticity', $
+                        XTICKFORMAT   = 'time_labels', $
+                        XTITLE        = 'Time (UT)', $
+                        YTITLE        = 'Frequency (Hz)', $
+                        YLOG          = ylog)
 
-        EllCB = MrColorbar(TITLE='Ellipticity', $
-                           TARGET=EllIm, $
-                           /CURRENT, $
-                          _EXTRA=cbkwds)
+        EllCB = MrColorbar(/CURRENT, $
+                           NAME          = 'CB: Ellipticity', $
+                           TITLE         = 'Ellipticity', $
+                           TARGET        = EllIm, $
+                           YMINOR        = 5, $
+                           YTICKINTERVAL = 1, $
+                          _EXTRA         = cbkwds)
     endif
     ellipticity_data = !Null
 
@@ -266,20 +277,26 @@ _REF_EXTRA = extra
         ;Create the image
         kdbIm= MrImage(kdotb_angle_data*!radeg, time, frequencies, $
                        /AXES, $
+                       /CURRENT, $
                        /NAN, $
-                       MISSING_COLOR='Antique White', $
-                       PALETTE=ctBW, $
-                       TITLE='Angle Between k and B', $
-                       XTICKFORMAT='time_labels', $
-                       XTITLE='Time (UT)', $
-                       YTITLE='Frequency (Hz)', $
-                       YLOG=ylog, $
-                       /CURRENT)
+                       /SCALE, $
+                       NAME          = 'k dot B', $
+                       MISSING_COLOR = 'Antique White', $
+                       PALETTE       = ctBW, $
+                       RANGE         = [0,90], $
+                       TITLE         = 'Angle Between k and B', $
+                       XTICKFORMAT   = 'time_labels', $
+                       XTITLE        = 'Time (UT)', $
+                       YTITLE        = 'Frequency (Hz)', $
+                       YLOG          = ylog)
         
-        kdbCB = MrColorbar(TITLE='k dot B!C(Deg)', $
-                           TARGET=kdbIm, $
-                           /CURRENT, $
-                          _EXTRA=cbkwds)
+        kdbCB = MrColorbar(/CURRENT, $
+                           NAME          = 'CB: k dot B', $
+                           TITLE         = 'k dot B!C(Deg)', $
+                           TARGET        = kdbIm, $
+                           YMINOR        = 2, $
+                           YTICKINTERVAL = 30, $
+                          _EXTRA         = cbkwds)
     endif
     kdotb_angle_data = !Null
 
@@ -298,20 +315,26 @@ _REF_EXTRA = extra
         ;Create the image
         CohIm = MrImage(coherency_data, time, frequencies, $
                         /AXES, $
+                        /CURRENT, $
                         /NAN, $
-                        MISSING_COLOR='Antique White', $
-                        PALETTE=ctBW, $
-                        TITLE='Coherency', $
-                        XTICKFORMAT='time_labels', $
-                        XTITLE='Time (UT)', $
-                        YTITLE='Frequency (Hz)', $
-                        YLOG=ylog, $
-                        /CURRENT)
+                        /SCALE, $
+                        NAME          = 'Coherency', $
+                        MISSING_COLOR = 'Antique White', $
+                        PALETTE       = ctBW, $
+                        RANGE         = [0,1], $
+                        TITLE         = 'Coherency', $
+                        XTICKFORMAT   = 'time_labels', $
+                        XTITLE        = 'Time (UT)', $
+                        YTITLE        = 'Frequency (Hz)', $
+                        YLOG          = ylog)
         
-        CohCB = MrColorbar(TITLE='Coherency', $
-                           TARGET=CohIm, $
-                           /CURRENT, $
-                          _EXTRA=cbkwds)
+        CohCB = MrColorbar(/CURRENT, $
+                           NAME          = 'CB: Coherency', $
+                           TITLE         = 'Coherency', $
+                           TARGET        = CohIm, $
+                           YMINOR        = 5, $
+                           YTICKINTERVAL = 0.5, $
+                          _EXTRA         = cbkwds)
     endif
     coherency_data = !Null
     
