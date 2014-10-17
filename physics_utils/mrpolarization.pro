@@ -145,6 +145,8 @@
 ;                           the default NFAVG to 5. - MRA
 ;       2014/08/23  -   Fixed numerical error that resulted in |sin(theta)| > 1. Truncate
 ;                           the first and last NFAVG-1 frequencies.
+;       2014/10/07  -   Set /NAN flat when averaging over frequencies to prevent NANs from
+;                           smearing. - MRA
 ;-
 ;***************************************************************************************
 ;+
@@ -184,6 +186,9 @@ K_VEC = k_vec
     if arg_present(k_vec)   then k_vec = fltarr(3, npts*nfreqs)
     if n_elements(tol) eq 0 then tol   = 1e-6
 
+;-----------------------------------------------------
+; Wave Normal Direction \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
     ;The wave normal direction can now be determined by examining the imaginary part of
     ;the spectral density matrix (Means pg. 5554, Bakarat eq 3.19).
     
@@ -203,8 +208,10 @@ K_VEC = k_vec
     ;ILIN and IPOL are 1D subscripts into a 2D vector. Reform J_prime so that subscript-
     ;rounding does not occur (e.g. a = findgen(10) ... print, a[[20]]).
     J_prime = reform(J_prime, 3, 3, npts*nfreqs)
-    
-    ;Treat the linearly polarized cases first.
+
+;-----------------------------------------------------
+; Linear Polarization \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
     if nLin gt 0 then begin
         ;The power of the linearly polarized wave
         ;Tr[J'] = a^2 = Jxx + Jyy + Jzz   --   (J is purely real)
@@ -229,7 +236,9 @@ K_VEC = k_vec
         endif
     endif
 
-    ;Now treat polarized waves.
+;-----------------------------------------------------
+; Polarized Waves \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
     if nPol gt 0 then begin
         ;Return the k-vector?
         if arg_present(k_vec) then begin
@@ -632,7 +641,7 @@ _REF_EXTRA = extra
     ;   - B is suppose to be rotated so that the average field is along the z-axis.
     ;   - Therefore, k \cdot B_hat = kz
     k_dot_b = reform(k_hat[2,*])
-    
+
     ;Make sure that the new z-hat direction is always parallel to B
     z_prime_hat = k_hat
     iAntiPar    = where(k_dot_b lt 0, nAntiPar)
@@ -678,7 +687,7 @@ _REF_EXTRA = extra
                              rotate_matrix(reform(R[*,*,i,*]), reform(imaginary(J_prime[*,*,i,*]))))
     endfor
     undefine, R
-        
+
 ;-----------------------------------------------------
 ;V. Average Over Frequency Bins \\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -701,10 +710,12 @@ _REF_EXTRA = extra
 
         ;Average of the frequency inteval (Js == J smoothed over frequency)
         ;   The DIMENSION keyword was added to MEAN in version 8.0.
+        ;   - Without the /NaN flag, NaNs introduced in _Means when Power=0 will smear
+        ;       to all frequencies.
         if IDLversion8 le 0 then begin
             Js[*,*,*,icenter_bin] = mean(J[*,*,*,istart:iend], DIMENSION=4)
-            if keep_kdotb_angle then k_dot_b[*,icenter_bin] = mean(k_dot_b[*,istart:iend], DIMENSION=2)
-            if keep_khat        then k_hat[*,*,icenter_bin] = mean(k_hat[*,*,istart:iend], DIMENSION=3)
+            if keep_kdotb_angle then k_dot_b[*,icenter_bin] = mean(k_dot_b[*,istart:iend], DIMENSION=2, /NAN)
+            if keep_khat        then k_hat[*,*,icenter_bin] = mean(k_hat[*,*,istart:iend], DIMENSION=3, /NAN)
         endif else begin
             Js[*,*,*,icenter_bin] = cmapply('USER:MEAN', J[*,*,*,istart:iend], 4)
             if keep_kdotb_angle then k_dot_b[*,icenter_bin] = cmapply('USER:MEAN', k_dot_b[*,istart:iend], 2)
@@ -731,7 +742,7 @@ _REF_EXTRA = extra
     ;Keep the spectral matrix?
     if keep_spectral_matrix then spectral_matrix = J_prime[*,*,*,if_keep]
     undefine, J_prime
-    
+
     ;Keep k_hat?
     if keep_khat eq 0 $
         then undefine, k_hat $
@@ -739,6 +750,7 @@ _REF_EXTRA = extra
     
     ;Keep the angle between k_hat and B?
     if keep_kdotb_angle then kdotb_angle = acos(k_dot_b[*,if_keep])
+
     undefine, k_dot_b
 
 ;-----------------------------------------------------
@@ -757,6 +769,24 @@ _REF_EXTRA = extra
     ;Js must be reformed to a [3,3,npts*nfreqs] array in order for IPOL and ILIN to index
     ;properly. They are 1D indieces into a 2D array.
     Js = reform(Js, 3, 3, npts*nfreqs)
+
+    ;For a wave traveling along the z-axis with perturbations in the xy-plane,
+    ;   Hx = A cos(theta) + i A sin(theta)
+    ;   Hy = B cos(theta) + i B sin(theta)
+    ;
+    ;In this wave normal frame, the spectral matrix is
+    ;        | HxHx*  HxHy*  0 |
+    ;   Js = | HyHx*  HyHy*  0 |
+    ;        |   0      0    0 |
+    ;
+    ;Not that the diagonal elements are real
+    ;   HxHx* = A^2
+    ;   HyHy* = B^2
+    ;
+    ;Because of this, we set the imaginary component explicitly to zero. Without doing so,
+    ;floating point underflow errors occur in the calculation of det(Js).
+    Js[0,0,*] = complex(real_part(Js[0,0,*]))
+    Js[1,1,*] = complex(real_part(Js[1,1,*]))
 
     ;A) Degree of Polarization
     ;   |J| = (Jxx * Jyy) - (Jxy * Jyx)
@@ -791,6 +821,7 @@ _REF_EXTRA = extra
                                   real_part(Js[0,0,iPol] - Js[1,1,iPol]) )
             polarization_angle[iPol] = 0.5 * atan(tan2Theta)
         endif
+
         if nLin gt 0 then polarization_angle[iLin] = !values.f_nan
         polarization_angle = reform(polarization_angle, npts, nfreqs)
         polarization_angle = polarization_angle[*, if_keep]

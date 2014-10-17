@@ -199,12 +199,12 @@ WINDOW = window
         message, 'INVERSE option not implemented yet.'
 
     ;Create defaults.
-    if n_elements(nfft) eq 0 then nfft = data_sz.dimensions[dimension-1]
-    if n_elements(dt) eq 0 then dt = 1.0
-    if n_elements(nshift) eq 0 then nshift = floor(nfft/2)
+    vverbose = keyword_set(vverbose)
+    if n_elements(nfft)    eq 0 then nfft    = data_sz.dimensions[dimension-1]
+    if n_elements(dt)      eq 0 then dt      = 1.0
+    if n_elements(nshift)  eq 0 then nshift  = floor(nfft/2)
     if n_elements(tcenter) eq 0 then tcenter = 1
-    if n_elements(window) eq 0 then window = 0
-    if keyword_set(vverbose) then verbose = 1
+    if n_elements(window)  eq 0 then window  = 0
     npts = data_sz.dimensions[dimension-1]
 
     ;Make sure dt >= 0
@@ -286,7 +286,7 @@ WINDOW = window
 ;-----------------------------------------------------
 
     ;Will we need to interpolate to match the desired frequencies? This will be
-    ;true if either of the LOGSPACE or LINSPACE or linspace keywords are set.
+    ;true if either of the LOGSPACE or LINSPACE keywords are set.
     tf_interp = 0
 
     ;LOGRANGE
@@ -403,7 +403,7 @@ WINDOW = window
             ;to interpolate, frequencies must be monotonic, so put negative
             ;frequencies first.
 
-            frequencies = shift(frequencies, iNyquist-1)
+            frequencies  = shift(frequencies, iNyquist-1)
             interp_freqs = shift(interp_freqs, iMax_interp+1)
             
             ;If the FFT is not centered, then center it for interpolation

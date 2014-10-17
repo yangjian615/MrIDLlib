@@ -354,23 +354,23 @@ testStrings = ['()', '(', ')', '', '(()))', '(((())))', '()()(()())', $
                '{[()([])]()}', '[([](()]]']
                
 ;Check if they match
-print, 'Case Tests:'
+print, 'Test Cases:'
 longest = strtrim(max(strlen(testStrings)), 2)
 for i = 0, n_elements(testStrings) - 1 do begin
     ;Balance them
-    tf_balanced = MrIsBalanced(testStrings[i])
+    tf_balanced = MrIsBalanced(testStrings[i], FAIL_POS=pos)
     
     ;Print results
     if tf_balanced $
         then print, testStrings[i], 'Pass!', FORMAT='(2x, a-' + longest + ', 3x, a0)' $
-        else print, testStrings[i], 'Failed at ', result, FORMAT='(2x, a-' + longest + ', 3x, a10, i0)'
+        else print, testStrings[i], 'Failed at ', pos, FORMAT='(2x, a-' + longest + ', 3x, a10, i0)'
 endfor
 
 ;EXAMPLE 2
 ;   - Use recursive method with same test strings
 print, ''
 print, '---------------------------------------------------------------'
-print, 'Case Tests:'
+print, 'Test Cases:'
 longest = strtrim(max(strlen(testStrings)), 2)
 for i = 0, n_elements(testStrings) - 1 do begin
     ;Balance them

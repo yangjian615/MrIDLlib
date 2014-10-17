@@ -188,7 +188,8 @@ _REF_EXTRA = extra
         IntCB = MrColorbar(/CURRENT, $
                            NAME      = 'CB: Intensity', $
                            TITLE     = 'Intensity!C(Units$\up2$/Hz)', $
-                           TARGET    = IntImage)
+                           TARGET    = IntImage, $
+                           WIDTH     = 1.5)
     endif
     intensity_data = !Null
 
@@ -222,6 +223,7 @@ _REF_EXTRA = extra
                            TARGET        = PolIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 0.5, $
+                           WIDTH         = 1.5, $
                           _EXTRA         = cbkwds)
     endif
     pzation_data = !Null
@@ -259,6 +261,7 @@ _REF_EXTRA = extra
                            TARGET        = EllIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 1, $
+                           WIDTH         = 1.5, $
                           _EXTRA         = cbkwds)
     endif
     ellipticity_data = !Null
@@ -296,6 +299,7 @@ _REF_EXTRA = extra
                            TARGET        = kdbIm, $
                            YMINOR        = 2, $
                            YTICKINTERVAL = 30, $
+                           WIDTH         = 1.5, $
                           _EXTRA         = cbkwds)
     endif
     kdotb_angle_data = !Null
@@ -334,6 +338,7 @@ _REF_EXTRA = extra
                            TARGET        = CohIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 0.5, $
+                           WIDTH         = 1.5, $
                           _EXTRA         = cbkwds)
     endif
     coherency_data = !Null
