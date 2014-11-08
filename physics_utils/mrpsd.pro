@@ -75,10 +75,14 @@
 ;                           use of MrTS_Diff. Remove the TIME keyword and let it be passed
 ;                           out in the _REF_EXTRA keyword if it is present. - MRA
 ;       2014/09/10  -   Now properly return (dt/N)*|fft|^2, instead of |fft|. - MRA
+;       2014/10/20  -   Did not anticipate how previous changes would affect computation
+;                           of frequencies. Fixed. - MRA
 ;-
 function MrPSD, data, nfft, dt, nshift, $
 DIMENSION = dimension, $
 FREQUENCIES = frequencies, $
+FMAX = fmax, $
+FMIN = fmin, $
 NDIFF = nDiff, $
 T0 = t0, $
 TIME = time, $
@@ -97,6 +101,8 @@ _REF_EXTRA = extra
         void = max(ds.dimensions, imax)
         dimension = imax+1
     endif else dimension = 1
+    if n_elements(dt) eq 0 then dt = 1.0
+    if n_elements(t0) eq 0 then t0 = 0.0
     
     ;Differencing
     if n_elements(nDiff) eq 0 then nDiff = 0
@@ -112,14 +118,22 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 ;Calculate Spectrogram \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
+    ;Normalize the frequencies.
+    ;   - Ensures proper normalization of PSD later (no erreneous factors of dt). 
+    if n_elements(fmax) gt 0 then norm_fmax = fmax * dt
+    if n_elements(fmin) gt 0 then norm_fmin = fmin * dt
 
     ;Take the FFT
-    ;   - Normalize by time later
     data_fft = MrFFT(temporary(data_temp), nfft, 1.0, nshift, $
-                     TIME=time, $
-                     FREQUENCIES=frequencies, $
                      DIMENSION=dimension, $
+                     FMAX=norm_fmax, $
+                     FMIN=norm_fmin, $
+                     FREQUENCIES=frequencies, $
+                     TIME=time, $
                     _EXTRA=extra)
+
+    ;Un-normalize the frequencies
+    frequencies /= dt
 
     ;Select only the positive frquencies
     posFreqs = where(frequencies gt 0)

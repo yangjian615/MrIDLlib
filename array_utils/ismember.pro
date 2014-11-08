@@ -55,6 +55,8 @@
 ;                           The indices of the values of `A` that are members of `B`.
 ;       FOLD_CASE:          in, optional, type=Boolean, default=0
 ;                           Ignore case when inputs are strings.
+;       REMOVE_SPACE:       in, optional, type=boolean, default=0
+;                           If set, all spaces are removed from strings.
 ;       N_MATCHES:          out, optional, type=int
 ;                           The number of values in B that are fount within `A`
 ;       NONMEMBER_INDS:     out, optional, type=Intarr
@@ -98,6 +100,7 @@
 ;                           isMember again with the parameters reversed. Improved example. - MRA
 ;       2013/11/10  -   NULL keyword not accepted in WHERE() for IDL < 8.0. Fixed. - MRA
 ;       2013/11/22  -   Bracket overloading was throwing off object comparisons. Fixed. - MRA
+;       2014/11/01  -   Added the REMOVE_SPACE keyword. - MRA
 ;-
 function isMember, A, B, B_indices, $
 A_INDICES = a_indices, $
@@ -105,7 +108,8 @@ FOLD_CASE = fold_case, $
 N_MATCHES = n_matches, $
 NULL = null, $
 NONMEMBER_INDS = nonmember_inds, $
-N_NONMEMBERS = n_nonmembers
+N_NONMEMBERS = n_nonmembers, $
+REMOVE_SPACE = remove_space
     compile_opt strictarr
 
     A_type = size(A, /TNAME)
@@ -122,16 +126,22 @@ N_NONMEMBERS = n_nonmembers
     ;When no matches are found, return !Null if requested. Otherwise, return, -1
     if null then null_return = !Null else null_return = -1
     
-    fold_case = keyword_set(fold_case)
+    ;Editable copies
+    AA = A
+    BB = B
 
     ;For strings, make the search case-insensitive if requested.
-    if (A_type eq 'STRING') and (fold_case eq 1) then begin
-        AA = strupcase(A)
-        BB = strupcase(B)
-    endif else begin
-        AA = A
-        BB = B
-    endelse
+    if (A_type eq 'STRING') then begin
+        if keyword_set(fold_case) then begin
+            AA = strupcase(A)
+            BB = strupcase(B)
+        endif
+        
+        if keyword_set(remove_space) then begin
+            AA = strcompress(AA, /REMOVE_ALL)
+            BB = strcompress(BB, /REMOVE_ALL)
+        endif
+    endif 
     
     nAA = n_elements(AA)
     nBB = n_elements(BB)
@@ -152,8 +162,7 @@ N_NONMEMBERS = n_nonmembers
 ;---------------------------------------------------------------------
     endif else begin
         ;sort A
-        sorted_inds = sort(AA)
-        AA_sorted = AA[sorted_inds]
+        AA_sorted = AA[sort(AA)]
 
     ;---------------------------------------------------------------------
     ;Were objects given? /////////////////////////////////////////////////
@@ -170,7 +179,7 @@ N_NONMEMBERS = n_nonmembers
             ;If BB is a scalar, avoid bracket overloading by doing a direct comparison.
             if nBB eq 1 then begin
                 tf_isMember = AA eq BB
-                N_Matches = total(tf_isMember)
+                N_Matches   = total(tf_isMember)
                 
             ;If not, step through all elements in the array.
             endif else begin
@@ -187,10 +196,10 @@ N_NONMEMBERS = n_nonmembers
     ;---------------------------------------------------------------------
         endif else begin
             ;Use VALUE_LOCATE to find matches...
-            ;  VALUE_LOCATE rounds down if an exact match was not found. Therefore, we
-            ;  need to check if the results of VALUE_LOCATE are exact matches of B.
-            element = value_locate(AA_sorted, BB)
-            element += element eq -1
+            ;  - VALUE_LOCATE rounds down if an exact match was not found.
+            ;  - Check if the results of VALUE_LOCATE are exact matches of B.
+            ;  - If BB < AA value locate returns -1. Return 0 instead.
+            element = value_locate(AA_sorted, BB) > 0
 
             tf_isMember = AA_sorted[element] eq BB
         endelse
@@ -208,7 +217,9 @@ N_NONMEMBERS = n_nonmembers
     if N_Matches eq 0 then B_Indices = null_return
 
     ;Which elements of A are contained within B?
-    if arg_present(A_Indices) then tf_A_in_B = isMember(B, A, A_Indices, FOLD_CASE=fold_case)
+    if arg_present(A_Indices) then tf_A_in_B = isMember(B, A, A_Indices, $
+                                                        FOLD_CASE=fold_case, $
+                                                        REMOVE_SPACE=remove_space)
 
     ;Return scalars instead of 1-element arrays
     if (n_elements(A_Indice) eq 1) then A_Indices      = A_Indices[0]

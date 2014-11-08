@@ -296,14 +296,14 @@ YGAP = ygap
 	;Row Height
 	case n_elements(row_height) of
 	    0:     row_height = replicate(1.0 / nRows, nRows)
-	    nRows: if total(row_height) ne 1.0 then message, 'Total(ROW_HEIGHT) must equal 1.0.'
+	    nRows: if total(row_height) lt 0.9999 then message, 'Total(ROW_HEIGHT) must equal 1.0.'
 	    else: message, 'ROW_HEIGHT: Incorrect number of elements.'
 	endcase
 	
 	;Column Width
 	case n_elements(col_width) of
 	    0:     col_width = replicate(1.0 / nCols, nCols)
-	    nCols: if total(col_width) ne 1.0 then message, 'Total(COL_WIDTH) must equal 1.0.'
+	    nCols: if total(col_width) lt 0.9999 then message, 'Total(COL_WIDTH) must equal 1.0.'
 	    else: message, 'COL_WIDTH: Incorrect number of elements.'
 	endcase
 

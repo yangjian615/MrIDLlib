@@ -54,12 +54,12 @@ TO_TT2000=to_tt2000
 	endif else date_string = date
     
     ;convert from SSM to 'HH:MM:SS.mmmuuunnnddd' format
-    time_string = ssm_to_hms(ssm_time, /TO_STRING, DELIMETER=':')
+    time_string = ssm_to_hms(ssm_time, DELIMETER=':')
     
     ;combine the date and time into a properly-formated epoch string
     ;'YYYY-MM-DDTHH:MM:SS.mmmuuunnnppp
     epoch_string = date_string + 'T' + time_string
-    
+
     ;EPOCH16
     if keyword_set(to_epoch16) then begin
         epoch_time = cdf_parse_epoch16(epoch_string)

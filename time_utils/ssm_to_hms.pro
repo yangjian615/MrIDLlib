@@ -16,13 +16,14 @@
 ;       MINUTE:         out, optional, type=Same as `HMS_TIME`
 ;                       The minute of SSM_TIME
 ;       SECOND:         out, optional, type=Same as `HMS_TIME`
-;                       The second of SSM_TIME
-;       SECOND:         out, optional, type=Same as `HMS_TIME`
 ;                       The fractional seconds of SSM_TIME
 ;
 ; :Keywords:
-;       TO_STRING:      in, optional, type=Boolean, default=1
-;                       Convert the output to a string.
+;       NUMBER:         in, optional, type=Boolean, default=0
+;                       If set, `HMS_TIME` will be a float of the form HHMMSS.dddd.
+;       NUMVEC:         in, optional, type=Boolean, default=0
+;                       If set, output will be a 3xN vector of the form
+;                           [hour, minutes, seconds].
 ;       DELIMETER:      in, optional, type=string, default=':'
 ;                       If used with `TO_STRING`, it is the delimiter that separates the
 ;                           hour, minute, and second values (e.g. HH:MM:SS)
@@ -48,28 +49,45 @@
 ;                           than 10. -MRA
 ;       07/07/2013:     Made defaults for TO_STRING and DELIMETER be 1 and ':ssm'. - MRA
 ;       2013-10-25  -   Return a scalar if a scalar was given. - MRA
+;       2014/10/29  -   Removed TO_STRING and added NUMBER and NUMVEC keywords. - MRA
 ;-
 function ssm_to_hms, ssm_time, hour, minute, second, decimal, $
-TO_STRING=to_string, $
+NUMBER=number, $
+NUMVEC=numvec, $
 DELIMETER=delimiter
     compile_opt idl2
     on_error, 2
     
-    if n_elements(to_string) eq 0 then to_string = 1
+    number = keyword_set(number)
+    numvec = keyword_set(numvec)
     if n_elements(delimeter) eq 0 then delimeter = ':'
+    if number + numvec gt 1 then message, 'NUMBER and NUMVEC are mutually exclusive.'
     
-    ntimes = n_elements(ssm_time)
+    nTimes = n_elements(ssm_time)
 
 	;get the hour, minute, and second
-    hour = floor(ssm_time/3600L)
+    hour   = floor(ssm_time/3600L)
     minute = floor((ssm_time mod 3600L)/60L)
     second = (ssm_time mod 3600.0D) mod 60.0
 
-    ;convert to HHMMSS string
-    if keyword_set(to_string) then begin
-
+    ;Number of the form HHMMSS
+    if number then begin
+        hms_time = hour*10000D + minute*100D + second
+        
+    ;Vector of the form [hour, minute, second]
+    endif else if numvec then begin
+        ;Need to transpose?
+        if array_equal(size(ssm_time, /DIMENSIONS), [1,nTimes]) then begin
+            hour   = reform(hour)
+            minute = reform(minute)
+            second = reform(second)
+        endif
+        hms_time = transpose([[hour], [minute], [second]])
+        
+    ;'String of the form 'HH:MM:SS.ddd'
+    endif else begin
         ;convert to string
-        hour = string(hour, format='(i02.2)')
+        hour   = string(hour, format='(i02.2)')
         minute = string(minute, format='(i02.2)')
         
         ;Append a zero to numbers less than 10 so that they read ":01", ":02", etc.
@@ -81,10 +99,6 @@ DELIMETER=delimiter
         
         ;combine to form the HMS string
         hms_time = hour + delimeter + minute + delimeter + second
-
-    ;otherwise convert to a numeric value
-    endif else begin
-        hms_time = hour*10000D + minute*100D + second
     endelse
     
     if ntimes eq 1 $

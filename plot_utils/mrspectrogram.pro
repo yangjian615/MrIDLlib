@@ -44,12 +44,12 @@
 ;       TITLE:          in, optional, type=strarr(), default='Power Spectral Density'
 ;                       An easier way of specifying the title for each spectral plot.
 ;       _REF_EXTRA:     in, optional, type=structure
-;                       Any keyword accepted by MrPSD.pro or MrImage__Define.pro is also
-;                           accepted for keyword inheritance.
+;                       Any keyword accepted by MrPSD.pro is alsomaccepted for keyword
+;                           inheritance.
 ;
 ; :Returns:
 ;       IMARR:          out, required, type=object/objarr
-;                       MrImagePlot objects of each spectra being made.
+;                       MrImage graphics objects of each spectra being made.
 ;
 ; :Uses:
 ;   Uses the following external programs::

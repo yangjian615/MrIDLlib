@@ -54,7 +54,7 @@ NPOINTS=npoints
     ;     = (x1 - x0, y1 - y0, z1 - z0)
     ;     = (a, b, c)
     ;
-    ;A vector from the origin to any other point on the line  can be formed by adding some
+    ;A vector from the origin to any other point on the line can be formed by adding some
     ;multiplicative factor, t, of v to r0
     ;   r = r0 + vt
     ;
