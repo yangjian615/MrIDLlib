@@ -37,7 +37,7 @@
 ;
 ; :Uses:
 ;   Uses the following programs::
-;       IsMember.pro
+;       MrIsMember.pro
 ;
 ; :Author:
 ;   Matthew Argall::

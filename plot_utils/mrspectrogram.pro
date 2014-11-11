@@ -118,9 +118,8 @@ _REF_EXTRA = extra
         spec_kwds = ['ALPHA', 'CENTER', 'DOUBLE', 'FMIN', 'FMAX', 'INVERSE', $
                      'LOGRANGE', 'LINRANGE', 'NWINDOW', 'OVERWRITE', 'NDIFF', $
                      'TCENTER', 'VERBOSE', 'VVERBOSE', 'WINDOW']    
-        void = isMember(spec_kwds, extra, iSpec, $
-                        N_MATCHES=nSpec, $
-                        NONMEMBER_INDS=iIm, N_NONMEMBERS=nIm)
+        void = MrIsMember(spec_kwds, extra, iSpec, $
+                          COUNT=nSpec, COMPLEMENT=iIm, NCOMPLEMENT=nIm)
         
         ;Separate the keywords from one another.
         if nSpec gt 0 then spec_kwds = extra[iSpec] else void = temporary(spec_kwds)

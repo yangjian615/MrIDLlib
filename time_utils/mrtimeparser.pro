@@ -112,7 +112,7 @@
 ; :Uses:
 ;   Uses the following external programs::
 ;       cgErrorMSG.pro
-;       IsMember.pro
+;       MrIsMember.pro
 ;       MG_StReplace.pro
 ;       MonthNameToNumber.pro
 ;       MonthNumberToName.pro

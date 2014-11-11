@@ -234,7 +234,7 @@ LABELS=labels
         void = temporary(cLabels)
         cLabels = result
     endif else if cUniq_Labels then begin
-        if isMember(cLabels, result) $
+        if MrIsMember(cLabels, result) $
             then result = '' $
             else cLabels = [cLabels, result]
     endif

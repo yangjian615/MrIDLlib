@@ -728,7 +728,7 @@ _REF_EXTRA = extra
     ;ipol may not contain all of the indices, so must search for them.
     temp_arr = lindgen(npts, nfreqs)
     temp_arr = temp_arr[*, nfavg_half:nfreqs-nfavg_half-1]
-    void     = isMember(temp_arr, iPol, these_iPol)
+    void     = MrIsMember(temp_arr, iPol, these_iPol)
     iPol     = iPol[these_iPol]
     undefine, temp_arr
     

@@ -468,7 +468,7 @@ _EXTRA = extra
 ;---------------------------------------------------------------------
 
     ;Make sure the correct number of parameters were given
-    if isMember([1,2,3,5,7], n_params()) eq 0 then $
+    if MrIsMember([1,2,3,5,7], n_params()) eq 0 then $
         message, 'Incorrect number of parameters.'
 
     ;get the number of elements of x and y

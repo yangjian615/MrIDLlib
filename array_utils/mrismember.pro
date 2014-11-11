@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MRISMEMBER
+;       ISMEMBER
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2013, Matthew Argall                                                   ;
@@ -55,15 +55,15 @@
 ;                           The indices of the values of `A` that are members of `B`.
 ;       FOLD_CASE:          in, optional, type=Boolean, default=0
 ;                           Ignore case when inputs are strings.
+;       REMOVE_SPACE:       in, optional, type=boolean, default=0
+;                           If set, all spaces are removed from strings.
 ;       COUNT:              out, optional, type=int
 ;                           The number of values in B that are fount within `A`
-;       ICOMPLEMENT:        out, optional, type=Intarr
+;       COMPLEMENT:         out, optional, type=Intarr
 ;                           The indices of the values of `B` that are not members of `A`
-;       NCOMPLEMENT:        out, optional, type=int
-;                           Number of values in `B` that are nto members of `A`.
 ;       NULL:               in, optional, type=boolean, default=0
 ;                           If set, then the !NULL system variable will be returned instead
-;                               of -1 in the event that `N_MATCHES` or `N_NONMEMEBERS` is
+;                               of -1 in the event that `COUNT` or `N_NONMEMEBERS` is
 ;                               zero.
 ;
 ; :Returns:
@@ -100,17 +100,19 @@
 ;                           isMember again with the parameters reversed. Improved example. - MRA
 ;       2013/11/10  -   NULL keyword not accepted in WHERE() for IDL < 8.0. Fixed. - MRA
 ;       2013/11/22  -   Bracket overloading was throwing off object comparisons. Fixed. - MRA
-;       2013/11/24  -   Renamed N_MATCHES, N_NONMEMBERS, and NONMEMBER_INDS to COUNT,
-;                           NCOMPLEMENT and ICOMPLEMENT, respectively. Renamed program
-;                           from ISMEMBER ot MrIsMember. - MRA
+;       2014/11/01  -   Added the REMOVE_SPACE keyword. - MRA
+;       2014/11/11  -   Renamed from isMember.pro to MrIsMember.pro. Renamed keywords
+;                           NONMEMBER_INDS to COMPLEMENT, N_NONMEMBERS to NCOMPLEMENT, and
+;                           N_MATCHES to COUNT to be more like the where() function. - MRA.
 ;-
 function MrIsMember, A, B, B_indices, $
 A_INDICES = a_indices, $
 FOLD_CASE = fold_case, $
 COUNT = count, $
 NULL = null, $
-ICOMPLEMENT = icomplement, $
-NCOMPLEMENT = ncomplement
+COMPLEMENT = complement, $
+NCOMPLEMENT = nComplement, $
+REMOVE_SPACE = remove_space
     compile_opt strictarr
     on_error, 2
 
@@ -128,16 +130,22 @@ NCOMPLEMENT = ncomplement
     ;When no matches are found, return !Null if requested. Otherwise, return, -1
     if null then null_return = !Null else null_return = -1
     
-    fold_case = keyword_set(fold_case)
+    ;Editable copies
+    AA = A
+    BB = B
 
     ;For strings, make the search case-insensitive if requested.
-    if (A_type eq 'STRING') and (fold_case eq 1) then begin
-        AA = strupcase(A)
-        BB = strupcase(B)
-    endif else begin
-        AA = A
-        BB = B
-    endelse
+    if (A_type eq 'STRING') then begin
+        if keyword_set(fold_case) then begin
+            AA = strupcase(A)
+            BB = strupcase(B)
+        endif
+        
+        if keyword_set(remove_space) then begin
+            AA = strcompress(AA, /REMOVE_ALL)
+            BB = strcompress(BB, /REMOVE_ALL)
+        endif
+    endif 
     
     nAA = n_elements(AA)
     nBB = n_elements(BB)
@@ -146,16 +154,19 @@ NCOMPLEMENT = ncomplement
 ;If A only has One Element ///////////////////////////////////////////
 ;---------------------------------------------------------------------
     if nAA eq 1 then begin
-        ;Compare the members of B directly with A
-        tf_isMember = BB eq AA[0]
+        ;Compare the members of B directly with A. Careful of objects
+        ;with bracket overloading and comparisons with arrays with one
+        ;elements.
+        if IsA(AA, /SCALAR) $
+            then tf_isMember = BB eq AA $
+            else tf_isMember = BB eq AA[0]
         
 ;---------------------------------------------------------------------
 ;If A Has > 1 Element ////////////////////////////////////////////////
 ;---------------------------------------------------------------------
     endif else begin
         ;sort A
-        sorted_inds = sort(AA)
-        AA_sorted = AA[sorted_inds]
+        AA_sorted = AA[sort(AA)]
 
     ;---------------------------------------------------------------------
     ;Were objects given? /////////////////////////////////////////////////
@@ -165,14 +176,14 @@ NCOMPLEMENT = ncomplement
             count = 0
             
             ;Step through each element of B and determine if it is an element of A.
-            ;B_INCICES, N_MATCHES, N_NONMEBERS, and NONMEMBER_INDS could be determined
+            ;B_INCICES, COUNT, NCOMPLEMENT, and COMPLEMENT could be determined
             ;here. However, I choose a different approach below which also works if A_IN
             ;is not an object.
             
             ;If BB is a scalar, avoid bracket overloading by doing a direct comparison.
             if nBB eq 1 then begin
                 tf_isMember = AA eq BB
-                count = total(tf_isMember)
+                count   = total(tf_isMember)
                 
             ;If not, step through all elements in the array.
             endif else begin
@@ -189,10 +200,10 @@ NCOMPLEMENT = ncomplement
     ;---------------------------------------------------------------------
         endif else begin
             ;Use VALUE_LOCATE to find matches...
-            ;  VALUE_LOCATE rounds down if an exact match was not found. Therefore, we
-            ;  need to check if the results of VALUE_LOCATE are exact matches of B.
-            element = value_locate(AA_sorted, BB)
-            element += element eq -1
+            ;  - VALUE_LOCATE rounds down if an exact match was not found.
+            ;  - Check if the results of VALUE_LOCATE are exact matches of B.
+            ;  - If BB < AA value locate returns -1. Return 0 instead.
+            element = value_locate(AA_sorted, BB) > 0
 
             tf_isMember = AA_sorted[element] eq BB
         endelse
@@ -205,17 +216,19 @@ NCOMPLEMENT = ncomplement
     ;Pick out the indices corresponding to the values of B that are members of A. If there
     ;are none, return !Null
     B_Indices = where(tf_isMember eq 1, count, $
-                      COMPLEMENT=icomplement, $
-                      NCOMPLEMENT=ncomplement)
+                      COMPLEMENT=complement, $
+                      NCOMPLEMENT=nComplement)
     if count eq 0 then B_Indices = null_return
 
     ;Which elements of A are contained within B?
-    if arg_present(A_Indices) then tf_A_in_B = isMember(B, A, A_Indices, FOLD_CASE=fold_case)
+    if arg_present(A_Indices) then tf_A_in_B = MrIsMember(B, A, A_Indices, $
+                                                          FOLD_CASE=fold_case, $
+                                                          REMOVE_SPACE=remove_space)
 
     ;Return scalars instead of 1-element arrays
     if (n_elements(A_Indice) eq 1) then A_Indices   = A_Indices[0]
     if (count                eq 1) then B_Indices   = B_Indices[0]
-    if (ncomplement          eq 1) then icomplement = icomplement[0]
+    if (nComplement          eq 1) then complement  = complement[0]
     if (nBB                  eq 1) then tf_isMember = tf_isMember[0]
 
     return, tf_isMember
@@ -230,9 +243,10 @@ end
 ;   Make two arrays. Find the values of B that are members of A.
 A = [4,8,1,5,2,6,4,9,1,3,5,6,7,0,6]
 B = [11,16,4,21,6,3]
-are_members = MrIsMember(A, B, indices, A_INDICES=A_Indices)
+are_members = ismember(A, B, indices, A_INDICES=A_Indices)
 
 ;print the arrays
+print, '--------------------------------------------'
 print, format='(%"Values of A:       [%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d]")', A
 print, format='(%"Values of B:       [%d, %d, %d, %d, %d, %d]")', B
 
@@ -242,19 +256,19 @@ print, format='(%"B as members of A: [%d, %d, %d, %d, %d, %d]")', are_members
 print, format='(%"Members of B in A: [%d, %d, %d]")', B[indices]
 print, FORMAT='(%"Members of A in B: [%d, %d, %d, %d, %d, %d]")', A[A_Indices]
 print, ''
-print, ''
 
 ;EXAMPLE 2
 ;   Show that it works for strings as well
 A = ['a', 'h', 'd', 'b', 'e', 'c', 'g', 'f']
 B = ['e', 'k', 'h', 'a']
-are_members = MrIsMember(A, B, indices, ICOMPLEMENT=icomplement)
+are_members = ismember(A, B, indices, COMPLEMENT=complement)
 
 ;print the results
+print, '--------------------------------------------'
 print, format='(%"Members of A:          [%s, %s, %s, %s, %s, %s, %s, %s]")', A
 print, format='(%"Members of B:          [%s, %s, %s, %s]")', B
 print, format='(%"B as members of A:     [%i, %i, %i, %i]")', are_members
 print, format='(%"Members of B in A:     [%s, %s, %s]")', B[indices]
-print, format='(%"Members of B not in A: [%s]")', B[icomplement]
+print, format='(%"Members of B not in A: [%s]")', B[complement]
 
 end

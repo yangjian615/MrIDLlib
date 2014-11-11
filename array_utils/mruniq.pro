@@ -97,7 +97,7 @@ SORT = sort
     ;Get the index values of the non-unique elements
     if arg_present(complement) or arg_present(ncomplement) then begin
         index_array = lindgen(n_elements(array))
-        void = isMember(result, index_array, NONMEMBER_INDS=complement, N_NONMEMBERS=ncomplement)
+        void = MrIsMember(result, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
     endif
     
     return, result

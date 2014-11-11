@@ -62,7 +62,7 @@
 ; :Uses:
 ;   Uses the following programs::
 ;       all_tags.pro
-;       ismember.pro
+;       MrIsMember.pro
 ;
 ; :Author:
 ;   Matthew Argall::
@@ -98,7 +98,7 @@ LEVEL=level
         else tags = tag_names(struct)
     
     ;Does the tag exist?
-    tf_tag = IsMember(tags, search_tags)
+    tf_tag = MrIsMember(tags, search_tags)
     
     return, tf_tag
 end
