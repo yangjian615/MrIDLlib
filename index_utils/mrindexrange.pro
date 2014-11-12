@@ -68,13 +68,14 @@
 ;                           getIndexRange.pro to MrIndexRange.pro - MRA
 ;       2014/10/29  -   Handle case when DATA has one elements. IRANGE guaranteed to be
 ;                           between 0 and nPts, where nPts-1 is the number of point in DATA. - MRA
+;       2014/11/12  -   Typo was adjusting the input range instead of the output range. Fixed. - MRA
 ;-
 function MrIndexRange, data, range, $
 SORT=order, $
 STRIDE=stride
     compile_opt strictarr
     on_error, 2
-    
+
     ;Check Inputs
     nPts  = n_elements(data)
     order = keyword_set(order)
@@ -101,7 +102,7 @@ STRIDE=stride
     ;If RANGE is smaller than DATA[0], then take index 0
     if irange[0] eq -1 then iRange[0] = 0
     if irange[1] eq -1 then iRange[1] = 0
-    
+
     ;If the indices are the same, then they fall between two adjacent points in DATA.
     if irange[0] eq irange[1] then return, iRange
 
@@ -129,8 +130,8 @@ STRIDE=stride
         ;Descending Range
         if highLow then begin
             ;Endpoints greater (less) than the maximum (minimum) range desired?
-            if data[iRange[0]] gt range[0] then range[0]++
-            if data[iRange[1]] lt range[1] then range[1]--
+            if data[iRange[0]] gt range[0] then iRange[0]++
+            if data[iRange[1]] lt range[1] then iRange[1]--
         
         ;Ascending Range
         endif else begin
