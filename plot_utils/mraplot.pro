@@ -133,16 +133,26 @@
 ;       2014/01/24  -   Renamed to from wePlot to MraPlot. Made keywords cyclic. Removed
 ;                           all keywords not needed by the wrapper from the keywords list.
 ;                           They are now passed through via _REF_EXTRA. - MRA
+;       2014/11/17  -   Should have been including the OPlot keyword in the parameter list. - MRA
 ;-
 pro MraPlot, x, y, $
+CHARSIZE = charsize, $
 COLOR = color, $
+CLIP = clip, $
 DIMENSION = dimension, $
 LINESTYLE = linestyle, $
+MAX_VALUE = max_value, $
+MIN_VALUE = min_value, $
+NOCLIP = noclip, $
+POLAR = polar, $
 PSYM = psym, $
 SYMCOLOR = symcolor, $
 SYMSIZE = symsize, $
+T3D = t3d, $
+THICK = thick, $
 XRANGE = xrange, $
 YRANGE = yrange, $
+ZVALUE = zvalue, $
 _REF_EXTRA = extra
     compile_opt strictarr
     
@@ -224,17 +234,16 @@ _REF_EXTRA = extra
                 CLIP      = clip, $
                 COLOR     = color, $
                 CHARSIZE  = charsize, $
-                LEGENDS   = legends, $
                 LINESTYLE = linestyle, $
                 MAX_VALUE = max_value, $
                 MIN_VALUE = min_value, $
                 NOCLIP    = NOCLIP, $
                 NSUM      = nsum, $
-                OPLOTS    = oplots, $
                 POLAR     = polar, $
                 PSYM      = psym, $
                 SYMCOLOR  = symcolor, $
                 SYMSIZE   = symsize, $
+                THICK     = thick, $
                 XRANGE    = xrange, $
                 YRANGE    = yrange, $
                 ZVALUE    = zvalue, $
@@ -245,7 +254,7 @@ _REF_EXTRA = extra
 ;---------------------------------------------------------------------
 ;Multiple Line Plots /////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-
+if n_elements(charsize) eq 0 then stop
     ;Set up the axes    
     cgPlot, 0, 0, /NODATA, $
                   ADDCMD=addcmd, $
@@ -274,8 +283,8 @@ _REF_EXTRA = extra
         CASE xdim OF
             1: cgOPlot, indep, dep[j,*], $
                         ADDCMD=addcmd, $
-                        COLOR=color[j mod nColor], $
                         CHARSIZE=charsize, $
+                        COLOR=color[j mod nColor], $
                         CLIP=clip, $
                         LINESTYLE=linestyle[j mod nLineStyle], $
                         MAX_VALUE=max_value, $

@@ -55,13 +55,13 @@ ZTHICK=zthick
 	on_error, 2
 	
 	case 1 of
-		keyword_set(charsize):  out = n_elements(charsize)  gt 0 ? 1.0 : value / 1.5
-		keyword_set(charthick): out = n_elements(charthick) gt 0 ? 3.0 : value * 3.0
-		keyword_set(thick):     out = n_elements(thick)     gt 0 ? 3.0 : value * 3.0
-		keyword_set(xthick):    out = n_elements(xthick)    gt 0 ? 3.0 : value * 3.0
-		keyword_set(ythick):    out = n_elements(ythick)    gt 0 ? 3.0 : value * 3.0
-		keyword_set(zthick):    out = n_elements(zthick)    gt 0 ? 3.0 : value * 3.0
-		else:                   out = n_elements(charsize)  gt 0 ? 1.0 : value / 1.5
+		keyword_set(charsize):  out = n_elements(value) eq 0 ? 1.0 : value / 1.5
+		keyword_set(charthick): out = n_elements(value) eq 0 ? 3.0 : value * 3.0
+		keyword_set(thick):     out = n_elements(value) eq 0 ? 3.0 : value * 3.0
+		keyword_set(xthick):    out = n_elements(value) eq 0 ? 3.0 : value * 3.0
+		keyword_set(ythick):    out = n_elements(value) eq 0 ? 3.0 : value * 3.0
+		keyword_set(zthick):    out = n_elements(value) eq 0 ? 3.0 : value * 3.0
+		else:                   out = n_elements(value) eq 0 ? 1.0 : value / 1.5
 	endcase
 	
 	return, out
