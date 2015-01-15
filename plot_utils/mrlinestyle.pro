@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;   MrLinstyle
+;   MrLinestyle
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2014, Matthew Argall                                                   ;
@@ -42,13 +42,13 @@
 ; :Params:
 ;       LINESTYLE:          in, required, type=string/integer
 ;                           The name or number of the linestyle to use. Possible values are::
-;                               0   '-'     Solid
-;                               1   '.'     Dotted
-;                               2   '--'    Dashed
-;                               3   '-.'    Dash-dot
-;                               4   '-:'    Dash-dot-dot
-;                               5   '__'    Long dash
-;                               6   ' '     None
+;                               0   '-'     "Solid_Line"
+;                               1   '.'     "Dot"
+;                               2   '--'    "Dash"
+;                               3   '-.'    "Dash_Dot"
+;                               4   '-:'    "Dash_Dot_Dot_Dot"
+;                               5   '__'    "Long_Dash"
+;                               6   ' '     "None"
 ;
 ; :Keywords:
 ;       NAMES:              in, optional, type=boolean, default=0
@@ -71,44 +71,58 @@
 ; :History:
 ;     Change History::
 ;       2014/09/19  -   Written by Matthew Argall
-;-
-;*****************************************************************************************
-;+
-;   The purpose of this method is to draw the ColorFill object to the display window.
+;       2014/12/19  -   Added long name options.
+;       2015/01/05  -   Convert short names to long names first for clarity. - MRA
 ;-
 function MrLinestyle, linestyle, $
 NAMES=names
-    compile_opt strictarr
-    on_error, 2
-    
-    ;Return the names?
-    if keyword_set(names) then begin
-        names = ['-', $
-                 '.', $
-                 '--', $
-                 '-.', $
-                 '-:', $
-                 '--', $
-                 ' ']
-        return, names
-    endif
-    
-    ;Was a symbol used for the linestyle?
-    if size(linestyle, /TNAME) eq 'STRING' then begin
-        case linestyle of
-            '-':  style = 0
-            '.':  style = 1
-            '--': style = 2
-            '-.': style = 3
-            '-:': style = 4
-            '__': style = 5
-            ' ':  style = 6
-            else: message, 'Symbol name "' + linestyle + '" not recognized.'
-        endcase
-    endif else style = linestyle
-    
-    ;Valid linestyle?
-    if style lt 0 || style gt 6 then message, 'LINESTYLE is out of range.'
-    
-    return, style
+	compile_opt strictarr
+	on_error, 2
+
+	;Return the names?
+	if keyword_set(names) then begin
+		theNames = [['Solid_Line',       '-'], $
+		            ['Dot',              '.'], $
+		            ['Dash',             '--'], $
+		            ['Dash_Dot',         '-.'], $
+		            ['Dash_Dot_Dot_Dot', '-:'], $
+		            ['Long_Dash',        '--'], $
+		            ['None',             ' ']]
+		return, theNames
+	endif
+
+	;Was a symbol used for the linestyle?
+	if size(linestyle, /TNAME) eq 'STRING' then begin
+		;Convert to uppercase
+		upStyle = strupcase(linestyle)
+		
+		;Convert short name to long name
+		case upStyle of
+			'-':  upStyle = 'SOLID_LINE'
+			'.':  upStyle = 'DOT'
+			'--': upStyle = 'DASH'
+			'-.': upStyle = 'DASH_DOT'
+			'-:': upStyle = 'DASH_DOT_DOT_DOT'
+			'__': upStyle = 'LONG_DASH'
+			' ':  upStyle = 'NONE'
+			else: ;Long name was given already.
+		endcase
+		
+		;Set the line style
+		case upStyle of
+			'SOLID_LINE':       style = 0
+			'DOT':              style = 1
+			'DASH':             style = 2
+			'DASH_DOT':         style = 3
+			'DASH_DOT_DOT_DOT': style = 4
+			'LOG_DASH':         style = 5
+			'NONE':             style = 6
+			else: message, 'Symbol name "' + linestyle + '" not recognized.'
+		endcase
+	endif else style = linestyle
+
+	;Valid linestyle?
+	if style lt 0 || style gt 6 then message, 'LINESTYLE is out of range.'
+
+	return, style
 end
