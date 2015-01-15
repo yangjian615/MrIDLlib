@@ -221,8 +221,8 @@ _REF_EXTRA = extra
     setDefaultValue, linestyle, 0
     setDefaultValue, psym, 0
     setDefaultValue, symcolor, color
-    setDefaultValue, xrange, [Min(indep, Max=indep_max), indep_max]
-    setDefaultValue, yrange, [Min(dep, Max=dep_max), dep_max]
+    setDefaultValue, xrange, [Min(indep, Max=indep_max, /NAN), indep_max]
+    setDefaultValue, yrange, [Min(dep, Max=dep_max, /NAN), dep_max]
 
 ;---------------------------------------------------------------------
 ;Normal Plotting /////////////////////////////////////////////////////

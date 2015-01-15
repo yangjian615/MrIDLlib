@@ -38,7 +38,7 @@
 ;   cgDefaultColor is used directly if::
 ;       COLOR is provided
 ;       DEFAULT is provided
-;       NCOLORS = 1
+;       NCOLORS = 1, 3
 ;
 ;   In all other cases, a color table is loaded and colors are taken at equally spaced
 ;   intervals throughout the available color range (see `CLIP` and `BOTTOM`). If `MODE`=0
@@ -57,10 +57,10 @@
 ; :Keywords:
 ;       BACKGROUND:     in, optional, type=boolean, default=0
 ;                       If set, the colors are treated as background colors. Otherwise,
-;                           they are drawing colors.
+;                           they are drawing colors. Used only with cgDefaultColor().
 ;       BOTTOM:         in, optional, type=integer, default=1
 ;                       Indicate at which index the first color will be located. If
-;                           BOTTOM > !d.table_size-`NCOLORS`, then the latter values is
+;                           BOTTOM > !d.table_size-`NCOLORS`, then the latter value is
 ;                           used.
 ;       CLIP:           in, optional, type=integer/intarr(2), default=[0,255]
 ;                       The [bottom, top] color table indices from which colors will
@@ -71,13 +71,16 @@
 ;       CTINDEX:        in, optional, type=integer, default=13
 ;                       Color table from which default colors should be drawn.
 ;       DEFAULT:        in, optional, type=byte/int/long/string (array)
-;                       Default colors to use if `CTINDEX` is not specified.
-;       MODE:           in, optional, type=int, default=0
-;                       The color mode. A 0 mean indexed color mode. A 1 means decomposed
+;                       Default colors to use if `CTINDEX` is not specified. If `NCOLORS`
+;                           is three, then the DEFAULT=['Blue', 'Forest Green', 'Red'].
+;       MODE:           in, optional, type=int, default=Current color mode
+;                       The color mode. A 0 means indexed color mode. A 1 means decomposed
 ;                           color mode. If not supplied in the call, the color mode is
 ;                           determined at run-time with `cgGetColorState`.
-;       NCOLORS:        in, optional, type=int, default=1
-;                       Number of default colors.
+;       NCOLORS:        in, optional, type=int
+;                       Desired number of output colors. If not given, output will have
+;                           the same number of elements as `COLOR` or `DEFAULT` or 1,
+;                           depending on which are defined.
 ;       RGB_TABLE:      out, optional, type=Nx3 bytarr
 ;                       Named variable into which the resulting color table is returned.
 ;       ROW:            in, optional, type=boolean, default=0
@@ -131,98 +134,128 @@ RGB_TABLE=rgb_table, $
 ROW=row, $
 TRADITIONAL=traditional, $
 TRIPLE=triple
-    compile_opt strictarr
+	compile_opt strictarr
 
-    catch, the_error
-    if the_error ne 0 then begin
-        catch, /CANCEL
-        if n_elements(r) gt 0 then tvlct, r, g, b
-        void = cgErrorMSG()
-        return, -1
-    endif
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		if n_elements(r) gt 0 then tvlct, r, g, b
+		void = cgErrorMSG()
+		return, -1
+	endif
 
-    ;Defaults
-    nDefaults = n_elements(default)
-    nColorsIn = n_elements(color)
-    if n_elements(ctIndex) eq 0 then ctIndex = 13
-    if n_elements(nColors) eq 0 then nColors = nColorsIn
-    if nColors             eq 0 then nColors = nDefaults eq 0 ? 1 : nDefaults
+	;Defaults
+	if n_elements(ctIndex) eq 0 then ctIndex = 13
+	if n_elements(default) eq 0 then default = cgDefaultColor(TRADITIONAL=traditional, BACKGROUND=background)
+	nDefaults = n_elements(default)
+	
+	;Number of requested colors is taken from::
+	;   1. Color
+	;   2. NColors
+	;   3. Defaults
+	;   4. 1
+	nColorsIn = n_elements(color)
+	if n_elements(nColors) eq 0 then nColors = nColorsIn
+	if nColors             eq 0 then nColors = nDefaults
+	
+	;If the number of colors requested is less than the number of colors given, error
+	if nColors lt nColorsIn then message, 'COLOR must have <= NCOLORS number of elements.'
 
-    ;Dependencies
-    if nDefaults ne 0 && nDefaults ne nColors then $
-        message, 'DEFAULTS must have NCOLORS number of elements.'
+	;If a single default was given, it is the default for all colors.
+	if nDefaults eq 1 && nColors gt 1 then begin
+		_default  = replicate(default, nColors)
+		nDefaults = nColors
+
+	;The number of elements in DEFAULT must be the same as tne number of colors requested.
+	endif else begin
+		if nDefaults ne nColors then $
+			message, 'DEFAULTS must have NCOLORS number of elements.'
+		_default = default
+	endelse
 
 ;---------------------------------------------------------------------
 ; cgDefaultColor /////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-    ;Use cgDefaultColor straight away if:
-    ;   - COLOR was provided.
-    ;   - Default colors were provided.
-    ;   - Only one color was requested.
-    if (nColorsIn gt 0) || (nDefaults gt 0) || (nColors eq 1 || nColors eq 3) then begin
-        if nColors eq 3 && nDefaults eq 0 then default = ['Blue', 'Forest Green', 'Red']
-    
-        ;Use cgDefaultColor.
-        return, cgDefaultColor(color, BACKGROUND=background, DEFAULT=default, $
-                               MODE=mode, TRADITIONAL=traditional)
+	;Use cgDefaultColor straight away if:
+	;   - COLOR was provided.
+	;   - Default colors were provided.
+	;   - One or three colors were requested.
+	if (nColorsIn gt 0) || (nDefaults gt 0) || (nColors eq 1 || nColors eq 3) then begin
+		if nColors eq 3 && nDefaults eq 0 then _default = ['Blue', 'Forest Green', 'Red']
+
+		;Use cgDefaultColor.
+		colorsOut = cgDefaultColor(color, BACKGROUND=background, DEFAULT=_default, $
+		                           MODE=mode, TRADITIONAL=traditional)
+		
+		;Make sure the output colors have NCOLORS number of elements.
+		nColorsOut = n_elements(colorsOut)
+		if nColorsOut ne nColors then begin
+			temp_out                       = make_array(nColors, TYPE=size(colorsOut, /TYPE))
+			temp_out[0:nColorsOut-1]       = colorsOut
+			temp_out[nColorsOut:nColors-1] = _default[nColorsOut:nColors-1]
+			colorsOut                      = temporary(temp_out)
+		endif
+		
+		return, colorsOut
     endif
 
 ;---------------------------------------------------------------------
 ; Take from Color Table //////////////////////////////////////////////
 ;---------------------------------------------------------------------
 
-    ;More defaults
-    row     = keyword_set(row)
-    triple  = keyword_set(triple)
-    _bottom = n_elements(bottom) eq 0 ? 1 : !d.table_size-nColors < bottom
-    
-    ;Color mode
-    ;   - In PS, drawing is always DECOMPOSED=0
-    ;   - Must over-ride this to return requested type.
-    thisState = cgGetColorState()
-    thisMode = n_elements(mode) eq 0 ? thisState : keyword_set(mode)
-    
-    ;Save the color table
-    tvlct, r, g, b, /GET
+	;More defaults
+	row     = keyword_set(row)
+	triple  = keyword_set(triple)
+	_bottom = n_elements(bottom) eq 0 ? 1 : !d.table_size-nColors < bottom
 
-    ;Load the desired index
-    cgLoadCT, ctIndex, NCOLORS=nColors, BOTTOM=_bottom, CLIP=clip
+	;Color mode
+	;   - In PS, drawing is always DECOMPOSED=0
+	;   - Must over-ride this to return requested type.
+	thisState = cgGetColorState()
+	thisMode  = n_elements(mode) eq 0 ? thisState : keyword_set(mode)
 
-    ;Get the colors
-    tvlct, r_out, g_out, b_out, /GET
-    rgb_table = [[r_out], [g_out], [b_out]]
+	;Save the color table
+	tvlct, r, g, b, /GET
 
-    ;Index color mode?
-    if thisMode eq 0 then begin
-        ;Maintain the new color table & return indices of loaded colors
-        if triple then begin
-            colorsOut = rgb_table[1:nColors, *]
-            if row then colorsOut = transpose(colorsOut)
-        endif else begin
-            colorsOut = bindgen(nColors) + _bottom
-        endelse
-        
-    ;Decomposed color mode
-    endif else begin
-    
-        ;Return the color table?
-        if arg_present(rgb_table) then begin
-            if row then rgb_table = transpose(rgb_table)
-        endif
-    
-        ;Reduce colors
-        colorsOut = rgb_table[1:nColors, *]
+	;Load the desired index
+	;   - Load only the colors that will be used as defaults.
+	cgLoadCT, ctIndex, NCOLORS=nColors, BOTTOM=_bottom, CLIP=clip
 
-        ;Return color triples or decomposed colors?
-        if triple then begin
-            if row then colorsOut = transpose(colorsOut)
-        endif else begin
-            colorsOut = cgColor24(colorsOut)
-        endelse
-        
-        ;Restore the color table
-        tvlct, r, g, b
-    endelse
+	;Get the colors
+	tvlct, r_out, g_out, b_out, /GET
+	rgb_table = [[r_out], [g_out], [b_out]]
 
-    return, colorsOut
+	;Index color mode?
+	if thisMode eq 0 then begin
+		;Maintain the new color table & return indices of loaded colors
+		if triple then begin
+			colorsOut = rgb_table[1:nColors, *]
+			if row then colorsOut = transpose(colorsOut)
+		endif else begin
+			colorsOut = bindgen(nColors) + _bottom
+		endelse
+	
+	;Decomposed color mode
+	endif else begin
+
+		;Return the color table?
+		if arg_present(rgb_table) then begin
+			if row then rgb_table = transpose(rgb_table)
+		endif
+
+		;Reduce colors
+		colorsOut = rgb_table[1:nColors, *]
+
+		;Return color triples or decomposed colors?
+		if triple then begin
+			if row then colorsOut = transpose(colorsOut)
+		endif else begin
+			colorsOut = cgColor24(colorsOut)
+		endelse
+	
+		;Restore the color table
+		tvlct, r, g, b
+	endelse
+
+	return, colorsOut
 end

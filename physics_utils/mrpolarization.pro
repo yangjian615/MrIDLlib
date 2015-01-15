@@ -889,8 +889,8 @@ end
 ;-----------------------------------------------------
 ;magfile   = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
 ;data      = MrCDF_Read(magfile, 'Mag')
-acefile   = '/data2/ACELevel2data/hires/ACE_MAG_LV2_RTN_HIRES_2002-001_V2.DAT'
-data      = ace_read_mag_asc(acefile)
+acefile   = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-270_V2.DAT'
+data      = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
 nfft      = 4096
 ;dt        = 1.0 / 64.0
 dt        = 0.333
@@ -900,7 +900,7 @@ fmin      = df_fft(nfft, dt)
 fmax      = 7.0
 nfas      = 512
 ndetrend  = nfas
-ylog      = 0
+ylog      = 1
 window    = 1
 
 ;Calculate the polarization
@@ -914,15 +914,48 @@ pzation   = MrPolarization(data, nfft, dt, nshift, $
                            COHERENCY=coherency)
 
 ;Plot
-win = MrWindow(OXMARGIN=[9,12], YGAP=0.5, XSIZE=450, YSIZE=550, REFRESH=0)
+win = MrWindow(OXMARGIN=[10,12], YGAP=0.5, XSIZE=550, YSIZE=550, REFRESH=0)
 pal = MrCreateCT(/RWB, /REVERSE)
 
+;Create a title
+date  = stregex(acefile, '_([12][90][0-9]{2})', /SUBEXP, /EXTRACT)
+doy   = stregex(acefile, '-([0-3][0-9][0-9])', /SUBEXP, /EXTRACT)
+title = string(FORMAT='(%"ACE %s-%s")', date[1], doy[1])
+
+;Time series
+data   = replace_fillval(data, -999.9)
+b_mag  = sqrt(total(data^2, 1))
+b_data = [transpose(temporary(b_mag)), (temporary(data))[1,*]]
+Bplot = MrPlot(temporary(t_ssm), temporary(b_data), $
+               /CURRENT, $
+               DIMENSION   = 2, $
+               COLOR       = ['black', 'blue'], $
+               NAME        = 'B', $
+               TITLE       = title, $
+               XRANGE      = [0, 86400.0], $
+               XTICKV      = [0, 6, 12, 18, 24]*3600D, $
+               XTICKFORMAT = '(a1)', $
+               XTICKS      = 4, $
+               YTITLE      = 'B (nT)')
+                
+!Null = MrLegend(ALIGNMENT     = 'NW', $
+                 /RELATIVE, $
+                 LABEL         = ['|B|', 'B$\downR$'], $
+                 NAME          = 'B Legend', $
+                 POSITION      = [1.05, 1.0], $
+                 SAMPLE_COLOR  = ['Black', 'Blue'], $
+                 SAMPLE_WIDTH  = 3.0, $
+                 TARGET        = Bplot, $
+                 TEXT_COLOR    = ['Black', 'Blue'])
+
+
 ;Intensity
-intIm = MrImage(MrLog(intensity), t, f, /CURRENT, $
+intIm = MrImage(MrLog(temporary(intensity)), t, f, /CURRENT, $
                 /AXES, $
                 CTINDEX=13, $
                 NAME='Intensity', $
-                XTICKV=[0, 6, 12, 18, 24]*3600, $
+                XRANGE      = [0, 86400.0], $
+                XTICKV=[0, 6, 12, 18, 24]*3600D, $
                 XTICKFORMAT='(a1)', $
                 XTICKS=4, $
                 YLOG=ylog, $
@@ -935,14 +968,16 @@ intIm = MrImage(MrLog(intensity), t, f, /CURRENT, $
                    WIDTH=1)
 
 ;Ellipticity
-ellIm = MrImage(ellipticity, t, f, /CURRENT, $
+ellIm = MrImage(temporary(ellipticity), t, f, /CURRENT, $
                 /AXES, $
                 PALETTE=pal, $
                 NAME='Ellipticity', $
                 RANGE=[-1,1], $
-                XTICKV=[0, 6, 12, 18, 24]*3600, $
+                XRANGE=[0, 86400.0], $
+                XTICKV=[0, 6, 12, 18, 24]*3600D, $
                 XTICKFORMAT='(a1)', $
                 XTICKS=4, $
+                YLOG=ylog, $
                 YTITLE='f!C(Hz)')
 
 !Null = MrColorbar(/CURRENT, $
@@ -952,14 +987,16 @@ ellIm = MrImage(ellipticity, t, f, /CURRENT, $
                    WIDTH=1)
 
 ;% Polarization
-polWin = MrImage(pzation, t, f, /CURRENT, $
+polWin = MrImage(temporary(pzation), t, f, /CURRENT, $
                  /AXES, $
                  CTINDEX=0, $
                  NAME='Polarization', $
                  RANGE=[0,1], $
-                 XTICKV=[0, 6, 12, 18, 24]*3600, $
+                 XRANGE=[0, 86400.0], $
+                 XTICKV=[0, 6, 12, 18, 24]*3600D, $
                  XTICKFORMAT='(a1)', $
                  XTICKS=4, $
+                 YLOG=ylog, $
                  YTITLE='f!C(Hz)')
 
 !Null = MrColorbar(/CURRENT, $
@@ -969,14 +1006,16 @@ polWin = MrImage(pzation, t, f, /CURRENT, $
                    WIDTH=1)
 
 ;Polarization Angle
-angWin = MrImage(acos(pz_angle)*!RaDeg, t, f, /CURRENT, $
+angWin = MrImage(acos(temporary(pz_angle))*!RaDeg, t, f, /CURRENT, $
                  /AXES, $
                  CTINDEX=0, $
                  NAME='Angle', $
                  RANGE=[0,180], $
-                 XTICKV=[0, 6, 12, 18, 24]*3600, $
+                 XRANGE=[0, 86400.0], $
+                 XTICKV=[0, 6, 12, 18, 24]*3600D, $
                  XTICKFORMAT='(a1)', $
                  XTICKS=4, $
+                 YLOG=ylog, $
                  YTITLE='f!C(Hz)')
 
 !Null = MrColorbar(/CURRENT, $
@@ -987,14 +1026,16 @@ angWin = MrImage(acos(pz_angle)*!RaDeg, t, f, /CURRENT, $
                    WIDTH=1)
 
 ;Coherency
-angWin = MrImage(coherency, t, f, /CURRENT, $
+angWin = MrImage(temporary(coherency), temporary(t), temporary(f), /CURRENT, $
                  /AXES, $
                  CTINDEX=0, $
                  NAME='Coherency', $
                  RANGE=[0,1], $
-                 XTICKV=[0, 6, 12, 18, 24]*3600.0, $
+                 XRANGE=[0, 86400.0], $
+                 XTICKV=[0, 6, 12, 18, 24]*3600D, $
                  XTICKFORMAT='time_labels', $
                  XTICKS=4, $
+                 YLOG=ylog, $
                  YTITLE='f!C(Hz)')
 
 !Null = MrColorbar(/CURRENT, $
