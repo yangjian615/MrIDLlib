@@ -71,11 +71,13 @@
 ;       09/19/2013  -   Written by Matthew Argall
 ;       09/23/2013  -   Input and output RMATRIX were not separated, so data was being
 ;                           rotated twice. Fixed. - MRA
-;       10/04/2013  -   Added the MEAN_FIELD keyword.
+;       10/04/2013  -   Added the MEAN_FIELD keyword. - MRA
+;       2014/01/21  -   Added the NAN keyword. - MRA
 ;-
 function MrDetrendRotate, field, nDetrend, nSystem, $
 DIMENSION = dimension, $
 MEAN_FIELD = mean_field, $
+NAN = nan, $
 POSITION = position, $
 RMATRIX = rMatrix
     compile_opt idl2
@@ -111,7 +113,8 @@ RMATRIX = rMatrix
     if nDetrend ne 0 then $
         field_out = detrend_data(field_out, nDetrend, $
                                  DIMENSION=dimension, $
-                                 BACKGROUND=mean_field)
+                                 BACKGROUND=mean_field, $
+                                 NAN=nan)
 
 ;-----------------------------------------------------
 ;Field-Aligned System? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -122,8 +125,8 @@ RMATRIX = rMatrix
 
         ;Has the data been detrended already?
         if nDetrend eq 0 $
-            then rMatrix_out = fa_system(field_out, nFAS) $
-            else rMatrix_out = fa_system(mean_field, /ISMEAN)
+            then rMatrix_out = fa_system(field_out, nFAS, NAN=nan) $
+            else rMatrix_out = fa_system(mean_field, /ISMEAN, NAN=nan)
 
         ;Rotate into the FAR frame
         field_out = rotate_vector(rMatrix_out, field_out)
@@ -138,8 +141,8 @@ RMATRIX = rMatrix
 
         ;Has the data been detrended already?
         if nDetrend eq 0 $
-            then rMatrix_out = far_system(field_out, position, nFAR) $
-            else rMatrix_out = far_system(mean_field, position, /ISMEAN)
+            then rMatrix_out = far_system(field_out, position, nFAR, NAN=nan) $
+            else rMatrix_out = far_system(mean_field, position, /ISMEAN, NAN=nan)
 
         ;Rotate into the FAR frame
         field_out = rotate_vector(rMatrix_out, field_out)

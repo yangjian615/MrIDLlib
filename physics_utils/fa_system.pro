@@ -86,7 +86,7 @@ _REF_EXTRA=extra
         avg_data[1,*] = smooth(data[1,*], navg, EDGE_TRUNCATE=edge_truncate, _STRICT_EXTRA=extra)
         avg_data[2,*] = smooth(data[2,*], navg, EDGE_TRUNCATE=edge_truncate, _STRICT_EXTRA=extra)
     endif else avg_data = data
-            
+
     ;The z-axis will be along the average field direction
     z_hat = divide_vec(avg_data, magnitude_vec(avg_data))
 

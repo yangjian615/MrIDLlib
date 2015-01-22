@@ -48,6 +48,7 @@
 ;       2014/09/10  -   Removed the condition that the number of points has to be
 ;                           equal. If `X` is 3xN and `Y` is 3xM, then the output will
 ;                           either be 3xL, where L = N < M. - MRA
+;       2015/20/01  -   Added the Nx3 cross 3 case. - MRA
 ;-
 function cross_product, x, y
     compile_opt idl2
@@ -71,24 +72,30 @@ function cross_product, x, y
                      x[0]*y[1,*] - x[1]*y[0,*]]
                      
     ;3xN cross 3
-    endif else if (xndims eq 2) and (xdims[0] eq 3) and (ny eq 3) then begin
+    endif else if (xndims eq 2 && xdims[0] eq 3) and (ny eq 3) then begin
         x_cross_y = [x[1,*]*y[2] - x[2,*]*y[1], $
                      x[2,*]*y[0] - x[0,*]*y[2], $
                      x[0,*]*y[1] - x[1,*]*y[0]]
                      
+    ;Nx3 cross 3
+    endif else if (xndims eq 2 && xdims[1] eq 3) and (ny eq 3) then begin
+        x_cross_y = [[x[*,1]*y[2] - x[*,2]*y[1]], $
+                     [x[*,2]*y[0] - x[*,0]*y[2]], $
+                     [x[*,0]*y[1] - x[*,1]*y[0]]]
+                     
     ;3xN cross 3xN
-    endif else if (xndims eq 2) and (xdims[0] eq 3) and $
-                  (yndims eq 2) and (ydims[0] eq 3) then begin
+    endif else if (xndims eq 2 && xdims[0] eq 3) and $
+                  (yndims eq 2 && ydims[0] eq 3) then begin
         x_cross_y = [x[1,*]*y[2,*] - x[2,*]*y[1,*], $
                      x[2,*]*y[0,*] - x[0,*]*y[2,*], $
                      x[0,*]*y[1,*] - x[1,*]*y[0,*]]
                      
     ;Nx3 cross Nx3
-    endif else if (xndims eq 2) and (xdims[1] eq 3) and $
-                  (yndims eq 2) and (ydims[1] eq 3) then begin
-        x_cross_y = [x[*,1]*y[*,2] - x[*,2]*y[*,1], $
-                     x[*,2]*y[*,0] - x[*,0]*y[*,2], $
-                     x[*,0]*y[*,1] - x[*,1]*y[*,0]]
+    endif else if (xndims eq 2 && xdims[1] eq 3) and $
+                  (yndims eq 2 && ydims[1] eq 3) then begin
+        x_cross_y = [[x[*,1]*y[*,2] - x[*,2]*y[*,1]], $
+                     [x[*,2]*y[*,0] - x[*,0]*y[*,2]], $
+                     [x[*,0]*y[*,1] - x[*,1]*y[*,0]]]
     endif else begin
         message, string(FORMAT='(%"Cannot cross a [%i,%i] array with a [%i,%i] array")', $
                         xdims, ydims)

@@ -46,6 +46,7 @@
 ;       11/03/2011  -   Written by Matthew Argall
 ;       02/13/2013  -   Replaced the ([3xM] do [3xM]) case with the ([NxM] dot [NxM])
 ;                           case - MRA
+;       2015/01/20  -   Fixed logic and added Nx3 x 3, 3 x Nx3, and Nx3 x Nx3 cases. - MRA
 ;-
 function dot_product, x, y
     compile_opt idl2
@@ -55,34 +56,46 @@ function dot_product, x, y
 ;Check Keywords \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;---------------------------------------------------------------------
 
-	sx = size(x)
-	sy = size(y)
-	
-	nx = sx[sx[0] + 2]
-	ny = sy[sy[0] + 2]
+    xdims  = size(x, /DIMENSIONS)
+    ydims  = size(y, /DIMENSIONS)
+    xndims = size(x, /N_DIMENSIONS)
+    yndims = size(y, /N_DIMENSIONS)
+	nx     = n_elements(x)
+	ny     = n_elements(y)
 
 ;---------------------------------------------------------------------
 ;Compute the Dot Product \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;---------------------------------------------------------------------
 
-    ;check if x and y are 1D, three element vectors
-    ;if both are, do a simple dot product    
+    ;3 x 3 
     if (nx eq 3) and (ny eq 3) then begin
         x_dot_y = total(x*y)
 
-    ;is x a 3 element vector and y a 3xN array?
-    endif else if (nx eq 3) and (sy[0] eq 2) and (sy[1] eq 3) then begin
+    ;3 x 3xN
+    endif else if (nx eq 3) and (yndims eq 2) and (ydims[0] eq 3) then begin
         x_dot_y = x[0]*y[0,*] + x[1]*y[1,*] + x[2]*y[2,*]
-  
-    ;is x a 3xN array and y a 3 element vector?
-    endif else if (sx[0] eq 2) and (sx[1] eq 3) and (ny eq 3) then begin
-        x_dot_y = x[0,*]*y[0] + x[1,*]*y[1] + x[2,*]*y[2]
 
-    ;are x and y both NxM?
-    endif else if (sx[0] eq 2) and (sy[0] eq 2) and $
-                  (sx[1] eq sy[1]) and (nx eq ny) then begin
+    ;3 x Nx3
+    endif else if (nx eq 3) and (yndims eq 2 && ydims[1] eq 3) then begin
+        x_dot_y = x[0]*y[*,0] + x[1]*y[*,1] + x[2]*y[*,2]
+  
+    ;3xN x 3
+    endif else if (xndims eq 2 && xdims[0] eq 3) and (ny eq 3) then begin
+        x_dot_y = x[0,*]*y[0] + x[1,*]*y[1] + x[2,*]*y[2]
+  
+    ;Nx3 x 3
+    endif else if (xndims eq 2 && xdims[1] eq 3) and (ny eq 3) then begin
+        x_dot_y = x[*,0]*y[0] + x[*,1]*y[1] + x[*,2]*y[2]
+
+    ;3xN x 3xN?
+    endif else if (xndims eq 2 && xdims[0] eq 3) and (yndims eq 2 && ydims[0] eq 3) then begin
         ;sum all of the elements in a single row
         x_dot_y = total(x * y, 1)
+
+    ;Nx3 x Nx3?
+    endif else if (xndims eq 2 && xdims[1] eq 3) and (yndims eq 2 && ydims[1] eq 3) then begin
+        ;sum all of the elements in a single row
+        x_dot_y = total(x * y, 2)
 
     ;if none of the above works, x and y are not sized properly and
     ;the dot product cannot be performed

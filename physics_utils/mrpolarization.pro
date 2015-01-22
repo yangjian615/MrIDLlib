@@ -179,11 +179,11 @@ K_VEC = k_vec
 
     ;allocate memory
     J_prime_dims = size(J_prime, /DIMENSIONS)
-    npts         = J_prime_dims[2]
-    nfreqs       = J_prime_dims[3]
+    npts         = J_prime_dims[0]
+    nfreqs       = J_prime_dims[1]
     ab           = fltarr(npts, nfreqs)
-    k_hat        = fltarr(3, npts*nfreqs)
-    if arg_present(k_vec)   then k_vec = fltarr(3, npts*nfreqs)
+    k_hat        = fltarr(npts*nfreqs, 3)
+    if arg_present(k_vec)   then k_vec = fltarr(npts*nfreqs, 3)
     if n_elements(tol) eq 0 then tol   = 1e-6
 
 ;-----------------------------------------------------
@@ -194,9 +194,9 @@ K_VEC = k_vec
     
     ;Using the imaginary components.
     ;a*b = HxHy^2 + HzHx^2 + HyHz^2
-    ab = sqrt(imaginary(reform(J_prime[1,0,*,*]))^2 + $     ;kz^2    = HxHy^2
-              imaginary(reform(J_prime[2,0,*,*]))^2 + $     ;(-ky)^2 = HxHz^2
-              imaginary(reform(J_prime[2,1,*,*]))^2)        ;kx^2    = HyHz^2
+    ab = sqrt(imaginary(J_prime[*,*,1,0])^2 + $     ;kz^2    = HxHy^2
+              imaginary(J_prime[*,*,2,0])^2 + $     ;(-ky)^2 = HxHz^2
+              imaginary(J_prime[*,*,2,1])^2)        ;kx^2    = HyHz^2
 
     ;The imaginary part of the power spectral matrix for linearly polarized waves
     ;is the 0-matrix. Thus, the analysis that follows cannot be undertaken. (Means
@@ -207,7 +207,7 @@ K_VEC = k_vec
     
     ;ILIN and IPOL are 1D subscripts into a 2D vector. Reform J_prime so that subscript-
     ;rounding does not occur (e.g. a = findgen(10) ... print, a[[20]]).
-    J_prime = reform(J_prime, 3, 3, npts*nfreqs)
+    J_prime = reform(J_prime, npts*nfreqs, 3, 3)
 
 ;-----------------------------------------------------
 ; Linear Polarization \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -215,24 +215,24 @@ K_VEC = k_vec
     if nLin gt 0 then begin
         ;The power of the linearly polarized wave
         ;Tr[J'] = a^2 = Jxx + Jyy + Jzz   --   (J is purely real)
-        a2 = real_part(reform(J_prime[0,0,iLin] + J_prime[1,1,iLin] + J_prime[2,2,iLin]))
+        a2 = real_part(J_prime[iLin,0,0] + J_prime[iLin,1,1] + J_prime[iLin,2,2])
         
         ;If there is no power at the frequency
         i_NoPower = where(a2 lt 1e-5, n_NoPower, COMPLEMENT=iPower, NCOMPLEMENT=nPower)
         if n_NoPower gt 0 then begin
             ;There is no direction of propagation.
-            k_hat[*,iLin[i_NoPower]] = replicate(!values.f_nan, 3, n_NoPower)
+            k_hat[iLin[i_NoPower],*] = replicate(!values.f_nan, 3, n_NoPower)
         endif
             
         ;Otherwise
         if nPower gt 0 then begin
             ;Calculate the direction of the linearized wave
-            Lx = sqrt(real_part(reform(J_prime[0,0,iLin[iPower]])) / a2[iPower])    ;(Jxx / a^2)^(1/2)
-            Ly = real_part(reform(J_prime[1,0,iLin[iPower]])) / (a2[iPower] * Lx)   ;Jxy / (a^2 * Lx)
-            Lz = real_part(reform(J_prime[2,0,iLin[iPower]])) / (a2[iPower] * Lx)   ;Jxz / (a^2 * Lx)
+            Lx = sqrt(real_part(J_prime[iLin[iPower],0,0]) / a2[iPower])    ;(Jxx / a^2)^(1/2)
+            Ly = real_part(J_prime[iLin[iPower],1,0]) / (a2[iPower] * Lx)   ;Jxy / (a^2 * Lx)
+            Lz = real_part(J_prime[iLin[iPower],2,0]) / (a2[iPower] * Lx)   ;Jxz / (a^2 * Lx)
             
             ;Store the direction of propagation
-            k_hat[*,iLin[iPower]] = transpose([[Lx], [Ly], [Lz]])
+            k_hat[iLin[iPower],*] = [[Lx], [Ly], [Lz]]
         endif
     endif
 
@@ -242,22 +242,22 @@ K_VEC = k_vec
     if nPol gt 0 then begin
         ;Return the k-vector?
         if arg_present(k_vec) then begin
-            k_vec[2,iPol] =  imaginary(reform(J_prime[1,0,iPol]))
-            k_vec[1,iPol] = -imaginary(reform(J_prime[2,0,iPol]))
-            k_vec[0,iPol] =  imaginary(reform(J_prime[2,1,iPol]))
+            k_vec[iPol,2] =  imaginary(J_prime[iPol,1,0])
+            k_vec[iPol,1] = -imaginary(J_prime[iPol,2,0])
+            k_vec[iPol,0] =  imaginary(J_prime[iPol,2,1])
         endif
         
         ;Note that dividing by "ab" normalizes the components.
-        k_hat[2,iPol] =  imaginary(reform(J_prime[1,0,iPol])) / ab[iPol]   ;kz =  HxHy / (a*b)
-        k_hat[1,iPol] = -imaginary(reform(J_prime[2,0,iPol])) / ab[iPol]   ;ky = -HxHz / (a*b)
-        k_hat[0,iPol] =  imaginary(reform(J_prime[2,1,iPol])) / ab[iPol]   ;kx =  HyHz / (a*b)
+        k_hat[iPol,2] =  imaginary(J_prime[iPol,1,0]) / ab[iPol]   ;kz =  HxHy / (a*b)
+        k_hat[iPol,1] = -imaginary(J_prime[iPol,2,0]) / ab[iPol]   ;ky = -HxHz / (a*b)
+        k_hat[iPol,0] =  imaginary(J_prime[iPol,2,1]) / ab[iPol]   ;kx =  HyHz / (a*b)
     endif
 
     ;This anaylsis has been done under the assumptions of a counter-clockwise,
     ;elliptically polarized plane wave. Thus, a clockwise polarized wave has k_hat < 0
     
     ;Reform the vectors back to their original shape
-    J_prime = reform(J_prime, 3, 3, npts, nfreqs)
+    J_prime = reform(J_prime, npts, nfreqs, 3, 3)
 
     return, k_hat
 end
@@ -475,9 +475,8 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 ;Detrend the Data \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-
     if (nDetrend gt 0) or (nFAS gt 0) $
-        then temp_data = MrDetrendRotate(data, nDetrend, nFAS, $
+        then temp_data = MrDetrendRotate(data, nDetrend, nFAS, /NAN, $
                                          MEAN_FIELD=mean_field, DIMENSION=dimension) $
         else temp_data = data
 
@@ -497,9 +496,7 @@ _REF_EXTRA = extra
     if_keep = where(frequencies gt 0)
     
     ;Keep the time?
-    if arg_present(time) eq 0 $
-        then undefine, time $
-        else if (t0 ne 0.0) then time += t0
+    if arg_present(time) eq 0 then undefine, time
         
     ;Keep the actual frequencies?
     if arg_present(frequencies) eq 1 $
@@ -520,19 +517,19 @@ _REF_EXTRA = extra
     if keep_intensity       then intensity          = fltarr(npts,nfreqs)
     if keep_ellipticity     then ellipticity        = fltarr(npts*nfreqs)
     if keep_angle           then polarization_angle = fltarr(npts*nfreqs)
-    if keep_kvec            then k_vec              = fltarr(3, npts*nfreqs)
-    if keep_spectral_matrix then spectral_matrix    = complexarr(3, 3, npts, nfreqs)
-    if keep_wave_normal     then wave_normal_matrix = complexarr(2, 2, npts, nfreqs)
-    if keep_kdotb_angle     then kdotb_angle        = fltarr(nfreqs, npts)
+    if keep_kvec            then k_vec              = fltarr(npts*nfreqs, 3)
+    if keep_spectral_matrix then spectral_matrix    = complexarr(npts, nfreqs, 3, 3)
+    if keep_wave_normal     then wave_normal_matrix = complexarr(npts, nfreqs, 2, 2)
+    if keep_kdotb_angle     then kdotb_angle        = fltarr(npts, nfreqs)
     pzation = fltarr(npts*nfreqs)
     
     ;Variables
-    J_prime = complexarr(3, 3, npts, nfreqs)
-    J       = complexarr(3, 3, npts, nfreqs)
-    Js      = complexarr(3, 3, npts, nfreqs)
-    k_hat   = fltarr(3, npts, nfreqs)
+    J_prime = complexarr(npts, nfreqs, 3, 3)
+    J       = complexarr(npts, nfreqs, 3, 3)
+    Js      = complexarr(npts, nfreqs, 3, 3)
+    k_hat   = fltarr(npts, nfreqs, 3)
     k_dot_b = fltarr(npts, nfreqs)
-    R       = fltarr(3, 3, npts, nfreqs)
+    R       = fltarr(npts, nfreqs, 3, 3)
 
 ;-----------------------------------------------------
 ;II. Covariance Spectral Matrix \\\\\\\\\\\\\\\\\\\\\\
@@ -557,15 +554,15 @@ _REF_EXTRA = extra
     ;Using Means' notation, calculate the spectral density matrix. The "prime"
     ;indicates that the spectral density matrix is NOT in the principle axis system.
     ;Dividing by the duration of the interval converts from Energy to Power.
-    J_prime[0,0,*,*] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,0])      ;HxHx
-    J_prime[1,0,*,*] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,1])      ;HxHy
-    J_prime[2,0,*,*] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,2])      ;HxHz
-    J_prime[0,1,*,*] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,0])      ;HyHx
-    J_prime[1,1,*,*] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,1])      ;HyHy
-    J_prime[2,1,*,*] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,2])      ;HyHz
-    J_prime[0,2,*,*] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,0])      ;HzHx
-    J_prime[1,2,*,*] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,1])      ;HzHy
-    J_prime[2,2,*,*] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,2])      ;HzHz
+    J_prime[0,0,0,0] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,0])      ;HxHx
+    J_prime[0,0,1,0] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,1])      ;HxHy
+    J_prime[0,0,2,0] = 2.0 * fft_data[*,*,0] * conj(fft_data[*,*,2])      ;HxHz
+    J_prime[0,0,0,1] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,0])      ;HyHx
+    J_prime[0,0,1,1] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,1])      ;HyHy
+    J_prime[0,0,2,1] = 2.0 * fft_data[*,*,1] * conj(fft_data[*,*,2])      ;HyHz
+    J_prime[0,0,0,2] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,0])      ;HzHx
+    J_prime[0,0,1,2] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,1])      ;HzHy
+    J_prime[0,0,2,2] = 2.0 * fft_data[*,*,2] * conj(fft_data[*,*,2])      ;HzHz
 
     ;This is the spectral density matrix [covariance matrix in the frequency domain]
     ;(c.f. "Technique and Theory" and eq 1 in Means or eq 3.18 in Bakarat). IDL notation
@@ -580,8 +577,8 @@ _REF_EXTRA = extra
         ;Keep the non-normalized wave vector?
         if keep_kvec then begin
             k_hat = MrPolarization_Means(J_prime, ipol, ilin, npol, nlin, K_VEC=k_vec)
-            k_vec = reform(k_vec, 3, npts, nfreqs)
-            k_vec = k_vec[*,*,if_keep]
+            k_vec = reform(k_vec, npts, nfreqs, 3)
+            k_vec = k_vec[*, if_keep, *]
             
         endif else k_hat = MrPolarization_Means(J_prime, ipol, ilin, npol, nlin)
     
@@ -596,7 +593,7 @@ _REF_EXTRA = extra
     endif else if method eq 3 then begin
         ;Not implemented yet.
     endif
-  
+
 ;-----------------------------------------------------
 ;IV. Wave-Normal System \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -640,20 +637,20 @@ _REF_EXTRA = extra
     ;The mean field is along the z-axis, so dotting k with [0,0,1] gives kz
     ;   - B is suppose to be rotated so that the average field is along the z-axis.
     ;   - Therefore, k \cdot B_hat = kz
-    k_dot_b = reform(k_hat[2,*])
+    k_dot_b = k_hat[*,2]
 
     ;Make sure that the new z-hat direction is always parallel to B
     z_prime_hat = k_hat
     iAntiPar    = where(k_dot_b lt 0, nAntiPar)
     if nAntiPar gt 0 then begin
-        z_prime_hat[*,iAntiPar] = -z_prime_hat[*,iAntiPar]
-        k_dot_b = reform(z_prime_hat[2,*])
+        z_prime_hat[iAntiPar,*] = -z_prime_hat[iAntiPar,*]
+        k_dot_b = z_prime_hat[*,2]
     endif
 
     ;Reform the vectors
-    k_hat       = reform(k_hat,       3, npts, nfreqs)
-    k_dot_b     = reform(k_dot_b,        npts, nfreqs)
-    z_prime_hat = reform(z_prime_hat, 3, npts, nfreqs)
+    k_hat       = reform(k_hat,       npts, nfreqs, 3)
+    k_dot_b     = reform(k_dot_b,     npts, nfreqs)
+    z_prime_hat = reform(z_prime_hat, npts, nfreqs, 3)
 
     ;Put the wave normal vector along the z-hat direction. Make "y" be in the plane
     ;perpendicular to k_hat and B_hat, then complete the system to make "x" such that
@@ -662,19 +659,19 @@ _REF_EXTRA = extra
     ;Loop over either time or frequency. Functions used below work for 3xN arrays,
     ;not 3xNxM.
     for i = 0, npts - 1 do begin
-        R[*,2,i,*] = z_prime_hat[*,i,*]
+        R[i,*,*,2] = z_prime_hat[i,*,*]
 
         ;If k // B, then y_hat = k_hat x [0,0,1] = 0. Check for this by finding where the
         ;magnitude of y_hat = k_hat x [0,0,1] < 1e-6. In these case, use y_hat = [0,1,0].
-        y_component = cross_product(reform(k_hat[*,i,*]), [0.0, 0.0, 1.0])
-        iNegK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[2,i,*] lt 0, nNegK)
-        iPosK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[2,i,*] gt 0, nPosK)
-        if nNegK gt 0 then y_component[*,iNegK] = rebin([0.0,-1.0, 0.0], 3, nNegK)
-        if nPosK gt 0 then y_component[*,iPosK] = rebin([0.0, 1.0, 0.0], 3, nPosK)
+        y_component = cross_product(reform(k_hat[i,*,*]), [0.0, 0.0, 1.0])
+        iNegK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[i,*,2] lt 0, nNegK)
+        iPosK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[i,*,2] gt 0, nPosK)
+        if nNegK gt 0 then y_component[*,iNegK] = rebin([[0.0],[-1.0], [0.0]], nNegK, 3)
+        if nPosK gt 0 then y_component[*,iPosK] = rebin([[0.0], [1.0], [0.0]], nPosK, 3)
 
         ;x- and y- components of the transformation matrix.
-        R[*,1,i,*] = normalize(y_component)
-        R[*,0,i,*] = normalize(cross_product(reform(R[*,1,i,*]), reform(R[*,2,i,*])))
+        R[i,*,*,1] = normalize(y_component)
+        R[i,*,*,0] = normalize(cross_product(reform(R[i,*,*,1]), reform(R[i,*,*,2])))
 
         ;The wave-normal matrix (R) just created is the transformation matrix required
         ;to transform the current spectral density matrix (J') into the wave-normal
@@ -683,8 +680,8 @@ _REF_EXTRA = extra
         ;Calculating the real and imaginary parts separately,
         ;NOTE: It might be pertinent to set the diagonal components of J_prime equal to
         ;      zero explicily (c.f. Means pg. 5555).
-        J[*,*,i,*] = complex(rotate_matrix(reform(R[*,*,i,*]), reform(real_part(J_prime[*,*,i,*]))), $
-                             rotate_matrix(reform(R[*,*,i,*]), reform(imaginary(J_prime[*,*,i,*]))))
+        J[i,*,*,*] = complex(rotate_matrix(reform(R[i,*,*,*]), reform(real_part(J_prime[i,*,*,*]))), $
+                             rotate_matrix(reform(R[i,*,*,*]), reform(imaginary(J_prime[i,*,*,*]))))
     endfor
     undefine, R
 
@@ -699,7 +696,7 @@ _REF_EXTRA = extra
     
     ;The center of the averaging interval
     nfavg_half = (nfavg-1)/2
-    
+
     ;step through all of the averaging intervals.
     IDLversion8 = MrCmpVersion('8.0')
     for k = 0, nfreqs - nfavg do begin
@@ -713,13 +710,25 @@ _REF_EXTRA = extra
         ;   - Without the /NaN flag, NaNs introduced in _Means when Power=0 will smear
         ;       to all frequencies.
         if IDLversion8 le 0 then begin
-            Js[*,*,*,icenter_bin] = mean(J[*,*,*,istart:iend], DIMENSION=4)
-            if keep_kdotb_angle then k_dot_b[*,icenter_bin] = mean(k_dot_b[*,istart:iend], DIMENSION=2, /NAN)
-            if keep_khat        then k_hat[*,*,icenter_bin] = mean(k_hat[*,*,istart:iend], DIMENSION=3, /NAN)
+            Js[*,icenter_bin,*,*] = mean(J[*,istart:iend,*,*], DIMENSION=2)
+            
+            ;k dot B
+            if keep_kdotb_angle then begin
+                iNaN = where(total(finite(k_dot_b[*,istart:iend]), 2) eq 0, nNaN, COMPLEMENT=iGood, NCOMPLEMENT=nGood)
+                if nGood gt 0 then k_dot_b[iGood,icenter_bin] = mean(k_dot_b[iGood,istart:iend], DIMENSION=2, /NAN)
+                if nNaN  gt 0 then k_dot_b[iNaN,icenter_bin] = !values.f_nan
+            endif
+            
+            ;k-hat
+            if keep_khat then begin
+                iNaN = where(total(finite(k_hat[*,istart:iend,*]), 2) eq 0, nNaN, COMPLEMENT=iGood, NCOMPLEMENT=nGood)
+                if nGood gt 0 then k_hat[iGood,icenter_bin,*] = mean(k_hat[iGood,istart:iend,*], DIMENSION=2, /NAN)
+                if nNaN  gt 0 then k_hat[iNaN,icenter_bin,*] = !values.f_nan
+            endif
         endif else begin
-            Js[*,*,*,icenter_bin] = cmapply('USER:MEAN', J[*,*,*,istart:iend], 4)
+            Js[*,icenter_bin,*,*] = cmapply('USER:MEAN', J[*,istart:iend,*,*], 2)
             if keep_kdotb_angle then k_dot_b[*,icenter_bin] = cmapply('USER:MEAN', k_dot_b[*,istart:iend], 2)
-            if keep_khat        then k_hat[*,*,icenter_bin] = cmapply('USER:MEAN', k_hat[*,*,istart:iend], 3)
+            if keep_khat        then k_hat[*,icenter_bin,*] = cmapply('USER:MEAN', k_hat[*,istart:iend,*], 2)
         endelse
     endfor
     undefine, J
@@ -740,13 +749,13 @@ _REF_EXTRA = extra
 ;VI. What to Keep? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     ;Keep the spectral matrix?
-    if keep_spectral_matrix then spectral_matrix = J_prime[*,*,*,if_keep]
+    if keep_spectral_matrix then spectral_matrix = J_prime[*,if_keep,*,*]
     undefine, J_prime
 
     ;Keep k_hat?
     if keep_khat eq 0 $
         then undefine, k_hat $
-        else k_hat = k_hat[*,*,if_keep]
+        else k_hat = k_hat[*,if_keep,*]
     
     ;Keep the angle between k_hat and B?
     if keep_kdotb_angle then kdotb_angle = acos(k_dot_b[*,if_keep])
@@ -768,7 +777,7 @@ _REF_EXTRA = extra
 
     ;Js must be reformed to a [3,3,npts*nfreqs] array in order for IPOL and ILIN to index
     ;properly. They are 1D indieces into a 2D array.
-    Js = reform(Js, 3, 3, npts*nfreqs)
+    Js = reform(Js, npts*nfreqs, 3, 3)
 
     ;For a wave traveling along the z-axis with perturbations in the xy-plane,
     ;   Hx = A cos(theta) + i A sin(theta)
@@ -785,16 +794,16 @@ _REF_EXTRA = extra
     ;
     ;Because of this, we set the imaginary component explicitly to zero. Without doing so,
     ;floating point underflow errors occur in the calculation of det(Js).
-    Js[0,0,*] = complex(real_part(Js[0,0,*]))
-    Js[1,1,*] = complex(real_part(Js[1,1,*]))
+    Js[*,0,0] = complex(real_part(Js[*,0,0]))
+    Js[*,1,1] = complex(real_part(Js[*,1,1]))
 
     ;A) Degree of Polarization
     ;   |J| = (Jxx * Jyy) - (Jxy * Jyx)
     ; => plrz = { 1 - [ (4*|J|) / (Jxx + Jyy)^2 ] }^(1/2)
-    det_Js = real_part(reform(Js[0,0,*]*Js[1,1,*] - Js[1,0,*]*Js[0,1,*]))
+    det_Js = real_part(Js[*,0,0]*Js[*,1,1] - Js[*,1,0]*Js[*,0,1])
     
     ;Save the polarization
-    if nPol gt 0 then pzation[iPol] = sqrt( 1 - ((4*det_Js[iPol]) / real_part(reform(Js[0,0,iPol] + Js[1,1,iPol]))^2) )
+    if nPol gt 0 then pzation[iPol] = sqrt( 1 - ((4*det_Js[iPol]) / real_part(Js[iPol,0,0] + Js[iPol,1,1])^2) )
     if nLin gt 0 then pzation[iLin] = !values.f_nan
     pzation = reform(pzation, npts, nfreqs)
     pzation = pzation[*, if_keep]
@@ -803,8 +812,8 @@ _REF_EXTRA = extra
     if keep_coherency then begin
         ;C = |Jxy| / sqrt( Jxx*Jyy )
         ;  = sqrt( Jxy*Jxy / (Jxx*Jyy) )
-        if nPol gt 0 then coherency[ipol] = reform( sqrt( real_part(Js[0,1,iPol]*Js[1,0,iPol]) / $
-                                                          real_part(Js[0,0,iPol]*Js[1,1,iPol]) ) )
+        if nPol gt 0 then coherency[ipol] = sqrt( real_part(Js[iPol,0,1]*Js[iPol,1,0]) / $
+                                                  real_part(Js[iPol,0,0]*Js[iPol,1,1]) )
         if nLin gt 0 then coherency[iLin] = !values.f_nan
         coherency = reform(coherency, npts, nfreqs)
         coherency = coherency[*, if_keep]
@@ -817,8 +826,8 @@ _REF_EXTRA = extra
         ;tan(2*Theta') = 2*Re[Jxx] / (Jxx - Jyy)
         ; => Theta' = 0.5 * atan( 2*Re[Jxx] / (Jxx - Jyy) )
         if nPol gt 0 then begin
-            tan2Theta = 2*reform( real_part(Js[0,0,iPol]) / $
-                                  real_part(Js[0,0,iPol] - Js[1,1,iPol]) )
+            tan2Theta = 2*real_part(Js[iPol,0,0]) / $
+                        real_part(Js[iPol,0,0] - Js[iPol,1,1])
             polarization_angle[iPol] = 0.5 * atan(tan2Theta)
         endif
 
@@ -836,8 +845,8 @@ _REF_EXTRA = extra
         ;  =>   e = tan(0.5 * asin[sin(2B)])
         ;Note that sin(2B) < 0 for clockwise rotation of the vector.
         if nPol gt 0 then begin
-            sin2B = 2.0*imaginary(reform(Js[1,0,iPol])) / $
-                    sqrt( real_part(reform(Js[0,0,iPol] + Js[1,1,iPol]))^2 - 4.0*det_Js[iPol] )
+            sin2B = 2.0*imaginary(Js[iPol,1,0]) / $
+                    sqrt( real_part(Js[iPol,0,0] + Js[iPol,1,1])^2 - 4.0*det_Js[iPol] )
             
             ;Occasionally, numerical error produces |sin2B| > 1 by less than 1e-7.
             ;Check and set them explicitly to +/- 1. Otherwise, produces error:
@@ -865,17 +874,17 @@ _REF_EXTRA = extra
         ;I = Jxx + Jyy
         ;   Because the diagonal terms are purely real (within ~1e-8), I explicitly take
         ;   the real part to prevent INTENSITY from being converted to a complex array.
-        intensity = real_part(reform(Js[0,0,*] + Js[1,1,*], npts, nfreqs))
+        intensity = real_part(reform(Js[*,0,0] + Js[*,1,1], npts, nfreqs))
         intensity = intensity[*, if_keep]
     endif
     
     ;Power Spectral Matrix in the Wave Normal Frame.
     if keep_wave_normal then begin
 ;        wave_normal_matrix = reform(Js[0:1,0:1,*], 2, 2, npts, nfreqs)
-        wave_normal_matrix = reform(Js, 3, 3, npts, nfreqs)
-        wave_normal_matrix = wave_normal_matrix[*, *, *, if_keep]
+        wave_normal_matrix = reform(Js, npts, nfreqs, 3, 3)
+        wave_normal_matrix = wave_normal_matrix[*, if_keep, *, *]
     endif
-                
+
 ;-----------------------------------------------------
 ;VIII. Return the Polarization \\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -889,7 +898,7 @@ end
 ;-----------------------------------------------------
 ;magfile   = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
 ;data      = MrCDF_Read(magfile, 'Mag')
-acefile   = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-270_V2.DAT'
+acefile   = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-256_V2.DAT'
 data      = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
 nfft      = 4096
 ;dt        = 1.0 / 64.0
@@ -902,6 +911,9 @@ nfas      = 512
 ndetrend  = nfas
 ylog      = 1
 window    = 1
+
+;Replace the fill value with NaNs
+data = replace_fillval(data, -999.9)
 
 ;Calculate the polarization
 ;if n_elements(pzation) eq 0 then $
@@ -926,17 +938,17 @@ title = string(FORMAT='(%"ACE %s-%s")', date[1], doy[1])
 data   = replace_fillval(data, -999.9)
 b_mag  = sqrt(total(data^2, 1))
 b_data = [transpose(temporary(b_mag)), (temporary(data))[1,*]]
-Bplot = MrPlot(temporary(t_ssm), temporary(b_data), $
-               /CURRENT, $
-               DIMENSION   = 2, $
-               COLOR       = ['black', 'blue'], $
-               NAME        = 'B', $
-               TITLE       = title, $
-               XRANGE      = [0, 86400.0], $
-               XTICKV      = [0, 6, 12, 18, 24]*3600D, $
-               XTICKFORMAT = '(a1)', $
-               XTICKS      = 4, $
-               YTITLE      = 'B (nT)')
+Bplot  = MrPlot(temporary(t_ssm), temporary(b_data), $
+                /CURRENT, $
+                DIMENSION   = 2, $
+                COLOR       = ['black', 'blue'], $
+                NAME        = 'B', $
+                TITLE       = title, $
+                XRANGE      = [0, 86400.0], $
+                XTICKV      = [0, 6, 12, 18, 24]*3600D, $
+                XTICKFORMAT = '(a1)', $
+                XTICKS      = 4, $
+                YTITLE      = 'B (nT)')
                 
 !Null = MrLegend(ALIGNMENT     = 'NW', $
                  /RELATIVE, $
@@ -951,8 +963,9 @@ Bplot = MrPlot(temporary(t_ssm), temporary(b_data), $
 
 ;Intensity
 intIm = MrImage(MrLog(temporary(intensity)), t, f, /CURRENT, $
-                /AXES, $
+                /AXES, /NAN, $
                 CTINDEX=13, $
+                MISSING_COLOR = 'Antique White', $
                 NAME='Intensity', $
                 XRANGE      = [0, 86400.0], $
                 XTICKV=[0, 6, 12, 18, 24]*3600D, $
@@ -969,8 +982,9 @@ intIm = MrImage(MrLog(temporary(intensity)), t, f, /CURRENT, $
 
 ;Ellipticity
 ellIm = MrImage(temporary(ellipticity), t, f, /CURRENT, $
-                /AXES, $
+                /AXES, /NAN, $
                 PALETTE=pal, $
+                MISSING_COLOR = 'Antique White', $
                 NAME='Ellipticity', $
                 RANGE=[-1,1], $
                 XRANGE=[0, 86400.0], $
@@ -988,8 +1002,9 @@ ellIm = MrImage(temporary(ellipticity), t, f, /CURRENT, $
 
 ;% Polarization
 polWin = MrImage(temporary(pzation), t, f, /CURRENT, $
-                 /AXES, $
+                 /AXES, /NAN, $
                  CTINDEX=0, $
+                 MISSING_COLOR = 'Antique White', $
                  NAME='Polarization', $
                  RANGE=[0,1], $
                  XRANGE=[0, 86400.0], $
@@ -1007,8 +1022,9 @@ polWin = MrImage(temporary(pzation), t, f, /CURRENT, $
 
 ;Polarization Angle
 angWin = MrImage(acos(temporary(pz_angle))*!RaDeg, t, f, /CURRENT, $
-                 /AXES, $
+                 /AXES, /NAN, $
                  CTINDEX=0, $
+                 MISSING_COLOR = 'Antique White', $
                  NAME='Angle', $
                  RANGE=[0,180], $
                  XRANGE=[0, 86400.0], $
@@ -1027,8 +1043,9 @@ angWin = MrImage(acos(temporary(pz_angle))*!RaDeg, t, f, /CURRENT, $
 
 ;Coherency
 angWin = MrImage(temporary(coherency), temporary(t), temporary(f), /CURRENT, $
-                 /AXES, $
+                 /AXES, /NAN, $
                  CTINDEX=0, $
+                 MISSING_COLOR = 'Antique White', $
                  NAME='Coherency', $
                  RANGE=[0,1], $
                  XRANGE=[0, 86400.0], $

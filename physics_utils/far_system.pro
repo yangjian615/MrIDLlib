@@ -38,6 +38,9 @@
 ;                           If `ISMEAN`=0, then this is a named variable into which the
 ;                               mean, background magnetic field of each component will be
 ;                               calculated and returned.
+;       _REF_EXTRA:         in, optional, type=any
+;                           Any keyword accepted by the Smooth() function is also accepted
+;                               via keyword inheritance.
 ;                               
 ;                           
 ; :Returns:
@@ -65,10 +68,12 @@
 ;   Modification History::
 ;       04/25/2013  -   Written by Matthew Argall
 ;       06/13/2013  -   Renamed to FAR_SYSTEM.PRO. - MRA
+;       2015/01/21  -   Added the _REF_EXTRA keyword. - MRA
 ;-
 function far_system, b_field, position, navg, $
 B_AVG = b_avg, $
-ISMEAN = isMean
+ISMEAN = isMean, $
+_REF_EXTRA = extra
     compile_opt idl2
 
 ;-----------------------------------------------------
@@ -90,9 +95,9 @@ ISMEAN = isMean
     if n_elements(isMean) eq 0 then begin
         b_avg = fltarr(bdims)
     
-        b_avg[0,*] = smooth(b_field[0,*], navg, /EDGE_TRUNCATE)
-        b_avg[1,*] = smooth(b_field[1,*], navg, /EDGE_TRUNCATE)
-        b_avg[2,*] = smooth(b_field[2,*], navg, /EDGE_TRUNCATE)
+        b_avg[0,*] = smooth(b_field[0,*], navg, /EDGE_TRUNCATE, _STRICT_EXTRA=extra)
+        b_avg[1,*] = smooth(b_field[1,*], navg, /EDGE_TRUNCATE, _STRICT_EXTRA=extra)
+        b_avg[2,*] = smooth(b_field[2,*], navg, /EDGE_TRUNCATE, _STRICT_EXTRA=extra)
         
     endif else b_avg = b_field
 

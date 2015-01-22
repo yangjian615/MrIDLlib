@@ -31,6 +31,9 @@
 ;                           rows as `A`. 
 ;
 ; :Keywords:
+;       QUIET:          in, optional, type=boolean, default=0
+;                       If set, math error reporting will be suppressed (e.g. divide by
+;                           zero, over/underflow errors, etc.).
 ;
 ; :Returns:
 ;       A_DIVIDEDBY_B:  The result of dividing the columns of A by (the columns of) B.
@@ -48,57 +51,91 @@
 ;
 ;       01/31/2012  -   Written by Matthew Argall
 ;       02/13/2013  -   Added cases for 3xM - MRA
+;       2015/01/20  -   Improved logic. Added more cases. - MRA
+;       2015/01/21  -   Added the QUIET keyword. Capture errors if !Except = 1 - MRA
 ;-
-function divide_vec, A, B
+function divide_vec, A, B, $
+QUIET=quiet
     compile_opt idl2
     on_error, 2
 
-	sz_A = size(A)
-	sz_B = size(B)
-	
-	n_A = sz_A[sz_A[0]+2]
-	n_B = sz_B[sz_B[0]+2]	
-	
-	;1. if A and B are 1D and have the same number of elements, then divide A by B
-	if sz_A[0] eq 1 && sz_B[0] eq 1 and n_A eq n_B then begin
-		A_dividedby_B = A / B
+    ;Suppress divide by zeros?
+    ;   - !Except = 2 will report error immediately then clears the math exceptions list.
+    ;   - !Except = 1 will hold errors until the end of the program, so we can capture them.
+    quiet    = keyword_set(quiet)
+    inExcept = !except
+    if quiet $
+        then !except = 0 $
+        else !except = !except > 1
+
+    ;Sizes of inputs
+    Andims = size(A, /N_DIMENSIONS)
+    Bndims = size(B, /N_DIMENSIONS)
+    Adims  = size(A, /DIMENSIONS)
+    Bdims  = size(B, /DIMENSIONS)
+	nA     = n_elements(A)
+	nB     = n_elements(B)
+		
+	;1. if A and B have the same dimensions (including [3xN / 3xN] and [Nx3 / Nx3])
+	if array_equal(Adims, Bdims) then begin
+	    A_over_B = A / B
 		
 	;2. if A is 3xM and B has 3 elements
-	endif else if sz_A[0] eq 3 and n_B eq 3 then begin
-	    A_dividedby_B = dblarr(sz_A[1:2])
-	    A_dividedby_B[0,*] = A[0,*] / B[0]
-	    A_dividedby_B[1,*] = A[1,*] / B[1]
-	    A_dividedby_B[2,*] = A[2,*] / B[2]
+	endif else if (Andims eq 2 and Adims[0] eq 3) and (nB eq 3) then begin
+	    A_over_B = dblarr(sz_A[1:2])
+	    A_over_B[0,*] = A[0,*] / B[0]
+	    A_over_B[1,*] = A[1,*] / B[1]
+	    A_over_B[2,*] = A[2,*] / B[2]
 		
-	;3. if A is 3xM and B has M elements
-	endif else if sz_A[0] eq 3 and sz_A[2] eq n_B then begin
-	    A_dividedby_B = dblarr(sz_A[1:2])
-	    A_dividedby_B[0,*] = A[0,*] / B
-	    A_dividedby_B[1,*] = A[1,*] / B
-	    A_dividedby_B[2,*] = A[2,*] / B
+	;3. if A is Mx3 and B has 3 elements
+	endif else if (Andims eq 2 && Adims[1] eq 3) and (nB eq 3) then begin
+	    A_over_B = dblarr(sz_A[1:2])
+	    A_over_B[0,*] = A[*,0] / B[0]
+	    A_over_B[1,*] = A[*,1] / B[1]
+	    A_over_B[2,*] = A[*,2] / B[2]
 		
-	;4. if A is 3xM and B is 3xM
-	endif else if sz_A[0] eq 3 and sz_B[3] eq 3 and n_A eq n_B then begin
-	    A_dividedby_B = dblarr(sz_A[1:2])
-	    A_dividedby_B[0,*] = A[0,*] / B[0,*]
-	    A_dividedby_B[1,*] = A[1,*] / B[1,*]
-	    A_dividedby_B[2,*] = A[2,*] / B[2,*]
+	;4. if A is 3xM and B has M elements
+	endif else if (Andims eq 2 and Adims[0] eq 3) and (Adims[1] eq nB) then begin
+	    A_over_B = dblarr(Adims)
+	    A_over_B[0,*] = A[0,*] / B
+	    A_over_B[1,*] = A[1,*] / B
+	    A_over_B[2,*] = A[2,*] / B
+
+	;5. if A is Mx3 and B has M elements
+	endif else if (Andims eq 2 and Adims[0] eq 3) and (Adims[1] eq nB) then begin
+	    A_over_B = dblarr(Adims)
+	    A_over_B[0,*] = A[*,0] / B
+	    A_over_B[1,*] = A[*,1] / B
+	    A_over_B[2,*] = A[*,2] / B
 		
-	;5. if A is NxM and B has M elements, then divide A by B
-	endif else if sz_A[2] eq n_B then begin
-		A_dividedby_B = dblarr(sz_A[1:2])
-		for i = 0, sz_A[1] - 1 do A_dividedby_B[i,*] = A[i,*] / B
+	;6. if A is NxM and B has M elements, then divide A by B
+	endif else if (Andims eq 2 and Bndims eq 1) && (Adims[1] eq nB) then begin
+		A_over_B = dblarr(Adims)
+		for i = 0, Adims[0] - 1 do A_over_B[i,*] = A[i,*] / B
 		
-	;6. if A is NxM and B is NxM then divide A by B
-	endif else if array_equal(sz_A[0:sz_A[0]], sz_B[0:sz_B[0]]) then begin
-		A_dividedby_B = dblarr(sz_A[1:2])
-		for i = 0, sz_A[1] - 1 do A_dividedby_B[i,*] = A[i,*] / B[i,*]
-		
+	;7. if A is NxM and B has N elements, then divide A by B
+	endif else if (Andims eq 2) and (Bndims eq 1) and (Adims[0] eq nB) then begin
+		A_over_B = dblarr(Adims)
+		for i = 0, Adims[1] - 1 do A_over_B[*,i] = A[*,i] / B
+				
 	endif else message, 'A and B are not compatible for dividing'
-	;there could be a problem with sz_A[2] = n_B if A is NxM and B is IxJxKx... but n_B = M
 
-	return, A_dividedby_B
+    ;Report errors?
+    if ~quiet && !except eq 1 then begin
+        mathErr = reverse(cgBitGet(check_math()))
+        if mathErr[0] then message, 'Divide by zero: Integer', /INFORMATIONAL
+        if mathErr[1] then message, 'Overflow: Integer',       /INFORMATIONAL
+        if mathErr[4] then message, 'Divide by zero: Float',   /INFORMATIONAL
+        if mathErr[5] then message, 'Underflow: Float',        /INFORMATIONAL
+        if mathErr[6] then message, 'Overflow: Float',         /INFORMATIONAL
+        if mathErr[7] then message, 'Math error: Float',       /INFORMATIONAL
+    endif
 
+    ;Clear the error list and turn reporting back on.
+    if quiet && inExcept ne 0 && !error_state.name eq 'IDL_M_MATHERROR_DETECTED' then void = check_math()
+    !except = inExcept
+
+	return, A_over_B
 end
 
 ;---------------------------------------------------

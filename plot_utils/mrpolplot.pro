@@ -77,15 +77,17 @@
 ;-
 function MrPolPlot, data, nfft, dt, nshift, $
 BACKGROUND = background, $
+COHERENCY = coherency, $
 CURRENT = current, $
 DIMENSION = dimension, $
-OUTPUT_FNAME = output_fname, $
-RANGE = range, $
-POLARIZATION = polarization, $
-INTENSITY = intensity, $
-COHERENCY = coherency, $
-KDOTB_ANGLE = kdotb_angle, $
 ELLIPTICITY = ellipticity, $
+FREQUENCIES = frequencies, $
+INTENSITY = intensity, $
+KDOTB_ANGLE = kdotb_angle, $
+OUTPUT_FNAME = output_fname, $
+POLARIZATION = polarization, $
+RANGE = range, $
+TIME = time, $
 YLOG = ylog, $
 _REF_EXTRA = extra
     compile_opt idl2
@@ -362,4 +364,45 @@ _REF_EXTRA = extra
         obj_destroy, polWin
         return, obj_new()
     endelse
+end
+
+
+
+;magfile   = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
+;data      = MrCDF_Read(magfile, 'Mag')
+acefile   = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-270_V2.DAT'
+data      = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
+nfft      = 4096
+;dt        = 1.0 / 64.0
+dt        = 0.333
+dimension = 2
+nshift    = nfft / 2
+fmin      = df_fft(nfft, dt)
+fmax      = 7.0
+nfas      = 512
+ndetrend  = nfas
+ylog      = 1
+window    = 1
+
+;Calculate the polarization
+win = MrPolPlot(data, nfft, dt, nshift, $
+                FMIN=fmin, FMAX=fmax, FREQUENCIES=f, TIME=t, T0=t_ssm[0], $
+                DIMENSION=dimension, NFAS=nFAS, NDETREND=nDetrend, WINDOW=window)
+
+;Create a title
+date  = stregex(acefile, '_([12][90][0-9]{2})', /SUBEXP, /EXTRACT)
+doy   = stregex(acefile, '-([0-3][0-9][0-9])', /SUBEXP, /EXTRACT)
+title = string(FORMAT='(%"ACE %s-%s")', date[1], doy[1])
+
+;Make pretty
+win -> Refresh, /DISABLE
+win -> SetProperty, XGAP=0, YGAP=0.5
+win -> SetGlobal, XRANGE=[0.0, 86400.0D], XTICKS=4
+win['Intensity']    -> SetProperty, XTICKFORMAT='(a1)', XTITLE='', TITLE=title
+win['Polarization'] -> SetProperty, XTICKFORMAT='(a1)', XTITLE='', TITLE=''
+win['Ellipticity']  -> SetProperty, XTICKFORMAT='(a1)', XTITLE='', TITLE=''
+win['k dot B']      -> SetProperty, XTICKFORMAT='(a1)', XTITLE='', TITLE=''
+win['Coherency']    -> SetProperty, XTICKFORMAT='time_labels', XTITLE='', TITLE=''
+win -> Refresh
+
 end

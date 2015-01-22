@@ -75,36 +75,69 @@ TRANS = trans
     compile_opt idl2
     on_error, 2
     
-    A_type = size(A, /TYPE)
-    A_dims = size(A, /DIMENSIONS)
-    A_ndims = size(A, /N_DIMENSIONS)
+    dimsA  = size(A, /DIMENSIONS)
+    dimsR  = size(R, /DIMENSIONS)
+    ndimsA = size(A, /N_DIMENSIONS)
+    ndimsB = size(B, /N_DIMENSIONS)
+    typeA  = size(A, /TYPE)
 
-    RA = make_array(A_dims, TYPE=A_type)
+    RA = make_array(dimsA, TYPE=typeA)
     
-    ;Fill the First Row                                                     ;R_[row,col] * A_[row,col]
-    RA[0,0,*] = R[0,0,*]*A[0,0,*] + R[1,0,*]*A[0,1,*] + R[2,0,*]*A[0,2,*]   ;Rxx*Axx + Rxy*Ayx + Rzx*Azx
-    RA[0,1,*] = R[0,1,*]*A[0,0,*] + R[1,1,*]*A[0,1,*] + R[2,1,*]*A[0,2,*]   ;Ryx*Axx + Ryy*Ayx + Ryz*Azx
-    RA[0,2,*] = R[0,2,*]*A[0,0,*] + R[1,2,*]*A[0,1,*] + R[2,2,*]*A[0,2,*]   ;Rzx*Axx + Rzy*Ayx + Rzz*Azx 
+    ;3x3xN and 3x3xN
+    if array_equal(dimsR[0:1], [3,3]) && array_equal(dimsA[0:1], [3,3]) then begin
+        ;Fill the First Row                                                     ;R_[row,col] * A_[row,col]
+        RA[0,0,*] = R[0,0,*]*A[0,0,*] + R[1,0,*]*A[0,1,*] + R[2,0,*]*A[0,2,*]   ;Rxx*Axx + Rxy*Ayx + Rzx*Azx
+        RA[0,1,*] = R[0,1,*]*A[0,0,*] + R[1,1,*]*A[0,1,*] + R[2,1,*]*A[0,2,*]   ;Ryx*Axx + Ryy*Ayx + Ryz*Azx
+        RA[0,2,*] = R[0,2,*]*A[0,0,*] + R[1,2,*]*A[0,1,*] + R[2,2,*]*A[0,2,*]   ;Rzx*Axx + Rzy*Ayx + Rzz*Azx 
     
-    ;Fill the Second Row
-    RA[1,0,*] = R[0,0,*]*A[1,0,*] + R[1,0,*]*A[1,1,*] + R[2,0,*]*A[1,2,*]   ;Rxx*Axy + Rxy*Ayy + Rxz*Azy
-    RA[1,1,*] = R[0,1,*]*A[1,0,*] + R[1,1,*]*A[1,1,*] + R[2,1,*]*A[1,2,*]   ;Ryx*Axy + Ryy*Ayy + Ryz*Azy
-    RA[1,2,*] = R[0,2,*]*A[1,0,*] + R[1,2,*]*A[1,1,*] + R[2,2,*]*A[1,2,*]   ;Rzx*Axy + Rzy*Ayy + Rzz*Azy
+        ;Fill the Second Row
+        RA[1,0,*] = R[0,0,*]*A[1,0,*] + R[1,0,*]*A[1,1,*] + R[2,0,*]*A[1,2,*]   ;Rxx*Axy + Rxy*Ayy + Rxz*Azy
+        RA[1,1,*] = R[0,1,*]*A[1,0,*] + R[1,1,*]*A[1,1,*] + R[2,1,*]*A[1,2,*]   ;Ryx*Axy + Ryy*Ayy + Ryz*Azy
+        RA[1,2,*] = R[0,2,*]*A[1,0,*] + R[1,2,*]*A[1,1,*] + R[2,2,*]*A[1,2,*]   ;Rzx*Axy + Rzy*Ayy + Rzz*Azy
     
-    ;Fill the Third Row
-    RA[2,0,*] = R[0,0,*]*A[2,0,*] + R[1,0,*]*A[2,1,*] + R[2,0,*]*A[2,2,*]   ;Rxx*Axz + Rxy*Ayz + Rxz*Azz
-    RA[2,1,*] = R[0,1,*]*A[2,0,*] + R[1,1,*]*A[2,1,*] + R[2,1,*]*A[2,2,*]   ;Ryx*Axz + Ryy*Ayz + Ryz*Azz
-    RA[2,2,*] = R[0,2,*]*A[2,0,*] + R[1,2,*]*A[2,1,*] + R[2,2,*]*A[2,2,*]   ;Rzx*Axz + Rzy*Ayz + Rzz*Azz
+        ;Fill the Third Row
+        RA[2,0,*] = R[0,0,*]*A[2,0,*] + R[1,0,*]*A[2,1,*] + R[2,0,*]*A[2,2,*]   ;Rxx*Axz + Rxy*Ayz + Rxz*Azz
+        RA[2,1,*] = R[0,1,*]*A[2,0,*] + R[1,1,*]*A[2,1,*] + R[2,1,*]*A[2,2,*]   ;Ryx*Axz + Ryy*Ayz + Ryz*Azz
+        RA[2,2,*] = R[0,2,*]*A[2,0,*] + R[1,2,*]*A[2,1,*] + R[2,2,*]*A[2,2,*]   ;Rzx*Axz + Rzy*Ayz + Rzz*Azz
 
-    ;Now compute the other half of the rotation.
-    if keyword_set(trans) eq 0 then begin
-        case A_ndims of
-            2: A_prime = rotate_matrix(RA, transpose(R, [1,0]), /TRANS)
-            3: A_prime = rotate_matrix(RA, transpose(R, [1,0,2]), /TRANS)
-            else: message, 'A must be a 3x3xN matrix.'
-        endcase
+        ;Now compute the other half of the rotation.
+        if keyword_set(trans) eq 0 then begin
+            case ndimsA of
+                2: A_prime = rotate_matrix(RA, transpose(R, [1,0]), /TRANS)
+                3: A_prime = rotate_matrix(RA, transpose(R, [1,0,2]), /TRANS)
+                else: message, 'A must be a 3x3xN matrix.'
+            endcase
+        endif else return, RA
+        
+    ;Nx3x3 and Nx3x3
+    endif else if array_equal(dimsR[1:2], [3,3]) && array_equal(dimsA[1:2], [3,3]) then begin
+        ;Fill the First Row                                                     ;R_[row,col] * A_[row,col]
+        RA[*,0,0] = R[*,0,0]*A[*,0,0] + R[*,1,0]*A[*,0,1] + R[*,2,0]*A[*,0,2]   ;Rxx*Axx + Rxy*Ayx + Rzx*Azx
+        RA[*,0,1] = R[*,0,1]*A[*,0,0] + R[*,1,1]*A[*,0,1] + R[*,2,1]*A[*,0,2]   ;Ryx*Axx + Ryy*Ayx + Ryz*Azx
+        RA[*,0,2] = R[*,0,2]*A[*,0,0] + R[*,1,2]*A[*,0,1] + R[*,2,2]*A[*,0,2]   ;Rzx*Axx + Rzy*Ayx + Rzz*Azx 
     
-    endif else return, RA
+        ;Fill the Second Row
+        RA[*,1,0] = R[*,0,0]*A[*,1,0] + R[*,1,0]*A[*,1,1] + R[*,2,0]*A[*,1,2]   ;Rxx*Axy + Rxy*Ayy + Rxz*Azy
+        RA[*,1,1] = R[*,0,1]*A[*,1,0] + R[*,1,1]*A[*,1,1] + R[*,2,1]*A[*,1,2]   ;Ryx*Axy + Ryy*Ayy + Ryz*Azy
+        RA[*,1,2] = R[*,0,2]*A[*,1,0] + R[*,1,2]*A[*,1,1] + R[*,2,2]*A[*,1,2]   ;Rzx*Axy + Rzy*Ayy + Rzz*Azy
+    
+        ;Fill the Third Row
+        RA[*,2,0] = R[*,0,0]*A[*,2,0] + R[*,1,0]*A[*,2,1] + R[*,2,0]*A[*,2,2]   ;Rxx*Axz + Rxy*Ayz + Rxz*Azz
+        RA[*,2,1] = R[*,0,1]*A[*,2,0] + R[*,1,1]*A[*,2,1] + R[*,2,1]*A[*,2,2]   ;Ryx*Axz + Ryy*Ayz + Ryz*Azz
+        RA[*,2,2] = R[*,0,2]*A[*,2,0] + R[*,1,2]*A[*,2,1] + R[*,2,2]*A[*,2,2]   ;Rzx*Axz + Rzy*Ayz + Rzz*Azz
+
+        ;Now compute the other half of the rotation.
+        if keyword_set(trans) eq 0 then begin
+            case ndimsA of
+                2: A_prime = rotate_matrix(RA, transpose(R, [1,0]), /TRANS)
+                3: A_prime = rotate_matrix(RA, transpose(R, [0,2,1]), /TRANS)
+                else: message, 'A must be a Nx3x3 matrix.'
+            endcase
+        endif else return, RA
+    
+    endif else begin
+        message, 'R cannot be used to rotate A.'
+    endelse
 
     return, A_prime
 end

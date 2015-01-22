@@ -269,16 +269,16 @@ WINDOW = window
 
     if keyword_set(verbose) then begin
         print, FORMAT='(%"data size     = [%i,%i]")', dims
-        print, FORMAT='(%"dimension     = %i")', dimension
-        print, FORMAT='(%"sample period = %f s")', dt
-        print, FORMAT='(%"sample rate   = %f Hz")', 1.0 / dt
-        print, FORMAT='(%"sample intrvl = %f s")', nfft*dt
-        print, FORMAT='(%"df            = %f Hz")', df
-        print, FORMAT='(%"f_min         = %f Hz")', fmin
-        print, FORMAT='(%"f_max         = %f Hz")', fmax
-        print, FORMAT='(%"NFFT          = %i")', nfft
-        print, FORMAT='(%"NSHIFT        = %i")', nshift
-        print, FORMAT='(%"t_shift       = %i s")', nshift*dt
+        print, FORMAT='(%"dimension     = %i")',      dimension
+        print, FORMAT='(%"sample period = %f s")',    dt
+        print, FORMAT='(%"sample rate   = %f Hz")',   1.0 / dt
+        print, FORMAT='(%"sample intrvl = %f s")',    nfft*dt
+        print, FORMAT='(%"df            = %f Hz")',   df
+        print, FORMAT='(%"f_min         = %f Hz")',   fmin
+        print, FORMAT='(%"f_max         = %f Hz")',   fmax
+        print, FORMAT='(%"NFFT          = %i")',      nfft
+        print, FORMAT='(%"NSHIFT        = %i")',      nshift
+        print, FORMAT='(%"t_shift       = %i s")',    nshift*dt
     endif
 
 ;-----------------------------------------------------
@@ -357,7 +357,7 @@ WINDOW = window
     ;Allocate memory to the output array. It will have an extra dimension. Arrange
     ;dimensions as (time, frequency[, component])
     ndims = size(data_temp, /N_DIMENSIONS)
-    dims = size(data_temp, /DIMENSIONS)
+    dims  = size(data_temp, /DIMENSIONS)
 
     if ndims eq 1 $
         then fft_data = make_array(n_intervals, nfreqs, TYPE=out_type) $

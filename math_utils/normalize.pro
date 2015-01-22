@@ -42,21 +42,22 @@ function normalize, A
     compile_opt idl2
     on_error, 2
 
-	sz = size(A)
-	n_A = sz[sz[0]+2]
+	dims  = size(A, /DIMENSIONS)
+	ndims = size(A, /N_DIMENSIONS)
+	nA    = n_elements(A)
 	
 	;normalize A
-	if n_A eq 3 then begin
+	if nA eq 3 then begin
 		N = A / sqrt(dot_product(A, A))
 		
 	;normalize each vector in A
-	endif else if sz[0] eq 2 and sz[1] eq 3 then begin
-		N = dblarr(sz[1:2])
+	endif else if (ndims eq 2) && (dims[1] eq 3 or dims[0] eq 3) then begin
+		N     = dblarr(ndims)
 		A_mag = sqrt(dot_product(A, A))
-		N = divide_vec(A, A_mag)
+		N     = divide_vec(A, A_mag)
 		
 	;A must be a 3 element vector or a 3xN array
-	endif else message, 'A must be a 3 element vector or [3,N] array'
+	endif else message, 'A must be a 3 element vector or [3,N] or [N,3] array'
 	
 	;return the normal of A
 	return, N
