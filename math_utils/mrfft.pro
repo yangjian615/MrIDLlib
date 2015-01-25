@@ -74,6 +74,10 @@
 ;                               [MrFFT(Array[0,*]), MrFFT(Array[1,*]), MrFFT(Array[2,*])].
 ;       DOUBLE:             in, optional, type=boolean, default=0
 ;                           Force computation to be done in double precision.
+;       FILLVAL:            in, optional, type=same as `DATA`
+;                           A value that represents bad points within `DATA`. They will
+;                               be converted to NaNs before the FFT is performed, unless
+;                               the `INTERP_PCT` keyword is used.
 ;       FMIN:               in, optional, type=float, default=0.0
 ;                           The minimum positive frequency to be kept. If LOGRANGE is set,
 ;                               this is the minimum power of 10 (not the DC component).
@@ -82,8 +86,11 @@
 ;                               this is alog10(FNYQUIST).
 ;       FREQUENCIES:        out, type=fltarr(NFFT)
 ;                           The frequency bins of the FFT
-;       INVERSE:            in, optional, type=Boolean, default=1
-;                           Perform an inverse (backward) Fourier transform.
+;       INTERP_PCT:         in, optional, type=float, default=0.0
+;                           The maximum percentage of `FILLVAL` allowed in an FFT of size
+;                               `NPTS`. Below this percent, instances of the fill value
+;                               will be interpolated over. Above this percent, fill values
+;                               are converted to NaNs.
 ;       LINRANGE:           in, optional, type=Int, default=0
 ;                           Indicate that the frequency range it to be reduced to
 ;                               LINRANGE number of linearly spaced frequencies between
@@ -164,16 +171,19 @@
 ;                           in the list of keywords. - MRA
 ;       09/23/2013  -   Error when DIMENSION is a 1-element array. Fixed. - MRA
 ;       10/04/2013  -   Added the T0 keyword. - MRA
+;       2015/01/25  -   Added the INTERP_PCT and FILLVAL keywords. Removed the INVERSE
+;                           keyword. - MRA
 ;-
 function MrFFT, data, nfft, dt, nshift, $
 ALPHA = alpha, $
 CENTER = center, $
 DIMENSION = dimension, $
 DOUBLE = double, $
-FREQUENCIES = frequencies, $
+FILLVAL = fillval, $
 FMIN = fmin, $
 FMAX = fmax, $
-INVERSE = inverse, $
+FREQUENCIES = frequencies, $
+INTERP_PCT = interp_pct, $
 LOGRANGE = logrange, $
 LINRANGE = linrange, $
 NWINDOW = nwindow, $
@@ -184,28 +194,28 @@ VERBOSE = verbose, $
 VVERBOSE = vverbose, $
 WINDOW = window
     compile_opt idl2
+    on_error, 2
 
-    data_sz = size(data, /STRUCTURE)
+    dims  = size(data, /DIMENSIONS)
+    nDims = size(data, /N_DIMENSIONS)
+    void  = max(dims, iMaxDim)
 
     ;Only accept 1D or 2D data.
-    if data_sz.n_dimensions gt 2 then message, 'Only 1D or 2D time series data is allowed.'
+    if nDims gt 2 then message, 'Only 1D or 2D time series data is allowed.'
 
     ;Default to taking the FFT along the longest dimension.
-    if n_elements(dimension) eq 0 then $
-        dimension = (where(data_sz.dimensions eq max(data_sz.dimensions)))[0] + 1
-
-    ;Have not implemented the inverse transform yet.    
-    if keyword_set(inverse) then $
-        message, 'INVERSE option not implemented yet.'
+    if n_elements(dimension) eq 0 then dimension = iMaxDim + 1
+    npts = dims[dimension-1]
 
     ;Create defaults.
     vverbose = keyword_set(vverbose)
-    if n_elements(nfft)    eq 0 then nfft    = data_sz.dimensions[dimension-1]
-    if n_elements(dt)      eq 0 then dt      = 1.0
-    if n_elements(nshift)  eq 0 then nshift  = floor(nfft/2)
-    if n_elements(tcenter) eq 0 then tcenter = 1
-    if n_elements(window)  eq 0 then window  = 0
-    npts = data_sz.dimensions[dimension-1]
+    verbose  = keyword_set(verbose) || vverbose
+    check_fillval = n_elements(fillval) gt 0
+    if n_elements(interp_pct) eq 0 then interp_pct = 100.0
+    if n_elements(nfft)       eq 0 then nfft       = npts
+    if n_elements(dt)         eq 0 then dt         = 1.0
+    if n_elements(nshift)     eq 0 then nshift     = floor(nfft/2)
+    if n_elements(tcenter)    eq 0 then tcenter    = 1
 
     ;Make sure dt >= 0
     if dt le 0 then begin
@@ -221,11 +231,8 @@ WINDOW = window
     endif
     
     ;Keep array type the same.
-    if n_elements(double) eq 0 then $
-        if MrIsA(data, 'DOUBLE') then double = 1 else double = 0
-    
-    ;Set the output type
-    if keyword_set(double) then out_type = 9 else out_type = 6
+    double = n_elements(double) eq 0 ? MrIsA(data, 'DOUBLE') : keyword_set(double)
+    if double then out_type = 9 else out_type = 6
     
     ;Time stamp at the center of the packet or at the beginning?
     if n_elements(t0) eq 0  then t0        = 0.0
@@ -233,13 +240,14 @@ WINDOW = window
     if keyword_set(tcenter) then ct        = 0.5 else ct        = 0.0
     
     ;Check how to window the data. Default to a "Hanning" window.
-    if keyword_set(window) then begin
+    window = keyword_set(window)
+    if window then begin
         if n_elements(nwin1) eq 0 then nwin1 = nfft
         if n_elements(alpha) eq 0 then alpha = 0.5
     endif
 
 ;-----------------------------------------------------
-;FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     ;get the sampling frequency at which the data was recorded, the frequency spacing,
     ;the number of FFT intervals and an array of the frequency bins.
@@ -261,13 +269,13 @@ WINDOW = window
             else fmax = alog10(frequencies[iNyquist])
 
 ;-----------------------------------------------------
-;Print FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Print FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if data_sz.n_dimensions eq 1 $
-        then dims = [data_sz.dimensions[0], 1] $
-        else dims = data_sz.dimensions
+    if nDims eq 1 $
+        then dims = [dims, 1] $
+        else dims = dims
 
-    if keyword_set(verbose) then begin
+    if verbose then begin
         print, FORMAT='(%"data size     = [%i,%i]")', dims
         print, FORMAT='(%"dimension     = %i")',      dimension
         print, FORMAT='(%"sample period = %f s")',    dt
@@ -282,7 +290,7 @@ WINDOW = window
     endif
 
 ;-----------------------------------------------------
-;Frequency Range \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Frequency Range \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 
     ;Will we need to interpolate to match the desired frequencies? This will be
@@ -342,7 +350,7 @@ WINDOW = window
     endelse
 
 ;-----------------------------------------------------
-;Allocate Memory \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Allocate Memory \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     ;IDL ignores empty dimensions when the "*" operator is used, so indexing ARRAY[i,*]
     ;is the same for 1D and 2D arrays. Therefore, put the dimension over which we are
@@ -353,6 +361,7 @@ WINDOW = window
         2: data_temp = transpose(temporary(data))
         else: message, 'DIMENSION is out of range.'
     endcase
+    if double then data_temp = double(temporary(data_temp))
     
     ;Allocate memory to the output array. It will have an extra dimension. Arrange
     ;dimensions as (time, frequency[, component])
@@ -367,11 +376,11 @@ WINDOW = window
     if keep_time then time = fltarr(n_intervals)
  
 ;-----------------------------------------------------
-;Take the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Take the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 
     ;Create the window
-    if keyword_set(window) then begin
+    if window then begin
         theWindow = hanning(nwin1, ALPHA=alpha)
         if ndims eq 2 then theWindow = rebin(theWindow, [nwin1, dims[1]])
     endif
@@ -386,17 +395,38 @@ WINDOW = window
                    (float(i)+1)/float(n_intervals)*100, i+1, n_intervals
         
     ;-----------------------------------------------------
-    ;Calculate the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+    ; Handle Fill Values \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+    ;-----------------------------------------------------
+        ;Replace a fill value?
+        fill_data = data_temp[sindex:eindex, *]
+        if check_fillval then begin
+            ;Find the fill values
+            if finite(fillval) $
+                then iFill = where(fill_data eq fillval, nFill) $
+                else iFill = where(finite(fill_data) eq 0, nFill)
+            pct_fill = float(nFill) / float(nfft*dims[1]) * 100.0
+            
+            ;Interpolate if we can.
+            if nFill gt 0 && pct_fill le interp_pct then begin
+                if vverbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
+                for j = 0, dims[1] - 1 do $
+                    fill_data[0,j] = replace_fillval(fill_data[*,j], fillval, findgen(nfft))
+            ;Replace if we must.
+            endif else if pct_fill gt 0.0 then begin
+                if verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values (> %0.1f\%)")', i+1, pct_fill, interp_pct
+                fill_data = replace_fillval(fill_data, fillval)
+            endif
+        endif
+        
+    ;-----------------------------------------------------
+    ; Calculate the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
     ;-----------------------------------------------------
         ;If the second dimension is empty, IDL will ignore it.
-        if keyword_set(window) $
-            then fft_temp = fft(theWindow * data_temp[sindex:eindex, *], $
-                                DIMENSION=1, DOUBLE=double) $
-            else fft_temp = fft(data_temp[sindex:eindex, *], $
-                                DIMENSION=1, DOUBLE=double)
+        if window then fill_data *= theWindow
+        fft_temp = fft(temporary(fill_data), DIMENSION=1, DOUBLE=double)
 
     ;-----------------------------------------------------
-    ;Pick Desired Frequencies \\\\\\\\\\\\\\\\\\\\\\\\\\\\
+    ; Pick Desired Frequencies \\\\\\\\\\\\\\\\\\\\\\\\\\\
     ;-----------------------------------------------------
         ;Do we need to interpolate?
         if tf_interp then begin
@@ -438,7 +468,7 @@ WINDOW = window
         endelse
 
     ;-----------------------------------------------------
-    ;Move to Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+    ; Move to Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
     ;-----------------------------------------------------
         ;Store the FFT such that the dimensions are arranged as (time, frequency[, component])
         ;IDL ignores the last "*" operator if FFT_DATA is only 2D. Multiply by 1/dt to
@@ -454,7 +484,7 @@ WINDOW = window
     endfor
 
 ;-----------------------------------------------------
-;Finish Up \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Finish Up \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     ;Return DATA_TEMP to DATA
     case dimension of

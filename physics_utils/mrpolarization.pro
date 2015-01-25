@@ -345,10 +345,19 @@ end
 ;       ELLIPTICITY:        out, optional, type=NxM float
 ;                           Ellipticity of the wave in the wave-normal frame. Counter-
 ;                               clockwise if arg(Jxy) > 0.
+;       FILLVAL:            in, optional, type=same as `DATA`
+;                           A value that represents bad points within `DATA`. They will
+;                               be converted to NaNs before the FFT is performed, unless
+;                               the `INTERP_PCT` keyword is used.
 ;       FREQUENCIES:        out, type=fltarr(NFFT)
 ;                           The frequency bins of the FFT
 ;       INTENSITY:          out, optional, type=NxM float
 ;                           Intensity of the wave in the wave-normal system.
+;       INTERP_PCT:         in, optional, type=float, default=0.0
+;                           The maximum percentage of `FILLVAL` allowed in an FFT of size
+;                               `NPTS`. Below this percent, instances of the fill value
+;                               will be interpolated over. Above this percent, fill values
+;                               are converted to NaNs.
 ;       K_VEC:              out, optional, type=3xM float
 ;                           The 3 component k-vector.
 ;       K_HAT:              out, optional, type=3xM float
@@ -410,8 +419,10 @@ function MrPolarization, data, nfft, dt, nshift, $
 COHERENCY = coherency, $
 DIMENSION = dimension, $
 ELLIPTICITY = ellipticity, $
+FILLVAL = fillval, $
 FREQUENCIES = frequencies, $
 INTENSITY = intensity, $
+INTERP_PCT = interp_pct, $
 K_HAT = k_hat, $
 K_VEC = k_vec, $
 KDOTB_ANGLE = kdotb_angle, $
@@ -475,10 +486,22 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 ;Detrend the Data \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if (nDetrend gt 0) or (nFAS gt 0) $
-        then temp_data = MrDetrendRotate(data, nDetrend, nFAS, /NAN, $
-                                         MEAN_FIELD=mean_field, DIMENSION=dimension) $
-        else temp_data = data
+    ;Must hanlde the fill value before detrending and taking the FFT
+    ;   - MrDetrendRotate will skip over NaN values when computing the background field
+    ;       x Replace the fill value with NaN
+    if n_elements(fillval) gt 0 then begin
+        temp_data  = replace_fillval(data, fillval)
+        theFillVal = !values.f_nan
+    endif else begin
+        temp_data  = data
+    endelse
+
+    ;Detrend the data
+    if (nDetrend gt 0) or (nFAS gt 0) then begin
+        temp_data = MrDetrendRotate(temp_data, nDetrend, nFAS, /NAN, $
+                                    MEAN_FIELD = mean_field, $
+                                    DIMENSION  = dimension)
+    endif
 
 ;-----------------------------------------------------
 ;I. Take the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -486,11 +509,13 @@ _REF_EXTRA = extra
     
     ;Compute the FFT of the data
     fft_data = MrFFT(temporary(temp_data), nfft, dt, nshift, $
-                     DIMENSION=dimension, $
-                     T0=t0, $
-                     TIME=time, $
-                     FREQUENCIES=frequencies, $
-                    _STRICT_EXTRA=extra)
+                     DIMENSION    = dimension, $
+                     T0           = t0, $
+                     TIME         = time, $
+                     FILLVAL      = theFillVal, $
+                     FREQUENCIES  = frequencies, $
+                     INTERP_PCT   = interp_pct, $
+                    _STRICT_EXTRA = extra)
 
     ;Which frequency components will be kept?
     if_keep = where(frequencies gt 0)
@@ -896,34 +921,42 @@ end
 ;-----------------------------------------------------
 ; Main-level example program: IDL> .r MrPolarization \
 ;-----------------------------------------------------
-;magfile   = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
-;data      = MrCDF_Read(magfile, 'Mag')
-acefile   = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-256_V2.DAT'
-data      = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
-nfft      = 4096
-;dt        = 1.0 / 64.0
-dt        = 0.333
-dimension = 2
-nshift    = nfft / 2
-fmin      = df_fft(nfft, dt)
-fmax      = 7.0
-nfas      = 512
-ndetrend  = nfas
-ylog      = 1
-window    = 1
-
-;Replace the fill value with NaNs
-data = replace_fillval(data, -999.9)
+;magfile    = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
+;data       = MrCDF_Read(magfile, 'Mag')
+acefile    = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-250_V2.DAT'
+data       = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
+nfft       = 4096
+;dt         = 1.0 / 64.0
+dt         = 0.333
+dimension  = 2
+nshift     = nfft / 2
+fillval    = -999.9
+interp_pct = 10.0
+fmin       = df_fft(nfft, dt)
+fmax       = 7.0
+nfas       = 512
+ndetrend   = nfas
+ylog       = 1
+window     = 1
 
 ;Calculate the polarization
-;if n_elements(pzation) eq 0 then $
 pzation   = MrPolarization(data, nfft, dt, nshift, $
-                           FMIN=fmin, FMAX=fmax, FREQUENCIES=f, TIME=t, T0=t_ssm[0], $
-                           DIMENSION=dimension, NFAS=nFAS, NDETREND=nDetrend, WINDOW=window, $
-                           ELLIPTICITY=ellipticity, $
-                           INTENSITY=intensity, $
-                           POLARIZATION_ANGLE=pz_angle, $
-                           COHERENCY=coherency)
+                           FILLVAL            = fillval, $
+                           FMIN               = fmin, $
+                           FMAX               = fmax, $
+                           FREQUENCIES        = f, $
+                           TIME               = t, $
+                           T0                 = t_ssm[0], $
+                           DIMENSION          = dimension, $
+                           NFAS               = nFAS, $
+                           NDETREND           = nDetrend, $
+                           /VVERBOSE, $
+                           WINDOW             = window, $
+                           ELLIPTICITY        = ellipticity, $
+                           INTENSITY          = intensity, $
+                           INTERP_PCT         = interp_pct, $
+                           POLARIZATION_ANGLE = pz_angle, $
+                           COHERENCY          = coherency)
 
 ;Plot
 win = MrWindow(OXMARGIN=[10,12], YGAP=0.5, XSIZE=550, YSIZE=550, REFRESH=0)

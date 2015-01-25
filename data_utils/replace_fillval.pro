@@ -17,14 +17,10 @@
 ;       FILLVAL:            in, required, type=size(`DATA`\, /TYPE)
 ;                           The value within `DATA` to be replaced.
 ;       X:                  in, optional, type=any
-;                           The abscissa values for `DATA`.
+;                           The abscissa values for `DATA`. `DATA` will be interpolated
+;                               at locations where `FILLVAL` is present.
 ;                               X must have the same number of elements as `DATA`, 
 ;                               and the values must be strictly ascending or descending.
-;                               `DATA` will be searched for `FILLVALUE`. A copy of `X` will
-;                               be made (XOUT), then `DATA` and `X` will have the indices
-;                               at which each fill value was found removed. The INTERPOL
-;                               procedure will then be used in interpolate `DATA` to its
-;                               original points, XOUT.
 ;
 ; :Keywords:
 ;       REPLACE_VALUE:      in, optional, type=size(`DATA`\, /TYPE), default=!values.f_nan
@@ -67,10 +63,10 @@ _REF_EXTRA = extra
     on_error, 2
 
     ;Set the default replacement value
-    if n_elements(replace_value) eq 0 then replace_value = !values.f_nan
+    if n_elements(replace_value) eq 0 then replace_value = !values.f_nan        
 
 ;-----------------------------------------------------
-;SEARCH FOR THE  FILL VALUE \\\\\\\\\\\\\\\\\\\\\\\\\\
+; SEARCH FOR THE FILL VALUE \\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 
    ;Find index locations of the fill value
@@ -84,22 +80,21 @@ _REF_EXTRA = extra
                             else replaced_data = data
 
 ;-----------------------------------------------------
-;REPLACE THE FILL VALUE \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; REPLACE THE FILL VALUE \\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     if n_elements(x) eq 0 then begin
         replaced_data[bad_pts] = replace_value
 
 ;-----------------------------------------------------
-;INTERPOLATE OVER THE FILL VALUE \\\\\\\\\\\\\\\\\\\\\
+; INTERPOLATE OVER THE FILL VALUE \\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     endif else begin
 
         if nGood gt 0 $
             then replaced_data = interpol(replaced_data[good_pts], x[good_pts], x, _STRICT_EXTRA=extra) $
-            else replaced_data[*] = replaced_value
+            else replaced_data = replicate(replaced_value, nBad)
     
     endelse
-        
                     
     return, replaced_data
 end
