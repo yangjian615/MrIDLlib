@@ -923,8 +923,8 @@ end
 ;-----------------------------------------------------
 ;magfile    = '/Users/argall/Documents/Work/Data/RBSP/Emfisis/A/2013_gse/01/rbsp-a_magnetometer_hires-gse_emfisis-L3_20130130_v1.3.2.cdf'
 ;data       = MrCDF_Read(magfile, 'Mag')
-acefile    = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-250_V2.DAT'
-data       = ace_read_mag_asc(acefile, t_ssm, STIME=0.0, ETIME=86400.0)
+acefile    = '/Users/argall/Documents/IDL/ace/test-data/ACE_MAG_LV2_RTN_HIRES_1997-246_V2.DAT'
+data       = ace_read_mag_asc(acefile, t_ssm, BMAG=Bmag, STIME=0.0, ETIME=86400.0)
 nfft       = 4096
 ;dt         = 1.0 / 64.0
 dt         = 0.333
@@ -939,6 +939,10 @@ ndetrend   = nfas
 ylog       = 1
 window     = 1
 
+iZero = where(Bmag eq 0, nZero)
+if nZero gt 0 then data[*,iZero] = fillval
+if nZero gt 0 then Bmag[*,iZero] = fillval
+
 ;Calculate the polarization
 pzation   = MrPolarization(data, nfft, dt, nshift, $
                            FILLVAL            = fillval, $
@@ -950,7 +954,7 @@ pzation   = MrPolarization(data, nfft, dt, nshift, $
                            DIMENSION          = dimension, $
                            NFAS               = nFAS, $
                            NDETREND           = nDetrend, $
-                           /VVERBOSE, $
+                           /VERBOSE, $
                            WINDOW             = window, $
                            ELLIPTICITY        = ellipticity, $
                            INTENSITY          = intensity, $
@@ -969,8 +973,8 @@ title = string(FORMAT='(%"ACE %s-%s")', date[1], doy[1])
 
 ;Time series
 data   = replace_fillval(data, -999.9)
-b_mag  = sqrt(total(data^2, 1))
-b_data = [transpose(temporary(b_mag)), (temporary(data))[1,*]]
+Bmag   = replace_fillval(Bmag, -999.9)
+b_data = [transpose(temporary(Bmag)), (temporary(data))[1,*]]
 Bplot  = MrPlot(temporary(t_ssm), temporary(b_data), $
                 /CURRENT, $
                 DIMENSION   = 2, $
