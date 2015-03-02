@@ -47,59 +47,67 @@
 ;       11/03/2011  -   Written by Matthew Argall
 ;       2014/09/10  -   Removed the condition that the number of points has to be
 ;                           equal. If `X` is 3xN and `Y` is 3xM, then the output will
-;                           either be 3xL, where L = N < M. - MRA
-;       2015/20/01  -   Added the Nx3 cross 3 case. - MRA
+;                           be 3xL, where L = N < M. - MRA
+;       2015/01/20  -   Added the Nx3 cross 3 case. - MRA
+;       2015/02/26  -   Added the 3 cross Nx3 case. - MRA
 ;-
 function cross_product, x, y
-    compile_opt idl2
-    on_error, 2
+	compile_opt idl2
+	on_error, 2
 
-    xdims  = size(x, /DIMENSIONS)
-    ydims  = size(y, /DIMENSIONS)
-    xndims = size(x, /N_DIMENSIONS)
-    yndims = size(y, /N_DIMENSIONS)
-    nx = n_elements(x)
-    ny = n_elements(y)
+	xdims  = size(x, /DIMENSIONS)
+	ydims  = size(y, /DIMENSIONS)
+	xndims = size(x, /N_DIMENSIONS)
+	yndims = size(y, /N_DIMENSIONS)
+	nx = n_elements(x)
+	ny = n_elements(y)
 
-    ;3 cross 3
-    if (nx eq 3) and (ny eq 3) then begin
-        x_cross_y = crossp(x, y)
-    
-    ;3 cross 3xN
-    endif else if (nx eq 3) and (yndims eq 2) and (ydims[0] eq 3) then begin
-        x_cross_y = [x[1]*y[2,*] - x[2]*y[1,*], $
-                     x[2]*y[0,*] - x[0]*y[2,*], $
-                     x[0]*y[1,*] - x[1]*y[0,*]]
-                     
-    ;3xN cross 3
-    endif else if (xndims eq 2 && xdims[0] eq 3) and (ny eq 3) then begin
-        x_cross_y = [x[1,*]*y[2] - x[2,*]*y[1], $
-                     x[2,*]*y[0] - x[0,*]*y[2], $
-                     x[0,*]*y[1] - x[1,*]*y[0]]
-                     
-    ;Nx3 cross 3
-    endif else if (xndims eq 2 && xdims[1] eq 3) and (ny eq 3) then begin
-        x_cross_y = [[x[*,1]*y[2] - x[*,2]*y[1]], $
-                     [x[*,2]*y[0] - x[*,0]*y[2]], $
-                     [x[*,0]*y[1] - x[*,1]*y[0]]]
-                     
-    ;3xN cross 3xN
-    endif else if (xndims eq 2 && xdims[0] eq 3) and $
-                  (yndims eq 2 && ydims[0] eq 3) then begin
-        x_cross_y = [x[1,*]*y[2,*] - x[2,*]*y[1,*], $
-                     x[2,*]*y[0,*] - x[0,*]*y[2,*], $
-                     x[0,*]*y[1,*] - x[1,*]*y[0,*]]
-                     
-    ;Nx3 cross Nx3
-    endif else if (xndims eq 2 && xdims[1] eq 3) and $
-                  (yndims eq 2 && ydims[1] eq 3) then begin
-        x_cross_y = [[x[*,1]*y[*,2] - x[*,2]*y[*,1]], $
-                     [x[*,2]*y[*,0] - x[*,0]*y[*,2]], $
-                     [x[*,0]*y[*,1] - x[*,1]*y[*,0]]]
-    endif else begin
-        message, string(FORMAT='(%"Cannot cross a [%i,%i] array with a [%i,%i] array")', $
-                        xdims, ydims)
-    endelse
+	;3 cross 3
+	if (nx eq 3) and (ny eq 3) then begin
+		x_cross_y = crossp(x, y)
+		if xdims[0] eq 1 then x_cross_y = transpose(x_cross_y)
 
-    return, x_cross_y
+	;3 cross 3xN
+	endif else if (nx eq 3) and (yndims eq 2) and (ydims[0] eq 3) then begin
+		x_cross_y = [x[1]*y[2,*] - x[2]*y[1,*], $
+		             x[2]*y[0,*] - x[0]*y[2,*], $
+		             x[0]*y[1,*] - x[1]*y[0,*]]
+	
+	;3 cross Nx3
+	endif else if (nx eq 3) and (yndims eq 2) and (ydims[1] eq 3) then begin
+		x_cross_y = [[x[1]*y[*,2] - x[2]*y[*,1]], $
+		             [x[2]*y[*,0] - x[0]*y[*,2]], $
+		             [x[0]*y[*,1] - x[1]*y[*,0]]]
+		             
+	;3xN cross 3
+	endif else if (xndims eq 2 && xdims[0] eq 3) and (ny eq 3) then begin
+		x_cross_y = [x[1,*]*y[2] - x[2,*]*y[1], $
+		             x[2,*]*y[0] - x[0,*]*y[2], $
+		             x[0,*]*y[1] - x[1,*]*y[0]]
+		             
+	;Nx3 cross 3
+	endif else if (xndims eq 2 && xdims[1] eq 3) and (ny eq 3) then begin
+		x_cross_y = [[x[*,1]*y[2] - x[*,2]*y[1]], $
+		             [x[*,2]*y[0] - x[*,0]*y[2]], $
+		             [x[*,0]*y[1] - x[*,1]*y[0]]]
+		             
+	;3xN cross 3xN
+	endif else if (xndims eq 2 && xdims[0] eq 3) and $
+	              (yndims eq 2 && ydims[0] eq 3) then begin
+		x_cross_y = [x[1,*]*y[2,*] - x[2,*]*y[1,*], $
+		             x[2,*]*y[0,*] - x[0,*]*y[2,*], $
+		             x[0,*]*y[1,*] - x[1,*]*y[0,*]]
+		             
+	;Nx3 cross Nx3
+	endif else if (xndims eq 2 && xdims[1] eq 3) and $
+	              (yndims eq 2 && ydims[1] eq 3) then begin
+		x_cross_y = [[x[*,1]*y[*,2] - x[*,2]*y[*,1]], $
+		             [x[*,2]*y[*,0] - x[*,0]*y[*,2]], $
+		             [x[*,0]*y[*,1] - x[*,1]*y[*,0]]]
+	endif else begin
+		message, string(FORMAT='(%"Cannot cross a [%i,%i] array with a [%i,%i] array")', $
+		                xdims, ydims)
+	endelse
+
+	return, x_cross_y
 end
