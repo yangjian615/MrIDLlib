@@ -134,6 +134,12 @@ function MrIsA, x, type, $
     compile_opt strictarr
     on_error, 2
     
+    ;IDL Introuction of Keywords:
+    ;   8.4  BOOLEAN, COMPLEX, FLOAT, INTEGER, STRING
+    ;   8.2  NULL
+    ;   8.1  NUMBER
+    ;   8.0  Introduced
+    
 ;-----------------------------------------------------
 ;Check Inputs \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
