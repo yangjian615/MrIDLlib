@@ -47,11 +47,8 @@ function w_lower_hybrid, B, n_i
 ;---------------------------------------------------------------------
 ;CALCULATE THE LOWER HYBRID FREQUENCY ////////////////////////////////
 ;---------------------------------------------------------------------
-
-	;compute the lower_hybrid frequency
-	omega_lh = sqrt(1 / (w_cyclotron(B, /electron) * w_cyclotron(B, /ion)) + $
-					1 / (w_plasma(n_i, /ion)^2))
+	omega_lh = sqrt(1.0 / (w_cyclotron(B, 'e-') * w_cyclotron(B, 'H+')) + $
+					1.0 / w_plasma(n_i, 'H+')^2)
 	
 	return, omega_lh
-
 end

@@ -72,7 +72,7 @@
 ;       2013-10-24  -   Written by Matthew Argall
 ;       2014/03/08  -   TYPE can now be a type-name. - MRA
 ;       2014/05/05  -   Added the TIME_ZONE keyword and an example program. - MRA
-;       2014/05/29  -   Typo when changinf types was causing conversion error. Fixed. - MRA
+;       2014/05/29  -   Typo when changing types was causing conversion error. Fixed. - MRA
 ;-
 pro MrTimeStampToValues, timeStamp, $
 DAY=day, $
@@ -90,7 +90,7 @@ YEAR=year
     
     ;Convert to integers by default.
     if n_elements(type) eq 0 then type = 'INT'
-    typecode = (size(type, /TNAME) eq 'STRING') ? typename2code(type) : type
+    typecode = (size(type, /TNAME) eq 'STRING') ? typenametocode(type) : type
     
     ;Extract the pieces
     parts = stregex(timeStamp, '([0-9]{4})-' + $                        ;Year

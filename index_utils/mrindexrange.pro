@@ -29,18 +29,31 @@
 ;                           pairs must be strictly ascending or descending.
 ;
 ; :Keywords:
-;       STRIDE:         out, optional, type=integer
-;                       If one is indexing from `IRANGE`[0] to `IRANGE`[1], then
-;                           STRIDE indicates whether the stride should increase
-;                           or decrease. E.g.::
-;                               output = data[range[0]:range[1]:stride]
-;       SORT:           in, optional, type=boolean, default=0
-;                       If set, `IRANGE` will be ordered from smallest to largest.
+;       LEFT_EXCLUSIVE:     in, optional, type=boolean, default=0
+;                           If set, the left end-point of `RANGE` will be excluded from the
+;                               results. In terms of intervals, `RANGE` will change from
+;                               [left, right] to (left, right].
+;       RIGHT_EXCLUSIVE:    in, optional, type=boolean, default=0
+;                           If set, the RIGHT end-point of `RANGE` will be excluded from the
+;                               results. In terms of intervals, `RANGE` will change from
+;                               [left, right] to [left, right)
+;       STATUS:             out, optional, type=integer
+;                           A named variable into which the error status is returned. If
+;                               not present, an error message will be generated. Options are::
+;                                   0   -   No error
+;                                   1   -   Zero data points in interval
+;       STRIDE:             out, optional, type=integer
+;                           If one is indexing from `IRANGE`[0] to `IRANGE`[1], then
+;                               STRIDE indicates whether the stride should increase
+;                               or decrease. E.g.::
+;                                   output = data[range[0]:range[1]:stride]
+;       SORT:               in, optional, type=boolean, default=0
+;                           If set, `IRANGE` will be ordered from smallest to largest.
 ;
 ; :Returns:
-;       IRANGE:         A 2xN array giving the index range within `DATA`
-;                           corresponding to the values of `RANGE`. If the matches
-;                           are not exact, DATA[IRANGE] lie just inside of RANGE.
+;       IRANGE:             A 2xN array giving the index range within `DATA`
+;                               corresponding to the values of `RANGE`. If the matches
+;                               are not exact, DATA[IRANGE] lie just inside of RANGE.
 ;
 ; :Author:
 ;    Matthew Argall::
@@ -69,16 +82,23 @@
 ;       2014/10/29  -   Handle case when DATA has one elements. IRANGE guaranteed to be
 ;                           between 0 and nPts, where nPts-1 is the number of point in DATA. - MRA
 ;       2014/11/12  -   Typo was adjusting the input range instead of the output range. Fixed. - MRA
+;       2015/02/04  -   Added the STATUS, LEFT_EXCLUSIVE and RIGHT_EXCLUSIVE keywords. - MRA
 ;-
 function MrIndexRange, data, range, $
+LEFT_EXCLUSIVE=left_exclusive, $
+RIGHT_EXCLUSIVE=right_exclusive, $
 SORT=order, $
+STATUS=status, $
 STRIDE=stride
     compile_opt strictarr
     on_error, 2
 
     ;Check Inputs
-    nPts  = n_elements(data)
-    order = keyword_set(order)
+    status          = 0
+    nPts            = n_elements(data)
+    order           = keyword_set(order)
+    left_exclusive  = keyword_set(left_exclusive)
+    right_exclusive = keyword_set(right_exclusive)
     if nPts              eq 0 then message, 'DATA must have at least 1 element.'
     if n_elements(range) ne 2 then message, 'RANGE must have 2 elements: [min, max].'
 
@@ -100,8 +120,7 @@ STRIDE=stride
     iRange = value_locate(data, range)
 
     ;If RANGE is smaller than DATA[0], then take index 0
-    if irange[0] eq -1 then iRange[0] = 0
-    if irange[1] eq -1 then iRange[1] = 0
+    irange = 0 > irange
 
     ;If the indices are the same, then they fall between two adjacent points in DATA.
     if irange[0] eq irange[1] then return, iRange
@@ -115,12 +134,26 @@ STRIDE=stride
             ;Endpoints greater (less) than the maximum (minimum) range desired?
             if data[iRange[0]] gt range[0] then iRange[0]--
             if data[iRange[1]] lt range[1] then iRange[1]++
+
+            ;Exclude the end points?
+            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
+            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
+            
+            ;No points found?
+            if iRange[0] lt iRange[1] then status = 1
             
         ;Ascening Range
         endif else begin
             ;Endpoints less (greater) than than the minimum (maximum) range desired?
             if data[iRange[0]] lt range[0] then iRange[0]++
             if data[iRange[1]] gt range[1] then iRange[1]--
+
+            ;Exclude the end points?
+            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
+            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
+            
+            ;No points found?
+            if iRange[0] gt iRange[1] then status = 1
         endelse
 
 ;---------------------------------------------------------------------
@@ -132,12 +165,26 @@ STRIDE=stride
             ;Endpoints greater (less) than the maximum (minimum) range desired?
             if data[iRange[0]] gt range[0] then iRange[0]++
             if data[iRange[1]] lt range[1] then iRange[1]--
+            
+            ;Exclude the end points?
+            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
+            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
+            
+            ;No points found?
+            if iRange[0] gt iRange[1] then status = 1
         
         ;Ascending Range
         endif else begin
             ;Endpoints less (greater) than than the minimum (maximum) range desired?
             if data[iRange[0]] lt range[0] then iRange[0]--
             if data[iRange[1]] gt range[1] then iRange[1]++
+            
+            ;Exclude the end points?
+            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
+            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
+            
+            ;No points found?
+            if iRange[0] lt iRange[1] then status = 1
         endelse
     endelse
     
@@ -146,6 +193,11 @@ STRIDE=stride
     
     ;Ensure indices do not extend outside of data range
     iRange = 0 > iRange < (nPts-1)
+    
+    ;Errors?
+    if status ne 0 then begin
+        if arg_present(status) eq 0 then message, 'No points in interval.'
+    endif
     
     ;Transpose the result to return a 2xN array
     return, iRange
@@ -168,7 +220,7 @@ ir2  = MrIndexRange(data, r2)
 ir3  = MrIndexRange(data, r3)
 ir4  = MrIndexRange(data, r4)
 print, 'Data: [' + strjoin(string(data, FORMAT='(f0.1)'), ', ') + ']'
-print, FORMAT='(%"   %s      %s      %s")', 'Range', 'Indices', 'Data'
+print, FORMAT='(%"    %s       %s        %s")', 'Range', 'Indices', 'Data'
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r1, ir1, data[ir1]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r2, ir2, data[ir2]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r3, ir3, data[ir3]
@@ -188,11 +240,38 @@ ir3  = MrIndexRange(data, r3)
 ir4  = MrIndexRange(data, r4)
 print, '------------------------------------'
 print, 'Data: [' + strjoin(string(data, FORMAT='(f0.1)'), ', ') + ']'
-print, FORMAT='(%"   %s      %s      %s")', 'Range', 'Indices', 'Data'
+print, FORMAT='(%"    %s       %s        %s")', 'Range', 'Indices', 'Data'
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r1, ir1, data[ir1]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r2, ir2, data[ir2]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r3, ir3, data[ir3]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]")', r4, ir4, data[ir4]
+print, ''
+print, ''
+
+
+;EXAMPLE - Left- and Right-exclusive
+data = indgen(10)
+r1   = [2,8]
+r2   = [8,2]
+ir1  = MrIndexRange(data, r1)
+ir2  = MrIndexRange(data, r1, /LEFT_EXCLUSIVE)
+ir3  = MrIndexRange(data, r1, /RIGHT_EXCLUSIVE)
+ir4  = MrIndexRange(data, r1, /LEFT_EXCLUSIVE, /RIGHT_EXCLUSIVE)
+ir5  = MrIndexRange(data, r2)
+ir6  = MrIndexRange(data, r2, /LEFT_EXCLUSIVE)
+ir7  = MrIndexRange(data, r2, /RIGHT_EXCLUSIVE)
+ir8  = MrIndexRange(data, r2, /LEFT_EXCLUSIVE, /RIGHT_EXCLUSIVE)
+print, '------------------------------------'
+print, 'Data: [' + strjoin(string(data, FORMAT='(f0.1)'), ', ') + ']'
+print, FORMAT='(%"    %s       %s        %s      %s")', 'Range', 'Indices', 'Data', 'Exclusivity'
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   NONE")',         r1, ir1, data[ir1]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT")',         r1, ir2, data[ir2]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   RIGHT")',        r1, ir3, data[ir3]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT & RIGHT")', r1, ir4, data[ir4]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   NONE")',         r2, ir5, data[ir5]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT")',         r2, ir6, data[ir6]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   RIGHT")',        r2, ir7, data[ir7]
+print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT & RIGHT")', r2, ir8, data[ir8]
 print, ''
 
 

@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;   MrArray__Define
+;   TypeNameToCode
 ;
 ; PURPOSE
 ;+
@@ -26,9 +26,10 @@
 ; :History:
 ;	Modification History::
 ;       2014/03/03  -   Written by Matthew Argall.
-;       2015/04/19  -   Vector of type names can be given.
+;       2014/04/19  -   Vector of type names can be given.
+;       2015/02/06  -   Renamed from TypeName2Code to TypeNameToCode
 ;-
-function TypeName2Code, type
+function TypeNameToCode, type
     compile_opt strictarr
     on_error, 2
     

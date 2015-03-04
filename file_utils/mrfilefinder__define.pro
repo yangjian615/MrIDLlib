@@ -132,7 +132,7 @@ end
 ;   It is assumed that `NAMES` at most will contain date and time information regarding
 ;   when the start and end of the interval of the data contained within `NAME`. It is
 ;   further assumed that the date and time information will be ordered in descending order,
-;   i.e. from date to month to year to hour, etc. If this is not the case, then anticipate
+;   i.e. from year to month to day to hour, etc. If this is not the case, then anticipate
 ;   problems when deducing when the end of the data interval begins.
 ;
 ; :Params:
@@ -605,16 +605,16 @@ COUNT=count
 ; Find First Token ///////////////////////////////////////////////////
 ;---------------------------------------------------------------------
     ;Split the directroy
-    fullPath = self -> ResolvePath(path_str)
+    fullPath   = self -> ResolvePath(path_str)
     path_parts = strsplit(fullPath, self.path_sep, COUNT=nParts, LENGTH=len, /EXTRACT)
     
     ;Find the largest path not containing a token
     iNoTokens = max(where(strpos(path_parts, '%') eq -1))
-    root = strmid(fullPath, 0, total(len[0:iNoTokens])+iNoTokens+2)
+    root      = strmid(fullPath, 0, total(len[0:iNoTokens])+iNoTokens+2)
 
     ;Get the first piece with tokens. Convert it to a regular expression.
     if iNoTokens ge nParts-1 then begin
-        root = file_dirname(fullPath)
+        root       = file_dirname(fullPath)
         subPattern = file_basename(fullPath)
     endif else begin
         subPattern = path_parts[iNoTokens+1]
@@ -646,8 +646,8 @@ COUNT=count
         for i = 0, count - 1 do begin
             ;Substitute the match for its regular expression and search again
             ;   root + regex + remainder ---> root + match + remainder
-            nextDir = self -> AppendPath(dirOut[i], root)
-            nextDir = self -> AppendPath(remainder, nextDir)
+            nextDir   = self -> AppendPath(dirOut[i], root)
+            nextDir   = self -> AppendPath(remainder, nextDir)
             temp_tree = self -> FindFile(nextDir, COUNT=nFound)
             
             ;Gather all of the complete file paths.
@@ -1131,19 +1131,19 @@ TPATTERN=tPattern
     
     ;Defaults
     if n_elements(path_separator) eq 0 then path_separator = path_sep()
-    if n_elements(tPattern) eq 0 then tPattern = '%Y-%M-%dT%H:%m:%S%z'
+    if n_elements(tPattern)       eq 0 then tPattern       = '%Y-%M-%dT%H:%m:%S%z'
     
     ;Allocate heap
-    self.file_names = ptr_new(/ALLOCATE_HEAP)
+    self.file_names   = ptr_new(/ALLOCATE_HEAP)
     
     self.time_pattern = '%Y-%M-%dT%H:%m:%S%z'
     
     ;Set the filename for known filetypes
-    self -> SetProperty, ETIME=eTime, $
-                         FILENAME=filename, $
-                         PATH_SEPARATOR=path_separator, $
-                         STIME=sTime, $
-                         TPATTERN=tPattern
+    self -> SetProperty, ETIME          = eTime, $
+                         FILENAME       = filename, $
+                         PATH_SEPARATOR = path_separator, $
+                         STIME          = sTime, $
+                         TPATTERN       = tPattern
     
     return, 1
 end
