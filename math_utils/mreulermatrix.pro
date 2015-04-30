@@ -23,19 +23,18 @@
 ;       IDL> .run MrEulerMatrix
 ;
 ; :Params:
-;       ALPHA:          in, optional, type=float, default=0.0
-;                       Radians by which to rotate a coordinate system about the x-axis.
-;       BETA:           in, optional, type=float, default=0.0
-;                       Radians by which to rotate a coordinate system about the y-axis.
-;       GAMMA:          in, optional, type=float, default=0.0
-;                       Radians by which to rotate a coordinate system about the z-axis.
+;       EULER_ANGLES:   in, required, type=float/fltarr
+;                       Euler angles of rotation, specified in radians.
+;       SEQUENCE:       in, optional, type=string/strarr, default=['Z'\, 'Y'\, 'X']
+;                       The sequence in which the rotations are applied. If V is a
+;                           column vector, and SEQUENCE has its default value, then
+;                           the result is obtained as R = Z ## Y ## X ## V, where
+;                           Z, Y and X are rotations about said axes.
+;                       
 ;
 ; :Keywords:
 ;       DEGREES:        in, optional, type=Boolean, default=0
 ;                       If set then `ALPHA`, `BETA` and `GAMMA` are degrees, not radians.
-;       ORDER:          in, optional, type=intarr(3), default=[3\,2\,1]
-;                       Order in which `ALPHA`, `BETA` and `GAMMA` should be multiplied.
-;                           The default is `GAMMA` ## `BETA` ## `ALPHA`.
 ;       MATH:           in, optional, type=boolean, default=0
 ;                       If set, `EULER_MATRIX` will be math-like instead of IDL-like.
 ;
@@ -68,7 +67,7 @@
 ;                                                     | Axz  Ayz  Azz |
 ;
 ; :Returns:
-;       EULER_MATRIX:   The result of the three Euler rotations.
+;       ROTM:           The result of the three Euler rotations.
 ;
 ; :Author:
 ;   Matthew Argall::
@@ -80,12 +79,11 @@
 ;
 ; :History:
 ;   Modification History::
-;
 ;       2015/02/19  -   Written by Matthew Argall
+;       2015/04/30  -   Generalzied. Accept any number of rotation angles. - MRA.
 ;-
-function MrEulerMatrix, alpha, beta, gamma, $
+function MrEulerMatrix, euler_angles, sequence, $
 DEGREES=degrees, $
-ORDER=order, $
 MATH=math
 	compile_opt idl2
 	on_error, 2
@@ -93,58 +91,54 @@ MATH=math
 	;Default to no rotation
 	degrees = keyword_set(degrees)
 	math    = keyword_set(math)
-	_alpha  = n_elements(alpha) eq 0 ? 0.0 : alpha
-	_beta   = n_elements(beta)  eq 0 ? 0.0 : beta
-	_gamma  = n_elements(gamma) eq 0 ? 0.0 : gamma
-	if n_elements(order) eq 0 then order = [1, 2, 3]
+	if n_elements(sequence) eq 0 then sequence = ['Z', 'Y', 'X']
+	
+	;Check for conflicts
+	if n_elements(euler_angles) ne n_elements(sequence) $
+		then message, 'EULER_ANGLES and SEQUENCE must have the same number of elements.'
 
 	;Convert to radians?
-	if degrees then begin
-		_alpha *= !dtor
-		_beta  *= !dtor
-		_gamma *= !dtor
-	endif
+	angles = degrees ? euler_angles * !dpi / 180.0D : euler_angles
 
-	;Sines and Cosines
-	sin_alpha = sin(_alpha)
-	cos_alpha = cos(_alpha)
-	sin_beta  = sin(_beta)
-	cos_beta  = cos(_beta)
-	sin_gamma = sin(_gamma)
-	cos_gamma = cos(_gamma)
+	;Step through each rotation.
+	rotm = identity(3)
+	for i = n_elements(sequence) - 1, 0, -1 do begin
+		if euler_angles[i] eq 0 then continue
+		
+		;Sines and Cosines
+		sinA = sin(angles[i])
+		cosA = cos(angles[i])
+		
+		;Create the matrices so they appear math-like when written.
+		;  - This requires the ## operator
+		case strupcase(sequence[i]) of
+			;Rotation about X-axis
+			'X': temp_rotm = [[  1.0,   0.0,   0.0 ], $
+			                  [  0.0,  cosA,  sinA ], $
+			                  [  0.0, -sinA,  cosA ]]
 
-	;Rotation about X-axis
-	euler_x = [[  1.0,    0.0,        0.0], $
-	           [  0.0,  cos_alpha,  sin_alpha], $
-	           [  0.0, -sin_alpha,  cos_alpha]]
+			;Rotation about Y-axis
+			'Y': temp_rotm = [[  cosA,   0.0, -sinA ], $
+			                  [   0.0,   1.0,   0.0 ], $
+			                  [  sinA,   0.0,  cosA ]]
 
-	;Rotation about Y-axis
-	euler_y = [[  cos_beta,   0.0, -sin_beta], $
-	           [    0.0,      1.0,    0.0], $
-	           [  sin_beta,   0.0,  cos_beta]]
-
-	;Rotation about Z-axis
-	euler_z = [[  cos_gamma,  sin_gamma,  0.0], $
-	           [ -sin_gamma,  cos_gamma,  0.0], $
-	           [    0.0,        0.0,      1.0]]
-
-	;Form the complete rotation
-	; #  - Columns * Rows        -- IDL's outer product
-	; ## - Rows    * Columns     -- IDL's inner product
-	case 1 of
-		array_equal(order, [1, 2, 3]): euler_matrix = euler_x ## euler_y ## euler_z
-		array_equal(order, [2, 1, 3]): euler_matrix = euler_y ## euler_x ## euler_z
-		array_equal(order, [1, 3, 2]): euler_matrix = euler_x ## euler_z ## euler_y
-		array_equal(order, [3, 1, 2]): euler_matrix = euler_z ## euler_x ## euler_y
-		array_equal(order, [2, 3, 1]): euler_matrix = euler_y ## euler_z ## euler_x
-		array_equal(order, [3, 2, 1]): euler_matrix = euler_z ## euler_y ## euler_x
-		else: message, 'Invalid ORDER.'
-	endcase
+			;Rotation about Z-axis
+			'Z': temp_rotm = [[  cosA,  sinA,  0.0 ], $
+			                  [ -sinA,  cosA,  0.0 ], $
+			                  [   0.0,   0.0,  1.0 ]]
+			
+			;Unknown axis of rotation
+			else: message, 'Rotation axis not recognized: "' + sequence[i] + '".'
+		endcase
+		
+		;Combine the rotations
+		rotm = temp_rotm ## rotm
+	endfor
 
 	;Return IDL-like instead of math-like?
-	if math eq 0 then euler_matrix = transpose(euler_matrix)
+	if math eq 0 then rotm = transpose(rotm)
 
-	return, euler_matrix
+	return, rotm
 end
 
 ;-----------------------------------------------------
@@ -154,15 +148,14 @@ end
 ;   - Demonstrate the difference between MATH and IDL matrices
 ;   - Form a row and column vector, both 45 degrees from the X-axis.
 ;   - Rotate about z by 45 degrees to bring the x-axis in-line with the vector
-vec_idl  = [1.0, 1.0, 0.0]
-vec_math = [[1.0], [1.0], [0.0]]
-alpha    = 0.0
-beta     = 0.0
-gamma    = 45.0
+vec_idl      = [1.0, 1.0, 0.0]
+vec_math     = [[1.0], [1.0], [0.0]]
+euler_angles = 45.0
+sequence     = 'Z'
 
 ;Create the rotation matrix
-mat_idl  = MrEulerMatrix(alpha, beta, gamma, /ANGLES)
-mat_math = MrEulerMatrix(alpha, beta, gamma, /ANGLES, /MATH)
+mat_idl  = MrEulerMatrix(euler_angles, sequence, /DEGREES)
+mat_math = MrEulerMatrix(euler_angles, sequence, /DEGREES, /MATH)
 
 ;Multiply
 vec_idl_rot  = mat_idl   # vec_idl
@@ -170,9 +163,10 @@ vec_math_rot = mat_math ## vec_math
 
 ;Print results
 print, 'Results of:'
-print, FORMAT='(%"   vec    = [%5.2f, %5.2f, %5.2f]")', vec_idl
-print, FORMAT='(%"   angles = [%5.2f, %5.2f, %5.2f]")', [alpha, beta, gamma]
-print, '   matrix = MrEulerMatrix(alpha, beta, gamma, /ANGLES)'
+print, FORMAT='(%"   vec      = [%5.2f, %5.2f, %5.2f]")', vec_idl
+print, FORMAT='(%"   angles   = %5.2f")',                 euler_angles
+print, FORMAT='(%"   sequence = %s")',                    sequence
+print, '   matrix = MrEulerMatrix(angles, sequence, /DEGREES)'
 print, '   result = matrix # vec'
 print, ''
 print, FORMAT='(%"                         | %5.2f, %5.2f, %5.2f | ")',                                   mat_idl[*,0]
@@ -180,12 +174,13 @@ print, FORMAT='(%" | %5.2f %5.2f %5.2f | = | %5.2f, %5.2f, %5.2f | | %5.2f %5.2f
 print, FORMAT='(%"                         | %5.2f, %5.2f, %5.2f | ")',                                   mat_idl[*,2]
 print, ''
 help, mat_idl, vec_idl, vec_idl_rot
-print, ''
+print, '----------------------------------------'
 print, ''
 print, 'Results of:'
-print, FORMAT='(%"   vec    = [[%5.2f], [%5.2f], [%5.2f]]")', vec_math
-print, FORMAT='(%"   angles = [%5.2f, %5.2f, %5.2f]")', [alpha, beta, gamma]
-print, '   matrix = MrEulerMatrix(alpha, beta, gamma, /ANGLES, /MATH)'
+print, FORMAT='(%"   vec      = [[%5.2f], [%5.2f], [%5.2f]]")', vec_math
+print, FORMAT='(%"   angles   = %5.2f")',                 euler_angles
+print, FORMAT='(%"   sequence = %s")',                    sequence
+print, '   matrix = MrEulerMatrix(angles, sequence, /DEGREES, /MATH)'
 print, '   result = matrix ## vec'
 print, ''
 print, FORMAT='(%" | %5.2f |   | %5.2f, %5.2f, %5.2f | | %5.2f |")', vec_math_rot[0], mat_math[*,0], vec_math[0]
@@ -199,21 +194,21 @@ print, ''
 
 
 ;EXAMPLE 2
-;   - Create a vector 45 degrees from the X-axis and 45 degrees up from the XY-plane.
-;   - Rotate about z to align the xz-plane with the vector
-;   - Rotate about y to align the x-axis with the vector
-vec     = [[1.0], [1.0], [1.41]]
-alpha   = 0.0
-beta    = -45.0
-gamma   = 45.0
-mat     = MrEulerMatrix(alpha, beta, gamma, /ANGLES, /MATH)
-vec_rot = mat ## vec
+;   - Create a vector 45 degrees from the X-axis and 45 degrees down from the Z-axis.
+;   - Rotate ccw about z to align the xz-plane with the vector
+;   - Rotate  cw about y to align the x-axis with the vector
+vec          = [[1.0], [1.0], [1.41]]
+euler_angles = [-45, 45]
+sequence     = ['Y', 'Z']
+mat          = MrEulerMatrix(euler_angles, sequence, /DEGREES, /MATH)
+vec_rot      = mat ## vec
 
 ;Print results
 print, 'Results of:'
 print, FORMAT='(%"   vec    = [[%5.2f], [%5.2f], [%5.2f]]")', vec
-print, FORMAT='(%"   angles = [%5.1f, %5.1f, %5.1f]")', [alpha, beta, gamma]
-print, '   matrix = MrEulerMatrix(alpha, beta, gamma, /ANGLES, /MATH)'
+print, FORMAT='(%"   angles   = [%6.2f, %6.2f]")',            euler_angles
+print, FORMAT='(%"   sequence = [%s, %s]")',                  sequence
+print, '   matrix = MrEulerMatrix(angles, sequence, /DEGREES, /MATH)'
 print, '   result = matrix ## vec'
 print, ''
 print, FORMAT='(%" | %5.2f |   | %5.2f, %5.2f, %5.2f | | %5.2f |")', vec_rot[0], mat[*,0], vec[0]
