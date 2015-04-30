@@ -99,10 +99,10 @@
 ;
 ; :Author:
 ;       Matthew Argall::
-;		University of New Hampshire
-;		Morse Hall, Room 113
+;       University of New Hampshire
+;       Morse Hall, Room 113
 ;       8 College Rd.
-;		Durham, NH, 03824
+;       Durham, NH, 03824
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :History:

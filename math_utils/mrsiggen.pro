@@ -111,6 +111,8 @@
 ;                           cosines instead of complex exponentials.
 ;       DC:             in, optional, type=int, default=0
 ;                       The DC offset of the resulting sinusoid.
+;       DEGREES:        in, optional, type=int, default=0
+;                       If set, `PHASE_A` and `PHASE_B` have units of degrees, not radians.
 ;       FREQUENCIES:    in, optional, type=int, default=0.0
 ;                       The frequencies to use when generating `SIGNAL`. A frequency
 ;                           of 0Hz is equivalent to setting `DC`=AMP_A.
@@ -172,13 +174,14 @@
 ;                           NPERIODS and repurposed. SEED is used only if provided and
 ;                           does not restart the seed sequence when used. Now a purely DC
 ;                           signal can be created with the DC keyword. - MRA
+;       2015/04/22  -   ANGLES keyword renamed to DEGREES and documented. - MRA
 ;-
 function mrSigGen, sample_rate, duration, $
 DC = DC, $
 FREQUENCIES = f, $
 AMP_A = amp_a, $
 AMP_B = amp_b, $
-ANGLES = angles, $
+DEGREES = degrees, $
 NOISE_LEVEL = noise_level, $
 NOISE_SEED = noise_seed, $
 NORMALIZE = normalize, $
@@ -223,6 +226,7 @@ TIME = time
 
 	;Other defaults.
 	nSeed     = n_elements(seed)
+	degrees   = keyword_set(degrees)
 	normalize = keyword_set(normalize)
 	real      = keyword_set(real)
 	square    = keyword_set(square)
@@ -297,7 +301,7 @@ TIME = time
 	endcase
 	
 	;Convert to radians.
-	if angles then begin
+	if degrees then begin
 		phi_A *= !dtor
 		if n_elements(phi_b) gt 0 then phi_B *= !dtor
 	endif

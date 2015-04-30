@@ -133,7 +133,7 @@
 ;       matthew.argall@wildcats.unh.edu
 ;
 ; :History:
-;	Modification History::
+;   Modification History::
 ;       2014-03-15  -   Written by Matthew Argall.
 ;       2014-03-21  -   Removed function MrTimeParser_Token2Regex to its own file
 ;                           (named MrTimeTokensToRegex.pro as of this date). - MRA
@@ -146,6 +146,7 @@
 ;       2014-05-11  -   Added support for "%z" and "%o". New TIME_ZONE and OFFSET keywords. - MRA
 ;       2014-06-29  -   Added support for "\%", "%(" and "%)". - MRA
 ;       2014-06-30  -   Removed MrTimeParser_ExtractTokens and incorporated MrTokens_Extract. - MRA
+;       2015-04-30  -   Was dissecting DOY incorrectly. Fixed. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -827,7 +828,7 @@ end
 ;                   Year in which `DOY` occurs. Necessary for determining leap year.
 ;                       Non-leap year is assumed.
 ;-
-pro MrTimeParser_DissectDOY, doy, month, day
+pro MrTimeParser_DissectDOY, doy, month, day, $
 YEAR=year
     compile_opt strictarr
     on_error, 2
@@ -853,11 +854,11 @@ YEAR=year
         message, 'No year given. Converting %D to %M for non-leap year.', /INFORMATIONAL
         _year = replicate('2001', n_elements(doy))
     endelse
-    
+
     ;Get the month and day
     monthday = year_day(doy, YEAR=year, /TO_MODAY)
     month = strmid(monthday, 0, 2)
-    day   = strmid(monthday, 2, 2)
+    day   = strmid(monthday, 3, 2)
 end
 
 

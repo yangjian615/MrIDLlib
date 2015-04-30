@@ -31,8 +31,8 @@
 ;                       Radians by which to rotate a coordinate system about the z-axis.
 ;
 ; :Keywords:
-;       ANGLES:         in, optional, type=Boolean, default=0
-;                       If set then `ALPHA`, `BETA` and `GAMMA` are angles, not radians.
+;       DEGREES:        in, optional, type=Boolean, default=0
+;                       If set then `ALPHA`, `BETA` and `GAMMA` are degrees, not radians.
 ;       ORDER:          in, optional, type=intarr(3), default=[3\,2\,1]
 ;                       Order in which `ALPHA`, `BETA` and `GAMMA` should be multiplied.
 ;                           The default is `GAMMA` ## `BETA` ## `ALPHA`.
@@ -84,22 +84,22 @@
 ;       2015/02/19  -   Written by Matthew Argall
 ;-
 function MrEulerMatrix, alpha, beta, gamma, $
-ANGLES=angles, $
+DEGREES=degrees, $
 ORDER=order, $
 MATH=math
 	compile_opt idl2
 	on_error, 2
 
 	;Default to no rotation
-	angles = keyword_set(angles)
-	math   = keyword_set(math)
-	_alpha = n_elements(alpha) eq 0 ? 0.0 : alpha
-	_beta  = n_elements(beta)  eq 0 ? 0.0 : beta
-	_gamma = n_elements(gamma) eq 0 ? 0.0 : gamma
+	degrees = keyword_set(degrees)
+	math    = keyword_set(math)
+	_alpha  = n_elements(alpha) eq 0 ? 0.0 : alpha
+	_beta   = n_elements(beta)  eq 0 ? 0.0 : beta
+	_gamma  = n_elements(gamma) eq 0 ? 0.0 : gamma
 	if n_elements(order) eq 0 then order = [1, 2, 3]
 
 	;Convert to radians?
-	if angles then begin
+	if degrees then begin
 		_alpha *= !dtor
 		_beta  *= !dtor
 		_gamma *= !dtor

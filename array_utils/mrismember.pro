@@ -204,7 +204,6 @@ REMOVE_SPACE = remove_space
             ;  - Check if the results of VALUE_LOCATE are exact matches of B.
             ;  - If BB < AA value locate returns -1. Return 0 instead.
             element = value_locate(AA_sorted, BB) > 0
-
             tf_isMember = AA_sorted[element] eq BB
         endelse
     endelse

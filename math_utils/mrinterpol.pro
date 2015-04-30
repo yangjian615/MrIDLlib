@@ -26,6 +26,9 @@
 ;                       The new abcissa values.
 ;
 ; :Keywords:
+;       _REF_EXTRA:     in, optional, type=any
+;                       Any keyword accepted by IDL's Interpol() function is also accepted
+;                           via keyword inheritance.
 ;
 ; :Returns:
 ;       RESULT:         The values of `A` interpolated to the locations of `Xout`.
@@ -44,10 +47,12 @@
 ;       01/31/2012  -   Written by Matthew Argall
 ;       04/12/2013  -   Added cases for 3xN, Nx3, and MxN, where M is the number of
 ;                           elements in `X`. - MRA
+;       2015/02/05  -   Added the _REF_EXTRA keyword. - MRA
 ;-
-function MrInterpol, A, X, Xout
-    compile_opt idl2
-    on_error, 2
+function MrInterpol, A, X, Xout, $
+_REF_EXTRA=extra
+	compile_opt idl2
+	on_error, 2
 
 	sz_A = size(A)
 	sz_X = size(X)
@@ -60,56 +65,54 @@ function MrInterpol, A, X, Xout
 	;Determine output type. Maintain Double and Complex types, make everything else a float
 	type_A = sz_A[sz_A[0] + 1]
 	case type_A of
-	    5: out_type = 5
-	    6: out_type = 6
-	    9: out_type = 9
-	    else: out_type = 4
+		5: out_type = 5
+		6: out_type = 6
+		9: out_type = 9
+		else: out_type = 4
 	endcase
-	
-        
+
 ;---------------------------------------------------------------------
 ;A and X are 1xN or Nx1 //////////////////////////////////////////////
 ;---------------------------------------------------------------------
 	if n_A eq n_X and sz_A[0] eq 1 then begin
-		result = interpol(A, X, Xout)
-        
+		result = interpol(A, X, Xout, _STRICT_EXTRA)
+
 ;---------------------------------------------------------------------
 ;A is 3xM, X is an M element vector //////////////////////////////////
 ;---------------------------------------------------------------------
 	endif else if sz_A[0] eq 2 && sz_A[1] eq 3 && sz_A[2] eq n_X then begin
 	    result = make_array(3, n_Xout, TYPE=out_type)
-	    result[0,*] = interpol(A[0,*], X, Xout)
-	    result[1,*] = interpol(A[1,*], X, Xout)
-	    result[2,*] = interpol(A[2,*], X, Xout)
-        
+	    result[0,*] = interpol(A[0,*], X, Xout, _STRICT_EXTRA=extra)
+	    result[1,*] = interpol(A[1,*], X, Xout, _STRICT_EXTRA=extra)
+	    result[2,*] = interpol(A[2,*], X, Xout, _STRICT_EXTRA=extra)
+
 ;---------------------------------------------------------------------
 ;A is Mx3, X is an M element vector //////////////////////////////////
 ;---------------------------------------------------------------------
 	endif else if sz_A[0] eq 2 && sz_A[1] eq 3 && sz_A[2] eq n_X then begin
 	    result = make_array(n_Xout, 3, TYPE=out_type)
-	    result[*,0] = interpol(A[*,0], X, Xout)
-	    result[*,1] = interpol(A[*,1], X, Xout)
-	    result[*,2] = interpol(A[*,2], X, Xout)
-        
+	    result[*,0] = interpol(A[*,0], X, Xout, _STRICT_EXTRA=extra)
+	    result[*,1] = interpol(A[*,1], X, Xout, _STRICT_EXTRA=extra)
+	    result[*,2] = interpol(A[*,2], X, Xout, _STRICT_EXTRA=extra)
+
 ;---------------------------------------------------------------------
 ;A is NxM, X is an M element vector //////////////////////////////////
 ;---------------------------------------------------------------------
 	endif else if sz_A[0] eq 2 && sz_A[2] eq n_X then begin
 		result = make_array(sz_A[1], n_Xout, TYPE=out_type)
-		for i = 0, sz_A[1] - 1 do result[i,*] = interpol(A[i,*], X, Xout)
-        
+		for i = 0, sz_A[1] - 1 do result[i,*] = interpol(A[i,*], X, Xout, _STRICT_EXTRA=extra)
+
 ;---------------------------------------------------------------------
 ;A is MxN, X is an M element vector //////////////////////////////////
 ;---------------------------------------------------------------------
 	endif else if sz_A[0] eq 2 && sz_A[1] eq n_X then begin
 		result = make_array(n_Xout, sz_A[2], TYPE=out_type)
-		for i = 0, sz_A[2] - 1 do result[*,i] = interpol(A[*,i], X, Xout)
-        
+		for i = 0, sz_A[2] - 1 do result[*,i] = interpol(A[*,i], X, Xout, _STRICT_EXTRA=extra)
+
 ;---------------------------------------------------------------------
 ;Other Cases /////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
 	endif else message, '[A,X]: Incorrect dimension sizes.'
 
 	return, result
-
 end

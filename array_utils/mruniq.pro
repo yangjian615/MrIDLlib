@@ -30,6 +30,10 @@
 ; :Keywords:
 ;       COMPLEMENT:         out, optional, type=intarr
 ;                           The index values of the non-unique elements of `ARRAY`
+;       IARRAY:             out, optional, type=intarr
+;                           The location of each non-unique value of `ARRAY` in the array
+;                               of unique values. If UNIQUE_VALUES = `ARRAY`[`IUNIQ`],
+;                               then UNIQUE_VALUES[IARRAY] = `ARRAY`.
 ;       NAN                 in, optional, type=boolean, default=0
 ;                           If set, all NaN values will be excluded from `RESULT`. Instead,
 ;                               they will be counted in `COMPLEMENT` and `NCOMPLEMENT`.
@@ -41,7 +45,7 @@
 ;                           If set, `ARRAY` will be sorted into ascending, monotonic order.
 ;
 ; :Returns:
-;       RESULT:             out, required, type=intarr
+;       IUNIQ:              out, required, type=intarr
 ;                           The index-values of the uniq elements of `ARRAY`
 ;
 ; :Uses:
@@ -65,9 +69,11 @@
 ;       10/06/2013  -   If INDEX is in the formal parameter list, but not defined, UNIQ
 ;                           was throwing an error "Variable is undefined: IDX." Fixed. - MRA
 ;       2013/11/16  -   Added the NAN keyword. - MRA
+;       2015/04/29  -   Added the IARRAY keyword. - MRA
 ;-
 function MrUniq, array, index, $
 COMPLEMENT = complement, $
+IARRAY = iarray, $
 NAN = nan, $
 NUNIQ = nuniq, $
 NCOMPLEMENT = ncomplement, $
@@ -77,35 +83,41 @@ SORT = sort
     
     ;Get the result
     case keyword_set(sort) of
-        0: if n_elements(index) eq 0 $
-            then result = uniq(array) $
-            else result = uniq(array, index)
-        1: result = uniq(array, sort(array))
+        0: if n_elements(index) gt 0 $
+            then iuniq = uniq(array, index) $
+            else iuniq = uniq(array)
+        1: iuniq = uniq(array, sort(array))
     endcase
     
     ;Remove NaNs
     if keyword_set(nan) then begin
-        iFinite = where(finite(array[result]) eq 1, nFinite, COMPLEMENT=iNaN, NCOMPLEMENT=nNaN)
-        if nFinite eq 0 $
-            then return, result[iFinite] $
-            else result = result[iFinite]
-    endif else nNaN = 0
+        iFinite = where(finite(array[iuniq]), nuniq)
+        if nuniq eq 0 $
+            then iuniq = -1 $
+            else iuniq = iuniq[iFinite]
+    endif
     
     ;Count the number of uniq values
-    if arg_present(nuniq) then nuniq = n_elements(result)
+    if arg_present(nuniq) then nuniq = n_elements(iuniq)
     
     ;Get the index values of the non-unique elements
     if arg_present(complement) or arg_present(ncomplement) then begin
         index_array = lindgen(n_elements(array))
-        void = MrIsMember(result, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
+        void = MrIsMember(iuniq, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
     endif
     
-    return, result
+    ;Locate non-unique members and associate them with their unique result
+    if arg_present(iUniq) || arg_present(iArray) then begin
+        iArray = value_locate(array[iuniq], array)
+        iArray = iuniq[iarray]
+    endif
+
+    return, iuniq
 end
 
     
 ;---------------------------------------------------------------------
-;%Main-Level Example Program (.r MrUniq) /////////////////////////////
+;% Main-Level Example Program (.r MrUniq) ////////////////////////////
 ;---------------------------------------------------------------------
 
 a = [1.0, 3.0, !values.f_nan, 2.0, 5.0, 6.0, 2.0, 7.0, !values.f_nan]

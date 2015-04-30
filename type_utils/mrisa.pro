@@ -36,14 +36,14 @@
 ;       The purpose of this program is to serve as a wrapper for IDL's "isa" function.
 ;       In addition to the types checked by "ISA", MrIsA will also check for::
 ;           - Decimal
-;           - Integer
+;           - Integer       - IDL 8.4 has this keyword
 ;           - Number        - IDL 8.1 has this keyword
 ;           - Null          - IDL 8.2 has this keyword
 ;           - Real
-;           - Complex
+;           - Complex       - IDL 8.4 has this keyword
 ;           - Double
-;           - Column   (array is a N-row, 1-column vector)
-;           - Row      (array is a 1-row, N-column vector)
+;           - Column   (1xN vector)
+;           - Row      (Nx1 vector)
 ;
 ;       Furthermore, if `X` is a structure and `TYPE` is given, `TYPE` will be checked
 ;       against the name of the structure.
@@ -57,9 +57,7 @@
 ;       Wrapper, Type Utility
 ;
 ; :Examples:
-;
 ;       See the example program at the end of this file::
-;
 ;           IDL> .r MrIsA
 ;
 ; :Params:
@@ -116,17 +114,20 @@
 ;                           Fixed errors with combinations of keywords from MrIsA and IsA. - MRA
 ;       2014/01/21  -   Conflicting cases return False immediately (e.g. /ROW, /COLUMN) - MRA
 ;       2014/06/19  -   Re-organized and added NULL keyword. - MRA
+;       2015/03/09  -   Greatly simplified logic by removing all calls to IsA(). - MRA
 ;-
 function MrIsA, x, type, $
- DECIMAL = decimal, $
- INTEGER = integer, $
- NUMBER  = number, $
- NULL    = null, $
- REAL    = real, $
- COMPLEX = complex, $
- DOUBLE  = double, $
  COLUMN  = column, $
+ COMPLEX = complex, $
+ DECIMAL = decimal, $
+ DOUBLE  = double, $
+ FLOAT   = float, $
+ INTEGER = integer, $
+ NULL    = null, $
+ NUMBER  = number, $
+ REAL    = real, $
  ROW     = row, $
+ STRING  = string, $
  ;Keywords for IDL's IsA function
  FILE    = file, $
  ARRAY   = array, $
@@ -149,128 +150,136 @@ function MrIsA, x, type, $
     x_size = size(x)
     
     ;Defaults
-    if n_elements(type) gt 0 then type = strupcase(type) else type = ''
-    decimal = keyword_set(decimal)
-    integer = keyword_set(integer)
-    number  = keyword_set(number)
-    null    = keyword_set(null)
-    real    = keyword_set(real)
-    complex = keyword_set(complex)
-    double  = keyword_set(double)
-    column  = keyword_set(column)
-    row     = keyword_set(row)
-    file    = keyword_set(file)
+    theType = n_elements(type) eq 0 ? '' : strupcase(type)
     array   = keyword_set(array)
+    column  = keyword_set(column)
+    complex = keyword_set(complex)
+    decimal = keyword_set(decimal)
+    double  = keyword_set(double)
+    float   = keyword_set(float)
+    file    = keyword_set(file)
+    integer = keyword_set(integer)
+    null    = keyword_set(null)
+    number  = keyword_set(number)
+    row     = keyword_set(row)
+    real    = keyword_set(real)
     scalar  = keyword_set(scalar)
+    string  = keyword_set(string)
     
     ;Count the number of keywords that are set.
-    nKey = decimal + integer + number + real + complex + double + column + $
-           row + file + array + scalar + null
+    nKey = array + column + complex + decimal + double + float + file + integer + $
+           null + number + row + real + scalar + string
     
     ;Take care of conflicting cases
-    if real + complex    gt 1 then return, 0
-    if array + scalar    gt 1 then return, 0
-    if column + row      gt 1 then return, 0
-    if decimal + integer gt 1 then return, 0
-    if null && nKey ne 1 then return, 0
-    
-    ;Assume false
-    tf_type = 0     ;Used to check variable type, if given
-    tf_isa  = 0     ;Used to check other properties
+    if real + complex    gt 1 then message, 'Keywords REAL and COMPLEX are mutually exclusive.'
+    if array + scalar    gt 1 then message, 'Keywords ARRAY and SCALAR are mutually exclusive.'
+    if column + row      gt 1 then message, 'Keywords COLUMN and ROW are mutually exclusive.'
+    if decimal + integer gt 1 then message, 'Keywords DECIMAL and INTEGER are mutually exclusive.'
+    if null && nKey ne 1      then message, 'Keyword NULL cannot be used with other keywords.'
     
 ;-----------------------------------------------------
-; IsA for IDL >= 8.0 \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Defined? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    ;Use IDL's IsA function
-    if MrCmpVersion('8.0') le 0 then begin
-        ;Some keywords were added in later versions
-        if type eq '' then begin
-            case 1 of
-                MrCmpVersion('8.2') le 0: tf_isa = isa(x, FILE=file, ARRAY=array, SCALAR=scalar, NUMBER=number, NULL=null)
-                MrCmpVersion('8.1') le 0: tf_isa = isa(x, FILE=file, ARRAY=array, SCALAR=scalar, NUMBER=number)
-                else: tf_isa = isa(x, FILE=file, ARRAY=array, SCALAR=scalar)
-            endcase
-        endif else begin
-            case 1 of
-                MrCmpVersion('8.2') le 0: tf_isa = isa(x, type, FILE=file, ARRAY=array, SCALAR=scalar, NUMBER=number, NULL=null)
-                MrCmpVersion('8.1') le 0: tf_isa = isa(x, type, FILE=file, ARRAY=array, SCALAR=scalar, NUMBER=number)
-                else: tf_isa = isa(x, type, FILE=file, ARRAY=array, SCALAR=scalar)
-            endcase
-        endelse
-        
-        ;TF_ISA and TF_TYPE are already combined
-        tf_type = tf_isa
+    if theType eq '' then begin
+        ;Check if the variable is defined.
+        ;   - Pointers and objects must be valid
+        ;   - Objects must be valid
+        ;   - Type code is non-zero
+        case x_type of
+            'POINTER': tf_isa = ptr_valid(x)
+            'OBJREF':  tf_isa = obj_valid(x)
+            else:      tf_isa = x_size[x_size[0]+2] gt 0
+        endcase
 
+        ;If TYPE was not given, then (TF_ISA and TF_TYPE) needs to reflect the status
+        ;of TF_ISA alone. To accomplish this, set TF_TYPE to true.
+        tf_type = 1
+    
 ;-----------------------------------------------------
-; MrIsA for IDL < 8.0 \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Type \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     endif else begin
-        ;Check variable type?
-        if type ne '' then begin
-            ;Does the given type match the variable type?
-            ;   - Check structure name?
-            ;   - Check object class?
-            case x_type of
-                'STRUCT':    tf_type = type eq 'STRUCT' ? 1 : size(x, /SNAME) eq type
-                'OBJREF':    tf_type = type eq 'OBJREF' ? 1 : MrObj_Class(x, type)
-                else:        tf_type = type eq x_type
-            endcase
-        
-        ;Check if defined?
-        endif else begin
-            ;Check if the variable is defined.
-            ;   - Pointers and objects must be valid
-            case type of
-                'POINTER': tf_isa = ptr_valid(x)
-                'OBJREF':  tf_isa = obj_valid(x)
-                else:      tf_isa = x_size[x_size[0]+2] gt 0
-            endcase
-            
-            ;If TYPE was not given, then (TF_ISA and TF_TYPE) needs to reflect the status
-            ;of TF_ISA alone. To accomplish this, set TF_TYPE to true.
-            tf_type = 1
-        endelse
-        
-        ;Check FILE, ARRAY, and SCALAR
-        if file   then message, 'The FILE keyword is not available before IDL 8.0', /INFORMATIONAL
-        if array  then if x_size[0] ge 1 then tf_isa = 1
-        if scalar then if x_size[0] eq 0 && x_size[x_size[0]+2] eq 1 then tf_isa = 1
-
-        ;Combine results
-        tf_isa = tf_type and tf_isa
-    endelse
-
-;-----------------------------------------------------
-; A Number? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-;-----------------------------------------------------
-    if number && MrCmpVersion('8.1') eq 1 then begin
+        ;Does the given type match the variable type?
+        ;   - Check structure name?
+        ;   - Check object class?
+        ;   - Compare against the variable's actual type.
         case x_type of
-            'BYTE':      tf_isa = 1 and tf_isa
-            'INT':       tf_isa = 1 and tf_isa
-            'LONG':      tf_isa = 1 and tf_isa
+            'STRUCT':    tf_type = theType eq 'STRUCT' ? 1 : size(x, /SNAME) eq theType
+            'OBJREF':    tf_type = theType eq 'OBJREF' ? 1 : obj_isa(x, theType)
+            else:        tf_type = theType eq x_type
+        endcase
+
+        tf_isa = 1
+    endelse
+    
+;-----------------------------------------------------
+; File \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if file then message, 'I do not know how to implement the FILE keyword. Use IsA().'
+    
+;-----------------------------------------------------
+; Array \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if array then begin
+        ;One or more dimensions
+        if x_size[0] ge 1 $
+            then tf_isa = 1 and tf_isa $
+            else tf_isa = 0
+    endif
+    
+;-----------------------------------------------------
+; Scalar \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if scalar then begin
+        ;Zero dimensions and one element
+        if x_size[0] eq 0 && x_size[x_size[0]+2] eq 1 $
+            then tf_isa = 1 and tf_isa $
+            else tf_isa = 0
+    endif
+
+;-----------------------------------------------------
+; Column \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if column then begin
+        ;Two dimensions, the first being of size 1 (i.e. a 1xN array)
+        if x_size[0] eq 2 && x_size[1] eq 1 $
+            then tf_isa = 1 and tf_isa $
+            else tf_isa = 0
+    endif
+
+;-----------------------------------------------------
+; Complex \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if complex then begin
+        case x_type of
+            'COMPLEX':  tf_isa = 1 and tf_isa
+            'DCOMPLEX': tf_isa = 1 and tf_isa
+            else:       tf_isa = 0
+        endcase
+    endif
+    
+;-----------------------------------------------------
+; Decimal \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if decimal || float then begin
+        case x_type of
             'FLOAT':     tf_isa = 1 and tf_isa
             'DOUBLE':    tf_isa = 1 and tf_isa
             'COMPLEX':   tf_isa = 1 and tf_isa
             'DCOMPLEX':  tf_isa = 1 and tf_isa
-            'UINT':      tf_isa = 1 and tf_isa
-            'ULONG':     tf_isa = 1 and tf_isa
-            'LONG64':    tf_isa = 1 and tf_isa
-            'ULONG64':   tf_isa = 1 and tf_isa
             else:        tf_isa = 0
         endcase
     endif
 
 ;-----------------------------------------------------
-; Null \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Double \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    ;IDL < 8.2?
-    if null && MrCmpVersion('8.2') eq 1 then begin
-        ;Help will split the output into a two-element array if the variable
-        ;name is very long.
-        help, x, OUTPUT=helpStr
-        if strpos(helpStr[n_elements(helpStr)-1], '!NULL') ne -1 $
-            then tf_isa = 1 and tf_isa $
-            else tf_isa = 0
+    if double then begin    
+        case x_type of
+             'DOUBLE':   tf_isa = 1 and tf_isa      ;double
+             'DCOMPLEX': tf_isa = 1 and tf_isa      ;dcomplex
+            else:        tf_isa = 0
+        endcase
     endif
 
 ;-----------------------------------------------------
@@ -288,16 +297,35 @@ function MrIsA, x, type, $
             else:        tf_isa = 0
         endcase
     endif
-    
+
 ;-----------------------------------------------------
-; Decimal \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Null \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if decimal then begin
+    if null then begin
+        ;Help will split the output into a two-element array if the variable
+        ;name is very long.
+        help, x, OUTPUT=helpStr
+        if strpos(helpStr[n_elements(helpStr)-1], '!NULL') ne -1 $
+            then tf_isa = 1 and tf_isa $
+            else tf_isa = 0
+    endif
+
+;-----------------------------------------------------
+; Number \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+    if number then begin
         case x_type of
+            'BYTE':      tf_isa = 1 and tf_isa
+            'INT':       tf_isa = 1 and tf_isa
+            'LONG':      tf_isa = 1 and tf_isa
             'FLOAT':     tf_isa = 1 and tf_isa
             'DOUBLE':    tf_isa = 1 and tf_isa
             'COMPLEX':   tf_isa = 1 and tf_isa
             'DCOMPLEX':  tf_isa = 1 and tf_isa
+            'UINT':      tf_isa = 1 and tf_isa
+            'ULONG':     tf_isa = 1 and tf_isa
+            'LONG64':    tf_isa = 1 and tf_isa
+            'ULONG64':   tf_isa = 1 and tf_isa
             else:        tf_isa = 0
         endcase
     endif
@@ -319,41 +347,20 @@ function MrIsA, x, type, $
     endif
         
 ;-----------------------------------------------------
-; Complex \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; Row \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if complex then begin
-        case x_type of
-             'COMPLEX':  tf_isa = 1 and tf_isa
-             'DCOMPLEX': tf_isa = 1 and tf_isa
-            else:        tf_isa = 0
-        endcase
-    endif
-
-;-----------------------------------------------------
-; Double \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-;-----------------------------------------------------
-    if double then begin    
-        case x_type of
-             'DOUBLE':   tf_isa = 1 and tf_isa      ;double
-             'DCOMPLEX': tf_isa = 1 and tf_isa      ;dcomplex
-            else:        tf_isa = 0
-        endcase
-    endif
-
-;-----------------------------------------------------
-; Column \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-;-----------------------------------------------------
-    if column then begin
-        if x_size[0] eq 2 && x_size[1] eq 1 $
+    if row then begin
+        ;One dimension
+        if x_size[0] eq 1 $
             then tf_isa = 1 and tf_isa $
             else tf_isa = 0
     endif
         
 ;-----------------------------------------------------
-; Row \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+; String \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if row then begin
-        if x_size[0] eq 1 $
+    if string then begin
+        if x_type eq 'STRING' $
             then tf_isa = 1 and tf_isa $
             else tf_isa = 0
     endif
@@ -362,34 +369,35 @@ function MrIsA, x, type, $
 ;Combine Results \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
         
-    if (type ne '') && (nKey gt 0) $
-        then tf_isa = tf_isa and tf_type $
-        else if (type ne '') then tf_isa = tf_type
-    
-    return, tf_isa
+    result = tf_isa and tf_type
+    return, result
 end
 
 ;-----------------------------------------------------
 ;Main Level Example Program \\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-;Create variables of different types
-test1 = 5
-test2 = 's'
-test3 = 1D
-test4 = ['a', 'b']
 
-;Determine if they are of a numeric type
-tf_test0 = MrIsA(test0)
-tf_test1 = MrIsA(test1, /INTEGER)
-tf_test2 = MrIsA(test2, /SCALAR)
-tf_test3 = MrIsA(test3, /DOUBLE)
-tf_test4 = MrIsA(test4, 'STRING', /ARRAY)
-
-;Print the results
-print, FORMAT='(%"x               Is defined?        %i")',          tf_test0
-print, FORMAT='(%"x = %3i         Is an integer?     %i")',   test1, tf_test1
-print, FORMAT='(%"x = %3s         Is a scalar?       %i")',   test2, tf_test2
-print, FORMAT='(%"x = %3.1f         Is a double?       %i")', test3, tf_test3
-print, FORMAT='(%"x = [\"%s\", \"%s\"]  Is a String Array? %i")', test4, tf_test4
+print, FORMAT='(a25, 4x, a-18, 2x, a6)',  'VARIABLE',                 'IsA()',           'RESULT'
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '<undefined>',              '',                 MrIsA(foo)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/NUMBER',          MrIsA(1.0d, /NUMBER)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/FLOAT',           MrIsA(1.0d, /FLOAT)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '"Float"',          MrIsA(1.0d, 'Float')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/SCALAR',          MrIsA(1.0d, /SCALAR)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/SCALAR, /FLOAT',  MrIsA(1.0d, /SCALAR, /FLOAT)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING',          MrIsA('hello', /STRING)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING, /SCALAR', MrIsA('hello', /STRING, /SCALAR)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING, /ARRAY',  MrIsA('hello', /STRING, /ARRAY)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'List(1,2,3)',              '"List"',           MrIsA(List(1,2,3), 'List')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'List(1,2,3)',              '"Array"',          MrIsA(List(1,2,3), 'Array')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '',                 MrIsA({MyStruct, Field1: "hi"})
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '"MyStruct"',       MrIsA({MyStruct, Field1: "hi"}, 'MyStruct')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '/ARRAY',           MrIsA({MyStruct, Field1: "hi"}, /ARRAY)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Ptr_New()',                '',                 MrIsA(Ptr_New())
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Ptr_New()',                '"Pointer"',        MrIsA(Ptr_New(), 'Pointer')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Ptr_New()',                '/SCALAR',          MrIsA(Ptr_New(), /SCALAR)
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Obj_New("IDLgrModel")',    '"ObjRef"',         MrIsA(Obj_New('IDLgrModel'), 'ObjRef')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Obj_New("IDLgrModel")',    '"IDLgrModel"',     MrIsA(Obj_New('IDLgrModel'), 'IDLgrModel')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Obj_New("IDLgrModel")',    '"IDLitComponent"', MrIsA(Obj_New('IDLgrModel'), 'IDLitComponent')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'Obj_New("IDLgrModel")',    '"IDLgrView"',      MrIsA(Obj_New('IDLgrModel'), 'IDLgrView')
 
 end

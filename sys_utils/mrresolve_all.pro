@@ -50,6 +50,8 @@
 ; :History:
 ;   Change History::
 ;       2015/02/07  -   Written by Matthew Argall
+;       2015/03/06  -   Added the FILTER_CLASS, FILTER_FUN, and FILTER_PRO keywords.
+;                           Use FilePath() to determine the IDL_ROOT. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -150,30 +152,55 @@ end
 ;                           File names associated with each compiled function. Empty
 ;                               strings represent elements of `FUNCTIONS` that do not have
 ;                               an associated PROCEDURES[i] + '.pro' file name.
+;       FILTER_CLASS:       in, optional, type=string, default='.*'
+;                           A regex express to act as a boolean filter for  `CLASSES`
+;                               and `FILES_CLASS`. Any routines that do not match are
+;                               excluded from the outputs.
+;       FILTER_FUN:         in, optional, type=string, default='.*'
+;                           A regex express to act as a boolean filter for  `FUNCTIONS`
+;                               and `FILES_FUN`. Any routines that do not match are
+;                               excluded from the outputs.
+;       FILTER_PRO:         in, optional, type=string, default='.*'
+;                           A regex express to act as a boolean filter for  `PROCEDURES`
+;                               and `FILES_PRO`. Any routines that do not match are
+;                               excluded from the outputs.
 ;       FUNCTIONS:          out, optional, type=string/strarr
 ;                           Names of the functions that have been resolved.
+;       IDL_ROOT:           in, optional, type=string, default=FilePath('')
+;                           Location of the IDL distribution. Used with `NO_IDL_ROUTINES`.
 ;       METHOD_FUNS:        out, optional, type=string/strarr
 ;                           Names of the resolved function methods.
 ;       METHOD_PROS:        out, optional, type=string/strarr
 ;                           Names of the resolved procedures methods.
+;       NCLASS:             out, optional, type=long
+;                           Number of classes resolved.
 ;       NFUNS:              out, optional, type=long
 ;                           Number of functions resolved.
 ;       NMETHODFUNS:        out, optional, type=long
 ;                           Number of function methods resolved.
 ;       NMETHODPROS:        out, optional, type=long
 ;                           Number of procedure methods resolved.
+;       NO_IDL_ROUTINES:    in, optional, type=boolean, default=0
+;                           If set, then IDL routines are removed from `CLASSES`, `FUNCTIONS`,
+;                               `PROCEDURES`, `FILES_CLASS`, `FILES_FUN`, and `FILES_PRO`.
+;                               This requires that File_Which be used to determine where
+;                               each compiled file is located. Files in the `IDL_ROOT`
+;                               directory tree are removed.
 ;       NPROS:              out, optional, type=long
 ;                           Number of procedures resolved.
-;       NCLASS:             out, optional, type=long
-;                           Number of classes resolved.
+;       NUNRESOLVED:        out, optional, type=long
+;                           Number of unresolved routines.
 ;       PROCEDURES:         out, optional, type=string/strarr
 ;                           Names of the procedures that have been resolved.
 ;       RESOLVE_CLASS:      in, optional, type=string/strarr
 ;                           Names of the classes to be resolved.
-;       RESOLVE_PROCEDURES: in, optional, type=string/strarr
+;       RESOLVE_PROCEDURE:  in, optional, type=string/strarr
 ;                           Names of the procedures to be resolved.
-;       RESOLVE_FUNCTIONS:  in, optional, type=string/strarr
+;       RESOLVE_FUNCTION:   in, optional, type=string/strarr
 ;                           Names of the functions to be resovled.
+;       RESOLVE_EITHER:     in, optional, type=string/strarr
+;                           Use to resolve a routine if you do not know if it is a
+;                               procedure or a function.
 ;       SHOW:               in, optional, type=boolean, default=0
 ;                           If set, resolved procedures, functions, and classes will
 ;                               be printed to the command window.
@@ -187,9 +214,12 @@ end
 ;-
 pro MrResolve_All, $
 CLASSES=classes, $
-FILES_PRO=files_pro, $
-FILES_FUN=files_fun, $
 FILES_CLASS=files_class, $
+FILES_FUN=files_fun, $
+FILES_PRO=files_pro, $
+FILTER_CLASS=filter_class, $
+FILTER_FUN=filter_fun, $
+FILTER_PRO=filter_pro, $
 FUNCTIONS=functions, $
 IDL_ROOT=idl_root, $
 METHOD_PROS=method_pros, $
@@ -210,7 +240,7 @@ SHOW=show, $
 SKIP_ROUTINES=skip_routines, $
 UNRESOLVED=unresolved
 	compile_opt strictarr
-    on_error, 2
+	on_error, 2
 	
 	;Show results?
 	show            = keyword_set(show)
@@ -218,13 +248,16 @@ UNRESOLVED=unresolved
 	get_files_class = arg_present(files_class)
 	get_files_pro   = arg_present(files_pro)
 	get_files_fun   = arg_present(files_fun)
-	if n_elements(idl_root) eq 0 then idl_root = '/Applications/exelis'
+	if n_elements(idl_root)     eq 0 then idl_root     = filepath('')
+	if n_elements(filter_class) eq 0 then filter_class = ''
+	if n_elements(filter_fun)   eq 0 then filter_fun   = ''
+	if n_elements(filter_pro)   eq 0 then filter_pro   = ''
 	
-	;If we are removing IDL routines, we must find file names
+	;Removing IDL routines requires us to get the file names
 	if no_idl_routines then begin
-	    get_files_class = 1
-	    get_files_pro   = 1
-	    get_files_fun   = 1
+		get_files_class = 1
+		get_files_pro   = 1
+		get_files_fun   = 1
 	endif
 	
 	;Resolve all that were given
@@ -242,95 +275,125 @@ UNRESOLVED=unresolved
 	procedures = MrResolve_All_ParseHelp(COUNT=nPros,  /PROCEDURES)
 	functions  = MrResolve_All_ParseHelp(COUNT=nFuns,  /FUNCTIONS)
 	classes    = MrResolve_All_ParseHelp(COUNT=nClass, /OBJECTS)
-    
+
 ;-----------------------------------------------------
 ; Separate Classes \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    ;Find procedure and function methods
-    iProMethod = where( ( strpos(procedures, '::') ne -1 ), nMethodPros, COMPLEMENT=iPro, NCOMPLEMENT=nPros)
-    iFunMethod = where( ( strpos(functions,  '::') ne -1 ), nMethodFuns, COMPLEMENT=iFun, NCOMPLEMENT=nFuns)
+	;Find procedure and function methods
+	iProMethod = where( ( strpos(procedures, '::') ne -1 ), nMethodPros, COMPLEMENT=iPro, NCOMPLEMENT=nPros)
+	iFunMethod = where( ( strpos(functions,  '::') ne -1 ), nMethodFuns, COMPLEMENT=iFun, NCOMPLEMENT=nFuns)
 
-    ;Remove methods
-    if nMethodPros gt 0 then method_pros = procedures[iProMethod] else method_pros = ''
-    if nMethodFuns gt 0 then method_funs = functions[iFunMethod]  else method_funs = ''
-    if nPros       gt 0 then procedures  = procedures[iPro]       else procedures  = ''
-    if nFuns       gt 0 then functions   = functions[iFun]        else functions   = ''
-    
-    ;Find class definitions
-    iClassDef = where( ( strpos(procedures, '__DEFINE') ne -1 ), nMethodPros, COMPLEMENT=iPro, NCOMPLEMENT=nPros)
-    
-    ;Remove class definitions
-    if nPros gt 0 then procedures = procedures[iPro] else procedures  = ''
-    
-    ;Scalars?
-    if nPros       eq 1 then procedures  = procedures[0]
-    if nFuns       eq 1 then functions   = functions[0]
-    if nClass      eq 1 then classes     = classes[0]
-    if nMethodPros eq 1 then method_pros = method_pros[0]
-    if nMethodFuns eq 1 then method_funs = method_funs[0]
-    
+	;Remove methods
+	if nMethodPros gt 0 then method_pros = procedures[iProMethod] else method_pros = ''
+	if nMethodFuns gt 0 then method_funs = functions[iFunMethod]  else method_funs = ''
+	if nPros       gt 0 then procedures  = procedures[iPro]       else procedures  = ''
+	if nFuns       gt 0 then functions   = functions[iFun]        else functions   = ''
+
+	;Find class definitions
+	iClassDef = where( ( strpos(procedures, '__DEFINE') ne -1 ), nMethodPros, COMPLEMENT=iPro, NCOMPLEMENT=nPros)
+
+	;Remove class definitions
+	if nPros gt 0 then procedures = procedures[iPro] else procedures  = ''
+
+	;Scalars?
+	if nPros       eq 1 then procedures  = procedures[0]
+	if nFuns       eq 1 then functions   = functions[0]
+	if nClass      eq 1 then classes     = classes[0]
+	if nMethodPros eq 1 then method_pros = method_pros[0]
+	if nMethodFuns eq 1 then method_funs = method_funs[0]
+
 ;-----------------------------------------------------
 ; Show Results \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if show then begin
-        print, 'Compiled Classes:'
-        print, '   ' + reform(classes, 1, nClass)
-        print, 'Compiled Procedures:'
-        print, '   ' + reform(procedures, 1, nPros)
-        print, 'Compiled Functions:'
-        print, '   ' + reform(functions, 1, nFuns)
-    endif
-    
+	if show then begin
+		print, 'Compiled Classes:'
+		print, '   ' + ( nClass eq 0 ? '' : reform(classes, 1, nClass) )
+		print, 'Compiled Procedures:'
+		print, '   ' + ( nPros eq 0 ? '' : reform(procedures, 1, nPros) )
+		print, 'Compiled Functions:'
+		print, '   ' + ( nFuns eq 0 ? '' : reform(functions, 1, nFuns) )
+	endif
+
 ;-----------------------------------------------------
 ; Unresolved Items \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    nUnresolved = n_elements(unresolved)
-    if (nUnresolved gt 0) && (show || (arg_present(unresolved) eq 0) ) then begin
-        message, 'Unresolved Routines:', /INFORMATIONAL
-        print, '   ' + reform(unresolved, 1, nUnresolved)
-    endif
-    
+	nUnresolved = n_elements(unresolved)
+	if (nUnresolved gt 0) && (show || (arg_present(unresolved) eq 0) ) then begin
+		message, 'Unresolved Routines:', /INFORMATIONAL
+		print, '   ' + reform(unresolved, 1, nUnresolved)
+	endif
+
 ;-----------------------------------------------------
 ; Get File Names \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    ;Classes
-    if get_files_class && nClass gt 0 then begin
-        files_class = strarr(nClass)
-        for i = 0, nClass - 1 do files_class[i] = file_which(strlowcase(classes[i]) + '__define.pro')
-        if nClass eq 1 then files_class = files_class[0]
-    endif
-    
-    ;Functions
-    if get_files_fun && nFuns gt 0 then begin
-        files_fun = strarr(nFuns)
-        for i = 0, nFuns - 1 do files_fun[i] = file_which(strlowcase(functions[i]) + '.pro')
-        if nFuns eq 1 then file_fun = file_fun[0]
-    endif
-    
-    ;Procedures
-    if get_files_pro && nPros gt 0 then begin
-        files_pro = strarr(nPros)
-        for i = 0, nPros - 1 do files_pro[i] = file_which(strlowcase(procedures[i]) + '.pro')
-        if nPros eq 1 then file_pro = file_pro[0]
-    endif
-    
+	;Classes
+	if get_files_class && nClass gt 0 then begin
+		files_class = strarr(nClass)
+		for i = 0, nClass - 1 do files_class[i] = file_which(strlowcase(classes[i]) + '__define.pro')
+		if nClass eq 1 then files_class = files_class[0]
+	endif
+
+	;Functions
+	if get_files_fun && nFuns gt 0 then begin
+		files_fun = strarr(nFuns)
+		for i = 0, nFuns - 1 do files_fun[i] = file_which(strlowcase(functions[i]) + '.pro')
+		if nFuns eq 1 then file_fun = file_fun[0]
+	endif
+
+	;Procedures
+	if get_files_pro && nPros gt 0 then begin
+		files_pro = strarr(nPros)
+		for i = 0, nPros - 1 do files_pro[i] = file_which(strlowcase(procedures[i]) + '.pro')
+		if nPros eq 1 then file_pro = file_pro[0]
+	endif
+
 ;-----------------------------------------------------
 ; Remove IDL Routines \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    if no_idl_routines then begin
-        ;Find non-IDL routines
-        iClass = where(strpos(files_class, idl_root) eq -1, nClass)
-        iPro   = where(strpos(files_pro,   idl_root) eq -1, nPros)
-        iFun   = where(strpos(files_fun,   idl_root) eq -1, nFuns)
-        
-        ;Remove IDL routines
-        if nClass gt 0 then classes    = classes[iClass]  else classes    = ''
-        if nFuns  gt 0 then functions  = functions[iFun]  else functions  = ''
-        if nPros  gt 0 then procedures = procedures[iPro] else procedures = ''
-        
-        ;Remove IDL routines from file name list
-        if nClass gt 0 then files_class = files_class[iClass] else files_class = ''
-        if nPros  gt 0 then files_pro   = files_pro[iPro]     else files_pro   = ''
-        if nFuns  gt 0 then files_fun   = files_fun[iFun]     else files_fun   = ''
-    endif
+	if no_idl_routines then begin
+		;Non-IDL Classes
+		if get_files_class then begin
+			iClass = where(strpos(files_class, idl_root) eq -1, nClass)
+			if nClass gt 0 then classes     = classes[iClass]     else classes    = ''
+			if nClass gt 0 then files_class = files_class[iClass] else files_class = ''
+		endif
+		
+		;Non-IDL Functions
+		if get_files_fun then begin
+			iFun = where(strpos(files_fun, idl_root) eq -1, nFuns)
+			if nFuns gt 0 then functions = functions[iFun] else functions = ''
+			if nFuns gt 0 then files_fun = files_fun[iFun] else files_fun = ''
+		endif
+		
+		;Non-IDL Procedures
+		if get_files_pro then begin
+			iPro = where(strpos(files_pro, idl_root) eq -1, nPros)
+			if nPros gt 0 then procedures = procedures[iPro] else procedures = ''
+			if nPros gt 0 then files_pro  = files_pro[iPro]  else files_pro  = ''
+		endif
+	endif
+
+;-----------------------------------------------------
+; Apply Filters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+	;Classes
+	if filter_class ne '' then begin
+		iClass = where(stregex(files_class, filter_class, /BOOLEAN) eq 1, nFun)
+		if nClass gt 0 then classes = classes[iClass] else classes = ''
+		if nClass gt 0 then if get_files_class then files_class = files_class[iClass] else files_class = ''
+	endif
+	
+	;Functions
+	if filter_fun ne '' then begin
+		iFun = where(stregex(files_fun, filter_fun, /BOOLEAN) eq 1, nFun)
+		if nFuns gt 0 then functions = functions[iFun] else functions = ''
+		if nFuns gt 0 then if get_files_fun then files_fun = files_fun[iFun] else files_fun = ''
+	endif
+		
+	;Procedures
+	if filter_pro ne '' then begin
+		iPro = where(stregex(files_pro, filter_pro, /BOOLEAN) eq 1, nPro)
+		if nPros gt 0 then procedures = procedures[iPro] else procedures = ''
+		if nPros gt 0 then if get_files_pro then files_pro = files_pro[iPro] else files_pro  = ''
+	endif
 end

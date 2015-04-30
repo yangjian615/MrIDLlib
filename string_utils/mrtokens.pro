@@ -69,6 +69,7 @@
 ;       MrTimeParser.pro
 ;       MrTokens_ToRegex.pro
 ;       MrTokens_Extract.pro
+;       MrFile_Search.pro
 ;
 ; :Keywords:
 ;       COUNT:          out, optional, type=integer
@@ -87,11 +88,11 @@
 ;
 ; :Author:
 ;       Matthew Argall::
-;		University of New Hampshire
-;		Morse Hall, Room 113
+;       University of New Hampshire
+;       Morse Hall, Room 348
 ;       8 College Rd.
-;		Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       Durham, NH, 03824
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Modification History::

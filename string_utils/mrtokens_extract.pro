@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrTimeTokensToRegex
+;       MrTokens_Extract
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2014, Matthew Argall                                                   ;
@@ -72,11 +72,11 @@
 ;
 ; :Author:
 ;       Matthew Argall::
-;		University of New Hampshire
-;		Morse Hall, Room 113
+;       University of New Hampshire
+;       Morse Hall, Room 348
 ;       8 College Rd.
-;		Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       Durham, NH, 03824
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Modification History::
