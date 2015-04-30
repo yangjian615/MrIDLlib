@@ -146,20 +146,24 @@ TRIPLE=triple
 
 	;Defaults
 	if n_elements(ctIndex) eq 0 then ctIndex = 13
-	if n_elements(default) eq 0 then default = cgDefaultColor(TRADITIONAL=traditional, BACKGROUND=background)
-	nDefaults = n_elements(default)
 	
 	;Number of requested colors is taken from::
 	;   1. Color
 	;   2. NColors
 	;   3. Defaults
 	;   4. 1
-	nColorsIn = n_elements(color)
-	if n_elements(nColors) eq 0 then nColors = nColorsIn
-	if nColors             eq 0 then nColors = nDefaults
+	nColorsIn  = n_elements(color)
+	nDefaults  = n_elements(default)
+	nColorsOut = n_elements(nColors)
+	if nColorsIn + nDefaults + nColorsOut eq 0 then begin
+	    default   = cgDefaultColor(TRADITIONAL=traditional, BACKGROUND=background)
+	    nDefaults = 1
+	endif
+	if nColorsOut eq 0 then nColors = nColorsIn
+	if nColorsOut eq 0 then nColors = nDefaults
 	
 	;If the number of colors requested is less than the number of colors given, error
-	if nColors lt nColorsIn then message, 'COLOR must have <= NCOLORS number of elements.'
+	if nColorsIn gt nColors then message, 'COLOR must have <= NCOLORS number of elements.'
 
 	;If a single default was given, it is the default for all colors.
 	if nDefaults eq 1 && nColors gt 1 then begin
@@ -167,11 +171,11 @@ TRIPLE=triple
 		nDefaults = nColors
 
 	;The number of elements in DEFAULT must be the same as tne number of colors requested.
-	endif else begin
+	endif else if nDefaults ne 0 then begin
 		if nDefaults ne nColors then $
 			message, 'DEFAULTS must have NCOLORS number of elements.'
 		_default = default
-	endelse
+	endif
 
 ;---------------------------------------------------------------------
 ; cgDefaultColor /////////////////////////////////////////////////////
