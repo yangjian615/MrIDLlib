@@ -1,19 +1,13 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       ROTATE_VECTOR
+;       MrEulerMatrix
 ;
 ; PURPOSE:
 ;+
-;       The purpose of this program is to provide a means of rotating an array of 3D 
-;       vectors about a particular axis or by means of a single rotation matrix. The
-;       method of rotation is as follows::
-;           R[3x3] and x[3x1]   then take R##transpose(x)
-;           R[3x3] and x[1x3]   then take R##x
-;           R[3x3] and x[3xN]   then take R##transpose(x) for each 3-vector in x
-;           R[3x3] and x[Nx3]   then take R##x for each 3-vector in x
-;           R[3,3,N] and x[3xN] then take R##x for each 3x3 R and 3x1 x
-;           R[3,3,N] and x[Nx3] then take R##transpose(x) for each 3x3 R and 1x3 x
+;   Create a coordinate system tranformation matrix out of any number of pure
+;   Euler transformations. Note: results are intended to rotate a coordinate
+;   system, not a vector. 
 ;
 ; :Categories:
 ;       Math Utilities, Vector Math
@@ -33,10 +27,13 @@
 ;                       
 ;
 ; :Keywords:
+;       ROTATE_VECTOR:  in, optional, type=boolean, default=0
+;                       If set, the angles are intended to rotate a vector. By default
+;                           the coordinate system is rotated.
 ;       DEGREES:        in, optional, type=Boolean, default=0
 ;                       If set then `ALPHA`, `BETA` and `GAMMA` are degrees, not radians.
 ;       MATH:           in, optional, type=boolean, default=0
-;                       If set, `EULER_MATRIX` will be math-like instead of IDL-like.
+;                       If set, `ROTM` will be math-like instead of IDL-like.
 ;
 ;                           MATH:
 ;                                   v = [[vx], [vy], [vz]]
@@ -72,25 +69,28 @@
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Modification History::
 ;       2015/02/19  -   Written by Matthew Argall
-;       2015/04/30  -   Generalzied. Accept any number of rotation angles. - MRA.
+;       2015/04/30  -   Generalzied. Accept any number of rotation angles. Added
+;                           the ROTATE_VECTOR keyword. - MRA
 ;-
 function MrEulerMatrix, euler_angles, sequence, $
 DEGREES=degrees, $
-MATH=math
+MATH=math, $
+ROTATE_VECTOR=rotate_vector
 	compile_opt idl2
 	on_error, 2
 
 	;Default to no rotation
-	degrees = keyword_set(degrees)
-	math    = keyword_set(math)
+	degrees       = keyword_set(degrees)
+	math          = keyword_set(math)
+	rotate_vector = keyword_set(rotate_vector)
 	if n_elements(sequence) eq 0 then sequence = ['Z', 'Y', 'X']
 	
 	;Check for conflicts
@@ -99,6 +99,7 @@ MATH=math
 
 	;Convert to radians?
 	angles = degrees ? euler_angles * !dpi / 180.0D : euler_angles
+	if rotate_vector then angles = -angles
 
 	;Step through each rotation.
 	rotm = identity(3)

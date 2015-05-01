@@ -39,10 +39,15 @@
 ;       2014/03/05  -   Added quick case for DIMENSION=2. - MRA
 ;       2014/04/15  -   Made dimension juggling more readable. - MRA
 ;       2014/05/22  -   IDL allows 3 levels of bracket concatenation. Use 3rd level. - MRA
+;       2015/04/30  -   Default value for DIMENSION now set. ARRAY1 or ARRAY2 can
+;                           be undefined. - MRA
 ;-
 function MrConcatenate, array1, array2, dimension
     compile_opt strictarr
     on_error, 2
+
+    ;Append along the first dimension, by default
+    if n_elements(dimension) eq 0 then dimension = 1
 
 ;-----------------------------------------------------
 ;List \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -71,6 +76,20 @@ function MrConcatenate, array1, array2, dimension
 ;-----------------------------------------------------
 ;Simple Cases \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
+    s1 = size(array1)
+    s2 = size(array2)
+    n1 = s1[s1[0]+2]       ;Number of elements in Array1
+    n2 = s2[s2[0]+2]       ;Number of elements in Array2
+    
+    ;Are either of the arrays undefined?
+    case 1 of
+        n1 eq 0 && n2 eq 0: message, 'ARRAY1 or ARRAY2 must be defined.'
+        n1 gt 0 && n2 eq 0: return, array1
+        n1 eq 0 && n2 gt 0: return, array2
+        else: ;Continue below
+    endcase
+
+    ;Append dimensions
     case dimension of
         1: return, [  array1  ,   array2  ]
         2: return, [ [array1] ,  [array2] ]
@@ -87,12 +106,12 @@ function MrConcatenate, array1, array2, dimension
     
     ;Make editable copies of the arrays
     temparr1 = array1
-    dims1    = size(array1, /DIMENSIONS)
-    nDims1   = size(array1, /N_DIMENSIONS)
+    nDims1   = s1[0]
+    dims1    = nDims1 eq 0 ? 0 : s1[1:s1[0]]
     
     temparr2 = array2
-    dims2    = size(array2, /DIMENSION)
-    nDims2   = size(array2, /N_DIMENSIONS)
+    nDims2   = s2[0]
+    dims2    = nDims2 eq 0 ? 0 : s2[1:s2[0]]
     
     ;Make sure the number of dimensions agree.
     if nDims1 ne nDims2 then $
@@ -109,9 +128,8 @@ function MrConcatenate, array1, array2, dimension
 ;Concatenate \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     
-    ;Allocate memory to the output array.
+    ;Size of concatenated dimension.
     nCat = dims1[dimension-1] + dims2[dimension-1]
-    data_out = make_array([nCat, dims1[iDimKeep-1]], TYPE=size(array1, /TYPE))
 
     ;Transpose the arrays to put the chosen dimension first.
     if dimension ne 1 then begin
