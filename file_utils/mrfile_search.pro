@@ -441,7 +441,7 @@ VREGEX=vRegex
 		filesFound = filesFound[ikeep]
 		fstart     = fstart[ikeep]
 		if tf_fend then fend = fend[ikeep]
-stop
+
 	;-------------------------------------------
 	; Closest Time /////////////////////////////
 	;-------------------------------------------

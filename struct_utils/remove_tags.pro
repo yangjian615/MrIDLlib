@@ -60,9 +60,9 @@ function remove_tags, structure, tags, current_level, $
 KEEP=keep, $
 LEVEL=level, $
 RECURSIVE=recursive
-    compile_opt idl2
-    on_error, 2
-    
+	compile_opt idl2
+	on_error, 2
+
 	;tag_names() returns upper case strings, so convert all tags to be removed
 	;to uppercase.
 	_tags     = strupcase(tags)
@@ -71,10 +71,10 @@ RECURSIVE=recursive
 	keep      = keyword_set(keep)
 	if n_elements(current_level) eq 0 then current_level = 0
 	if n_elements(level) eq 0 then begin
-	    _level = recursive ? !values.f_infinity : 0
+		_level = recursive ? !values.f_infinity : 0
 	endif else begin
-	    _level    = level
-	    recursive = 1
+		_level    = level
+		recursive = 1
 	endelse
 
 	;get the names of the tags within the given structure
@@ -91,7 +91,7 @@ RECURSIVE=recursive
 		;switch nMatch
 		if keep then nMatch = ~nMatch
 
-        ;Keep the tag?
+		;Keep the tag?
 		if nMatch eq 0 then begin
 			;if requested, remove the tags from sub-structures as well
 			;otherwise get the data for the tag
@@ -109,18 +109,18 @@ RECURSIVE=recursive
 
 			;create a new structure with only the tags to be kept
 			if n_elements(tag_val) gt 0 then begin
-                if n_elements(temp) eq 0 $
-                    then temp = create_struct(name_tags[ii], tag_val) $
-                    else temp = create_struct(temp, name_tags[ii], tag_val)
-            endif
+				if n_elements(temp) eq 0 $
+					then temp = create_struct(name_tags[ii], tag_val) $
+					else temp = create_struct(temp, name_tags[ii], tag_val)
+			endif
 		endif
 	endfor
 
-    ;If all tags were removed, then return an empty structure 
-    if n_elements(temp) eq 0 then temp = {}
-    
-    current_level -= 1
-    return, temp
+	;If all tags were removed, then return an empty structure 
+	if n_elements(temp) eq 0 then temp = {}
+
+	current_level -= 1
+	return, temp
 end
 
 

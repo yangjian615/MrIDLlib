@@ -78,41 +78,43 @@ NAN = nan, $
 NUNIQ = nuniq, $
 NCOMPLEMENT = ncomplement, $
 SORT = sort
-    compile_opt idl2
-    on_error, 2
-    
-    ;Get the result
-    case keyword_set(sort) of
-        0: if n_elements(index) gt 0 $
-            then iuniq = uniq(array, index) $
-            else iuniq = uniq(array)
-        1: iuniq = uniq(array, sort(array))
-    endcase
-    
-    ;Remove NaNs
-    if keyword_set(nan) then begin
-        iFinite = where(finite(array[iuniq]), nuniq)
-        if nuniq eq 0 $
-            then iuniq = -1 $
-            else iuniq = iuniq[iFinite]
-    endif
-    
-    ;Count the number of uniq values
-    if arg_present(nuniq) then nuniq = n_elements(iuniq)
-    
-    ;Get the index values of the non-unique elements
-    if arg_present(complement) or arg_present(ncomplement) then begin
-        index_array = lindgen(n_elements(array))
-        void = MrIsMember(iuniq, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
-    endif
-    
-    ;Locate non-unique members and associate them with their unique result
-    if arg_present(iUniq) || arg_present(iArray) then begin
-        iArray = value_locate(array[iuniq], array)
-        iArray = iuniq[iarray]
-    endif
+	compile_opt idl2
+	on_error, 2
 
-    return, iuniq
+	;Get the result
+	case keyword_set(sort) of
+		0: if n_elements(index) gt 0 $
+			then iuniq = uniq(array, index) $
+			else iuniq = uniq(array)
+		1: iuniq = uniq(array, sort(array))
+	endcase
+
+	;Remove NaNs
+	if keyword_set(nan) then begin
+		iFinite = where(finite(array[iuniq]), nuniq)
+		if nuniq eq 0 $
+			then iuniq = -1 $
+			else iuniq = iuniq[iFinite]
+	endif
+
+	;Count the number of uniq values
+	nuniq = n_elements(iuniq)
+
+	;Get the index values of the non-unique elements
+	if arg_present(complement) or arg_present(ncomplement) then begin
+		index_array = lindgen(n_elements(array))
+		void = MrIsMember(iuniq, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
+	endif
+
+	;Locate non-unique members and associate them with their unique result
+	if arg_present(iUniq) || arg_present(iArray) then begin
+		if nuniq le 1 $
+			then iArray = 0 $
+			else iArray = value_locate(array[iuniq], array)
+		iArray = iuniq[iarray]
+	endif
+
+	return, iuniq
 end
 
     

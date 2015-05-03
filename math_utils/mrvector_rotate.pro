@@ -8,12 +8,12 @@
 ;   The purpose of this program is to provide a means of rotating an array of 3D 
 ;   vectors about a particular axis or by means of a single rotation matrix. The
 ;   method of rotation is as follows::
-;       R[3x3] and x[3x1]   then take R##transpose(x)
-;       R[3x3] and x[1x3]   then take R##x
-;       R[3x3] and x[3xN]   then take R##transpose(x) for each 3-vector in x
-;       R[3x3] and x[Nx3]   then take R##x for each 3-vector in x
-;       R[3,3,N] and x[3xN] then take R##x for each 3x3 R and 3x1 x
-;       R[3,3,N] and x[Nx3] then take R##transpose(x) for each 3x3 R and 1x3 x
+;       R[3x3] and x[3x1]   then take R ## transpose(x)
+;       R[3x3] and x[1x3]   then take R ## x
+;       R[3x3] and x[3xN]   then take R ## transpose(x) for each 3-vector in x
+;       R[3x3] and x[Nx3]   then take R ## x for each 3-vector in x
+;       R[3,3,N] and x[3xN] then take R ## x for each 3x3 R and 3x1 x
+;       R[3,3,N] and x[Nx3] then take R ## transpose(x) for each 3x3 R and 1x3 x
 ;
 ; :Categories:
 ;       Math Utilities, Vector Math
@@ -43,8 +43,10 @@
 ; :History:
 ;   Modification History::
 ;       2015-05-01  -   Written by Matthew Argall
+;       2015-05-03  -   More effectively use IDL's native inner product operators. - MRA
 ;-
-function MrVector_Rotate, R, x, $
+function MrVector_Rotate, R, x
+	compile_opt idl2
 	on_error, 2
 
 	;Check R and X
@@ -67,52 +69,79 @@ function MrVector_Rotate, R, x, $
 ; [1,3] = [3,3] ## [1,3]
 ;
 ;-----------------------------------------------------
-;R=[3,3], x=[3,1] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[3,3], x=[3,N] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	if (nx eq 3) && (nxDims eq 1) && (nrDims eq 2) then begin
-		x_prime = reform(matrix_multiply(x, R, /atranspose))
+	if (xDims[0] eq 3) && ( nrDims eq 2 && array_equal(rDims, [3,3]) ) then begin
+		;R ## transpose(x)
+		;   - Return 3xN, not Nx3
+		x_prime = transpose(matrix_multiply(x, R, /ATRANSPOSE))
 
 ;-----------------------------------------------------
-;R=[3,3], x=[1,3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[3,3], x=[N,3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	endif else if (nx eq 3) && (nxDims eq 2) && (nrDims eq 2) then begin
+	endif else if (nxDims eq 2 && xDims[1] eq 3) && ( nrDims eq 2 && array_equal(rDims, [3,3]) ) then begin
+		;R ## x
 		x_prime = matrix_multiply(x, R)
 
 ;-----------------------------------------------------
-;R=[3,3], x=[3xN] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[3,3,N], x=[3xN] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	;R##transpose(x) for each 3x0 vector
-	endif else if (nrDims eq 2) && (xDims[0] eq 3) then begin
-		x_prime = [dot_product(R[*,0], x), $
-		           dot_product(R[*,1], x), $
-		           dot_product(R[*,2], x)]
+	endif else if (nrDims eq 3) && (xDims[0] eq 3) && ( nxDims eq 1 || (nxDims eq 2 && xDims[1] eq rDims[2]) ) then begin
+		x_prime = fltarr(3, rDims[2])
+		if nxDims eq 2 then begin
+			x_prime[0,*] = R[0,0,*] * x[0,*] + R[1,0,*] * x[1,*] + R[2,0,*] * x[2,*]
+			x_prime[1,*] = R[0,1,*] * x[0,*] + R[1,1,*] * x[1,*] + R[2,1,*] * x[2,*]
+			x_prime[2,*] = R[0,2,*] * x[0,*] + R[1,2,*] * x[1,*] + R[2,2,*] * x[2,*]
+		endif else begin
+			x_prime[0,*] = R[0,0,*] * x[0] + R[1,0,*] * x[1] + R[2,0,*] * x[2]
+			x_prime[1,*] = R[0,1,*] * x[0] + R[1,1,*] * x[1] + R[2,1,*] * x[2]
+			x_prime[2,*] = R[0,2,*] * x[0] + R[1,2,*] * x[1] + R[2,2,*] * x[2]
+		endelse
 
 ;-----------------------------------------------------
-;R=[3,3], x=[Nx3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[3,3,N], x=[Nx3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	;R##x for each 1x3 vector
-	endif else if (nrDims eq 2) && (xDims[1] eq 3) then begin
-		xT = transpose(x)
-		x_prime = [dot_product(R[*,0], xT), $
-		           dot_product(R[*,1], xT), $
-		           dot_product(R[*,2], xT)]
+	;R ## x for each 1x3 vector
+	endif else if (nrDims eq 3) && (nxDims eq 2 && xDims[1] eq 3) && (xDims[0] eq 1 || xDims[0] eq rDims[2]) then begin
+		x_prime = fltarr(rDims[2], 3)
+		if xDims[0] eq 1 then begin
+			x_prime[*,0] = R[0,0,*] * x[0] + R[1,0,*] * x[1] + R[2,0,*] * x[2]
+			x_prime[*,1] = R[0,1,*] * x[0] + R[1,1,*] * x[1] + R[2,1,*] * x[2]
+			x_prime[*,2] = R[0,2,*] * x[0] + R[1,2,*] * x[1] + R[2,2,*] * x[2]
+		endif else begin
+			x_prime[*,0] = R[0,0,*] * x[*,0] + R[1,0,*] * x[*,1] + R[2,0,*] * x[*,2]
+			x_prime[*,1] = R[0,1,*] * x[*,0] + R[1,1,*] * x[*,1] + R[2,1,*] * x[*,2]
+			x_prime[*,2] = R[0,2,*] * x[*,0] + R[1,2,*] * x[*,1] + R[2,2,*] * x[*,2]
+		endelse
 
 ;-----------------------------------------------------
-;R=[3,3,N], x=[3,N] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[N,3,3], x=[3,N] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	endif else if (nrDims eq 3) && (xDims[0] eq 3) && (rDims[2] eq xDims[1]) then begin
-		x_prime = transpose([[dot_product(reform(R[*,0,*]), x)], $
-		                     [dot_product(reform(R[*,1,*]), x)], $
-		                     [dot_product(reform(R[*,2,*]), x)]])
-
+	endif else if (nrDims eq 3) && (xDims[0] eq 3) && ( nxDims eq 1 || (nxDims eq 2 && xDims[1] eq rDims[0]) ) then begin
+		x_prime = fltarr(3, rDims[0])
+		if nxDims eq 2 then begin
+			x_prime[0,*] = R[*,0,0] * x[0,*] + R[*,1,0] * x[1,*] + R[*,2,0] * x[2,*]
+			x_prime[1,*] = R[*,0,1] * x[0,*] + R[*,1,1] * x[1,*] + R[*,2,1] * x[2,*]
+			x_prime[2,*] = R[*,0,2] * x[0,*] + R[*,1,2] * x[1,*] + R[*,2,2] * x[2,*]
+		endif else begin
+			x_prime[0,*] = R[*,0,0] * x[0] + R[*,1,0] * x[1] + R[*,2,0] * x[2]
+			x_prime[1,*] = R[*,0,1] * x[0] + R[*,1,1] * x[1] + R[*,2,1] * x[2]
+			x_prime[2,*] = R[*,0,2] * x[0] + R[*,1,2] * x[1] + R[*,2,2] * x[2]
+		endelse
 ;-----------------------------------------------------
-;R=[3,3,N], x=[N,3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;R=[N,3,3], x=[N,3] \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	endif else if (nrDims eq 3) && (xDims[1] eq 3) && (rDims[2] eq xDims[0]) then begin
-		xT = transpose(x)
-		x_prime = transpose([[dot_product(reform(R[*,0,*]), xT)], $
-		                     [dot_product(reform(R[*,1,*]), xT)], $
-		                     [dot_product(reform(R[*,2,*]), xT)]])
+	endif else if (nrDims eq 3) && (nxDims eq 2 && xDims[1] eq 3) && (xDims[0] eq 1 || rDims[0] eq xDims[0]) then begin
+		x_prime = fltarr(rDims[0], 3)
+		if xDims[0] eq 1 then begin
+			x_prime[*,0] = R[*,0,0] * x[0] + R[*,1,0] * x[1] + R[*,2,0] * x[2]
+			x_prime[*,1] = R[*,0,1] * x[0] + R[*,1,1] * x[1] + R[*,2,1] * x[2]
+			x_prime[*,2] = R[*,0,2] * x[0] + R[*,1,2] * x[1] + R[*,2,2] * x[2]
+		endif else begin
+			x_prime[*,0] = R[*,0,0] * x[*,0] + R[*,1,0] * x[*,1] + R[*,2,0] * x[*,2]
+			x_prime[*,1] = R[*,0,1] * x[*,0] + R[*,1,1] * x[*,1] + R[*,2,1] * x[*,2]
+			x_prime[*,2] = R[*,0,2] * x[*,0] + R[*,1,2] * x[*,1] + R[*,2,2] * x[*,2]
+		endelse
 
 	endif else begin
 		message, 'R and x are not compatible for rotating'
