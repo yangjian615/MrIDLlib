@@ -70,6 +70,7 @@
 ;                           was throwing an error "Variable is undefined: IDX." Fixed. - MRA
 ;       2013/11/16  -   Added the NAN keyword. - MRA
 ;       2015/04/29  -   Added the IARRAY keyword. - MRA
+;       2015/05/04  -   Problem creating IARRAY with one unique value. Fixed. - MRA
 ;-
 function MrUniq, array, index, $
 COMPLEMENT = complement, $
@@ -98,18 +99,19 @@ SORT = sort
 	endif
 
 	;Count the number of uniq values
+	narr  = n_elements(array)
 	nuniq = n_elements(iuniq)
 
 	;Get the index values of the non-unique elements
 	if arg_present(complement) or arg_present(ncomplement) then begin
-		index_array = lindgen(n_elements(array))
+		index_array = lindgen(narr)
 		void = MrIsMember(iuniq, index_array, COMPLEMENT=complement, NCOMPLEMENT=ncomplement)
 	endif
 
 	;Locate non-unique members and associate them with their unique result
 	if arg_present(iUniq) || arg_present(iArray) then begin
 		if nuniq le 1 $
-			then iArray = 0 $
+			then iArray = replicate(0, narr) $
 			else iArray = value_locate(array[iuniq], array)
 		iArray = iuniq[iarray]
 	endif
