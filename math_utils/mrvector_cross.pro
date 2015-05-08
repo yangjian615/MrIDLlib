@@ -49,13 +49,15 @@
 function MrVector_Cross, x, y
 	compile_opt idl2
 	on_error, 2
-
-	xdims  = size(x, /DIMENSIONS)
-	ydims  = size(y, /DIMENSIONS)
-	xndims = size(x, /N_DIMENSIONS)
-	yndims = size(y, /N_DIMENSIONS)
-	nx = n_elements(x)
-	ny = n_elements(y)
+	
+	xsz    = size(x)
+	ysz    = size(y)
+	xndims = xsz[0]
+	yndims = ysz[0]
+	xdims  = xndims eq 0 ? 0 : xsz[1:xsz[0]]
+	ydims  = yndims eq 0 ? 0 : ysz[1:ysz[0]]
+	nx     = xsz[xsz[0]+2]
+	ny     = ysz[ysz[0]+2]
 
 	;3 cross 3
 	if (nx eq 3) and (ny eq 3) then begin
@@ -99,9 +101,12 @@ function MrVector_Cross, x, y
 		x_cross_y = [[x[*,1]*y[*,2] - x[*,2]*y[*,1]], $
 		             [x[*,2]*y[*,0] - x[*,0]*y[*,2]], $
 		             [x[*,0]*y[*,1] - x[*,1]*y[*,0]]]
+	
+	;Vectors not given
 	endif else begin
-		message, string(FORMAT='(%"Cannot cross a [%i,%i] array with a [%i,%i] array")', $
-		                xdims, ydims)
+		xmsg = xndims eq 1 ? strtrim(xdims, 2) : '[' + strjoin(strtrim(xdims, 2), ',') + ']'
+		ymsg = yndims eq 1 ? strtrim(ydims, 2) : '[' + strjoin(strtrim(ydims, 2), ',') + ']'
+		message, 'Cannot cross X: ' + xmsg + ' with Y: ' + ymsg + '.'
 	endelse
 
 	return, x_cross_y
