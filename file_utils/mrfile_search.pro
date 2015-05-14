@@ -210,6 +210,7 @@
 ; :History:
 ;   Modification History::
 ;       2015-04-30  -   Written by Matthew Argall
+;       2015-05-13  -   Error with /CLOSEST when all files started after TSTART. Fixed. - MRA
 ;-
 function MrFile_Search, file_path, $
 CLOSEST=closest, $
@@ -465,6 +466,10 @@ VREGEX=vRegex
 
 			;Find the largest start time <= TSTART
 			istart = where(fstart le itstart, nstart)
+			if nstart eq 0 then begin
+				istart = 0
+				nstart = 1
+			endif
 			void   = max(fstart[istart], imax)
 			istart = istart[imax]
 			
@@ -494,6 +499,7 @@ VREGEX=vRegex
 ;-------------------------------------------
 ; Directory ////////////////////////////////
 ;-------------------------------------------
+stop
 	if count gt 0 then $
 		for i = 0, count - 1 do filesFound[i] = filepath(filesFound[i], ROOT_DIR=dirsFound[i])
 	if count eq 1 then filesFound = filesFound[0]
