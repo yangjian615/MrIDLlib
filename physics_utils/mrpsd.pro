@@ -125,24 +125,24 @@ _REF_EXTRA = extra
 
     ;Take the FFT
     data_fft = MrFFT(temporary(data_temp), nfft, 1.0, nshift, $
-                     DIMENSION=dimension, $
-                     FMAX=norm_fmax, $
-                     FMIN=norm_fmin, $
-                     FREQUENCIES=frequencies, $
-                     TIME=time, $
-                    _EXTRA=extra)
+                     DIMENSION   = dimension, $
+                     FMAX        = norm_fmax, $
+                     FMIN        = norm_fmin, $
+                     FREQUENCIES = frequencies, $
+                     TIME        = time, $
+                    _EXTRA       = extra)
 
     ;Un-normalize the frequencies
     frequencies /= dt
 
     ;Select only the positive frquencies
-    posFreqs = where(frequencies gt 0)
+    posFreqs    = where(frequencies gt 0)
     frequencies = frequencies[posFreqs]
 
     ;The FFT is returned with dimensions arranged as (time, frequency[, component]).
     ;IDL ignores the trailing "*" if there is no 3rd dimension.
     time = dt*time + t0
-    psd  = (dt/nfft) * abs(data_fft[*, posFreqs, *])^2
+    psd  = abs(data_fft[*, posFreqs, *])^2 ;* (dt * nfft) ;* dt ;* (dt/nfft)
 
     return, psd
 end

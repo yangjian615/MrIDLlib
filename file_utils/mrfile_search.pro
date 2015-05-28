@@ -499,7 +499,7 @@ VREGEX=vRegex
 ;-------------------------------------------
 ; Directory ////////////////////////////////
 ;-------------------------------------------
-stop
+
 	if count gt 0 then $
 		for i = 0, count - 1 do filesFound[i] = filepath(filesFound[i], ROOT_DIR=dirsFound[i])
 	if count eq 1 then filesFound = filesFound[0]

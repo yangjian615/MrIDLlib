@@ -193,10 +193,10 @@ PATHSEP=pathsep
 			next = filepath(remainder, ROOT_DIR=root, SUBDIR=pathOut[i])
 			
 			;Search again
-			tempTree = MrFile_Finder(next, COUNT=count)
+			tempTree = MrFile_Finder(next, COUNT=tempCount)
 		
 			;Create the tree
-			if count gt 0 then begin
+			if tempCount gt 0 then begin
 				if n_elements(tree) eq 0 $
 					then tree = temporary(tempTree) $
 					else tree = [tree, temporary(tempTree)]
@@ -213,8 +213,10 @@ PATHSEP=pathsep
 	
 	;Switch back to the original directory
 	cd, pwd
-	
+
 	;Count the results
 	count = n_elements(tree)
+	if count eq 0 then tree = ''
+
 	return, tree
 end

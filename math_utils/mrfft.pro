@@ -357,6 +357,7 @@ WINDOW = window
     ;taking the FFT first so that the 1D and 2D cases can be treated equally. Dimensions
     ;will now be ordered (time[, component]).
     case dimension of
+        0: data_temp = temporary(data)
         1: data_temp = temporary(data)
         2: data_temp = transpose(temporary(data))
         else: message, 'DIMENSION is out of range.'
@@ -488,6 +489,7 @@ WINDOW = window
 ;-----------------------------------------------------
     ;Return DATA_TEMP to DATA
     case dimension of
+        0: data = temporary(data_temp)
         1: data = temporary(data_temp)
         2: data = transpose(temporary(data_temp))
     endcase
