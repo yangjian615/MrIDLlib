@@ -482,9 +482,10 @@ VREGEX=vRegex
 				iend = istart
 				nend = 0
 			endelse
-		
+
 			;Select the found files
 			if nstart + nend gt 0 then begin
+				if istart gt iend then message, 'TSTART must be before TEND.'
 				dirsFound  = dirsFound[istart:iend]
 				filesFound = filesFound[istart:iend]
 				count      = iend - istart + 1
