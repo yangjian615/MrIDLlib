@@ -134,6 +134,8 @@
 ;                           all keywords not needed by the wrapper from the keywords list.
 ;                           They are now passed through via _REF_EXTRA. - MRA
 ;       2014/11/17  -   Should have been including the OPlot keyword in the parameter list. - MRA
+;       2015/06/29  -   NODATA was explicitly added to keywords to prevent OPLOT from
+;                           plotting when it should not. - MRA
 ;-
 pro MraPlot, x, y, $
 CHARSIZE = charsize, $
@@ -144,6 +146,7 @@ LINESTYLE = linestyle, $
 MAX_VALUE = max_value, $
 MIN_VALUE = min_value, $
 NOCLIP = noclip, $
+NODATA = nodata, $
 POLAR = polar, $
 PSYM = psym, $
 SYMCOLOR = symcolor, $
@@ -219,6 +222,7 @@ _REF_EXTRA = extra
     ;Set Defaults
     setDefaultValue, color, d_color
     setDefaultValue, linestyle, 0
+    setDefaultValue, nodata, 0, /BOOLEAN
     setDefaultValue, psym, 0
     setDefaultValue, symcolor, color
     setDefaultValue, xrange, [Min(indep, Max=indep_max, /NAN), indep_max]
@@ -238,6 +242,7 @@ _REF_EXTRA = extra
                 MAX_VALUE = max_value, $
                 MIN_VALUE = min_value, $
                 NOCLIP    = NOCLIP, $
+                NODATA    = nodata, $
                 NSUM      = nsum, $
                 POLAR     = polar, $
                 PSYM      = psym, $
@@ -254,7 +259,6 @@ _REF_EXTRA = extra
 ;---------------------------------------------------------------------
 ;Multiple Line Plots /////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-if n_elements(charsize) eq 0 then stop
     ;Set up the axes    
     cgPlot, 0, 0, /NODATA, $
                   ADDCMD=addcmd, $
@@ -276,10 +280,9 @@ if n_elements(charsize) eq 0 then stop
     nLineStyle = n_elements(linestyle)
     nPSym = n_elements(psym)
     nSymColor = n_elements(symcolor)
-    
-    ;Plot each vector of data.
-    FOR j = 0, dims[xdim-1]-1 DO BEGIN
 
+    ;Plot each vector of data.
+    IF ~nodata THEN FOR j = 0, dims[xdim-1]-1 DO BEGIN
         CASE xdim OF
             1: cgOPlot, indep, dep[j,*], $
                         ADDCMD=addcmd, $

@@ -119,6 +119,7 @@
 ;                           the GET_TOKENS keyword. Use the MrTokens function instead. - MRA
 ;       2014/06/30  -   Rewritten to use MrTokens_Extract. - MRA
 ;       2014/07/20  -   Made the %z token more exlusive. See notes above. - MRA
+;       2015/06/29  -   Strsplit missed "*" and "." if they were at the end of PATTERN. Fixed. - MRA
 ;-
 function MrTokens_ToRegex, pattern, $
 COUNT=nTokens, $
@@ -133,9 +134,22 @@ IGNORE_PARENS=ignore_parens
     ;   - Replace "." with "\."
     ;   - Replace "*" with ".*"
     ;   - Must do before extracting tokens (so that positions are correct)!
+    len      = strlen(pattern)
     _pattern = pattern
-    if strpos(_pattern, '.') ne -1 then _pattern = strjoin(strsplit(_pattern, '.', /EXTRACT), '\.')
-    if strpos(_pattern, '*') ne -1 then _pattern = strjoin(strsplit(_pattern, '*', /EXTRACT), '.*')
+    
+    ;Replace "." with "\."
+    ;   - Check end of string
+    if strpos(_pattern, '.') ne -1 then begin
+        _pattern = strjoin(strsplit(_pattern, '.', /EXTRACT), '\.')
+        if strmid(pattern, len-1) eq '.' then _pattern += '\.'
+    endif
+    
+    ;Replace "*" with ".*"
+    ;   - Check end of string
+    if strpos(_pattern, '*') ne -1 then begin
+        _pattern = strjoin(strsplit(_pattern, '*', /EXTRACT), '.*')
+        if strmid(pattern, len-1) eq '*' then _pattern += '.*'
+    endif
     
     ;Extract the tokens
     tokens = MrTokens_Extract(_pattern, COUNT=nTokens, POSITIONS=positions)
