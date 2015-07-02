@@ -211,6 +211,7 @@
 ;   Modification History::
 ;       2015-04-30  -   Written by Matthew Argall
 ;       2015-05-13  -   Error with /CLOSEST when all files started after TSTART. Fixed. - MRA
+;       2015-06-29  -   Catch cases when no files found within time interval. - MRA
 ;-
 function MrFile_Search, file_path, $
 CLOSEST=closest, $
@@ -438,10 +439,15 @@ VREGEX=vRegex
 		endelse
 		
 		;Select the subset of files
-		dirsFound  = dirsFound[ikeep]
-		filesFound = filesFound[ikeep]
-		fstart     = fstart[ikeep]
-		if tf_fend then fend = fend[ikeep]
+		if count gt 0 then begin
+			dirsFound  = dirsFound[ikeep]
+			filesFound = filesFound[ikeep]
+			fstart     = fstart[ikeep]
+			if tf_fend then fend = fend[ikeep]
+		endif else begin
+			dirsFound  = ''
+			filesFound = ''
+		endelse
 
 	;-------------------------------------------
 	; Closest Time /////////////////////////////

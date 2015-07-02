@@ -174,7 +174,7 @@ PATHSEP=pathsep
 		cd, pwd
 		return, ''
 	endif
-	
+
 	;Combine the matches with the root
 	; - Nothing left to parse if there are no more tokens or if we are at the last token.
 	; - Append the remaining parts together.

@@ -83,6 +83,7 @@
 ;                           between 0 and nPts, where nPts-1 is the number of point in DATA. - MRA
 ;       2014/11/12  -   Typo was adjusting the input range instead of the output range. Fixed. - MRA
 ;       2015/02/04  -   Added the STATUS, LEFT_EXCLUSIVE and RIGHT_EXCLUSIVE keywords. - MRA
+;       2015/06/23  -   If the range is beyond the data, set STATUS = 1. - MRA
 ;-
 function MrIndexRange, data, range, $
 LEFT_EXCLUSIVE=left_exclusive, $
@@ -116,18 +117,53 @@ STRIDE=stride
     
     ;Locate the index values of RANGE within DATA
     ;   - If DATA has only 1 point, then the index range is [0,0]
-    if nPts eq 1 then return, [0, 0]
-    iRange = value_locate(data, range)
+	if nPts eq 1 $
+		then iRange = [0, 0] $
+		else iRange = value_locate(data, range)
 
-    ;If RANGE is smaller than DATA[0], then take index 0
-    irange = 0 > irange
-
-    ;If the indices are the same, then they fall between two adjacent points in DATA.
-    if irange[0] eq irange[1] then return, iRange
-
+;---------------------------------------------------------------------
+; Check Bounds ///////////////////////////////////////////////////////
+;---------------------------------------------------------------------
+	;
+	; Check if RANGE is outside the data range entirely. This must be
+	; done before the endpoints are checked individually, because that
+	; will cause indexing errors if we are already on the edges of the
+	; interval.
+	;
+	case 1 of
+		ascending and highLow: begin
+			if iRange[0] eq iRange[1] && ( (range[1] gt data[nPts-1]) || (range[0] lt data[0]) ) $
+				then status = 1
+		endcase
+	
+		ascending and ~highLow: begin
+			if iRange[0] eq iRange[1] && ( (range[0] gt data[nPts-1]) || (range[1] lt data[0]) ) $
+				then status = 1
+		endcase
+		
+		~ascending and highLow: begin
+			if iRange[0] eq iRange[1] && ( (range[1] gt data[0]) || (range[0] lt data[nPts-1]) ) $
+				then status = 1
+		endcase
+		
+		~ascending and ~highLow: begin
+			if iRange[0] eq iRange[1] && ( (range[0] gt data[0]) || (range[1] lt data[nPts-1]) ) $
+				then status = 1
+		endcase
+	endcase
+	if status eq 1 then begin
+		iRange = [-1,-1]
+        if arg_present(status) eq 0 then message, 'No points in interval.'
+		return, iRange
+	endif
+    
 ;---------------------------------------------------------------------
 ; Ascending Data /////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
+
+    ;If RANGE is smaller than DATA[0], then take index 0
+    irange = 0 > irange < (nPts-1)
+    
     if ascending then begin
         ;Descending Range
         if highLow then begin
@@ -198,8 +234,7 @@ STRIDE=stride
     if status ne 0 then begin
         if arg_present(status) eq 0 then message, 'No points in interval.'
     endif
-    
-    ;Transpose the result to return a 2xN array
+
     return, iRange
 end
 
