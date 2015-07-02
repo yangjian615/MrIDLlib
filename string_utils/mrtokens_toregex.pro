@@ -119,6 +119,7 @@
 ;                           the GET_TOKENS keyword. Use the MrTokens function instead. - MRA
 ;       2014/06/30  -   Rewritten to use MrTokens_Extract. - MRA
 ;       2014/07/20  -   Made the %z token more exlusive. See notes above. - MRA
+;       2015/06/05  -   Month (%M) and day (%d) can be expressed as 1-digit numbers. - MRA
 ;-
 function MrTokens_ToRegex, pattern, $
 COUNT=nTokens, $
@@ -148,11 +149,11 @@ IGNORE_PARENS=ignore_parens
         case tokens[i] of
             'Y': regex_str = '([0-9]{4})'         
             'y': regex_str = '([0-9]{2})'         
-            'M': regex_str = '(0[0-9]|1[0-2])'    
+            'M': regex_str = '(0?[0-9]|1[0-2])'    
             'C': regex_str = '(January|February|March|April|May|June|' + $
                               'July|August|September|October|November|December)'
             'c': regex_str = '(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-            'd': regex_str = '([0-2][0-9]|3[0-1])'
+            'd': regex_str = '(0?[0-9]|[1-2][0-9]|3[0-1])'
             'D': regex_str = '([0-2][0-9]{2}|3[0-5][0-9]|36[0-6])'
             'W': regex_str = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)'
             'w': regex_str = '(Sun|Mon|Tue|Wed|Thu|Fri|Sat)'
