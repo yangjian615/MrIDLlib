@@ -335,6 +335,7 @@ VERBOSE=verbose
 	_filename      = n_elements(filename)      eq 0  ? ''  : filename
 	_commentSymbol = n_elements(commentSymbol) eq 0  ? ''  : comment_symbol
 	_delimiter     = n_elements(delimiter)     eq 0  ? ' ' : delimiter
+	if n_elements(nFooter) eq 0 then nFooter = 0
 
 ;---------------------------------------------------------------------
 ; Ask for a file? ////////////////////////////////////////////////////
@@ -381,7 +382,7 @@ VERBOSE=verbose
 		endif else begin
 			;If no columns are present
 			if nColumns eq 0 || $
-			   (n_elements(data_start) eq 0 || n_elements(nHeader) eq 0) || $
+			   (n_elements(data_start) eq 0 && n_elements(nHeader) eq 0) || $
 			   n_elements(column_types) eq 0 $
 			then begin
 				;Try to read the information
@@ -424,7 +425,7 @@ VERBOSE=verbose
 			endif else begin
 				_columnTypes = lonarr(nColumns) + 4L
 			endelse
-			
+
 			;Locations of each column
 			_columnLocations = n_elements(column_locations) eq 0 $
 			                   ? lindgen(nColumns) $
@@ -456,9 +457,13 @@ VERBOSE=verbose
 ;---------------------------------------------------------------------
 ; Read the Data //////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-	data = read_ascii(filename, COUNT=count, HEADER=header, TEMPLATE=t, $
-	                  NUM_RECORDS=numRecords, RECORD_START=recordStart, $
-	                  VERBOSE=verbose)
+	data = read_ascii(filename, $
+	                  COUNT        = count, $
+	                  HEADER       = header, $
+	                  TEMPLATE     = t, $
+	                  NUM_RECORDS  = numRecords, $
+	                  RECORD_START = recordStart, $
+	                  VERBOSE      = verbose)
 	
 ;---------------------------------------------------------------------
 ; Remove Footer //////////////////////////////////////////////////////
