@@ -91,32 +91,32 @@ RIGHT_EXCLUSIVE=right_exclusive, $
 SORT=order, $
 STATUS=status, $
 STRIDE=stride
-    compile_opt strictarr
-    on_error, 2
+	compile_opt strictarr
+	on_error, 2
 
-    ;Check Inputs
-    status          = 0
-    nPts            = n_elements(data)
-    order           = keyword_set(order)
-    left_exclusive  = keyword_set(left_exclusive)
-    right_exclusive = keyword_set(right_exclusive)
-    if nPts              eq 0 then message, 'DATA must have at least 1 element.'
-    if n_elements(range) ne 2 then message, 'RANGE must have 2 elements: [min, max].'
+	;Check Inputs
+	status          = 0
+	nPts            = n_elements(data)
+	order           = keyword_set(order)
+	left_exclusive  = keyword_set(left_exclusive)
+	right_exclusive = keyword_set(right_exclusive)
+	if nPts              eq 0 then message, 'DATA must have at least 1 element.'
+	if n_elements(range) ne 2 then message, 'RANGE must have 2 elements: [min, max].'
 
-    ;Descending order?
-    highLow = range[0] gt range[1] ? 1 : 0
-    if nPts lt 2 $
-        then ascending = 1 $
-        else ascending = data[1] gt data[0] ? 1 : 0
-    
-    ;Stride
-    ;   - If highLow and ascending are the same, then STRIDE=-1
-    if (highLow and ascending) || (highLow eq 0 && ascending eq 0) $
-        then stride = -1 $
-        else stride = 1
-    
-    ;Locate the index values of RANGE within DATA
-    ;   - If DATA has only 1 point, then the index range is [0,0]
+	;Descending order?
+	highLow = range[0] gt range[1] ? 1 : 0
+	if nPts lt 2 $
+		then ascending = 1 $
+		else ascending = data[1] gt data[0] ? 1 : 0
+
+	;Stride
+	;   - If highLow and ascending are the same, then STRIDE=-1
+	if (highLow and ascending) || (highLow eq 0 && ascending eq 0) $
+		then stride = -1 $
+		else stride = 1
+
+	;Locate the index values of RANGE within DATA
+	;   - If DATA has only 1 point, then the index range is [0,0]
 	if nPts eq 1 $
 		then iRange = [0, 0] $
 		else iRange = value_locate(data, range)
@@ -153,89 +153,89 @@ STRIDE=stride
 	endcase
 	if status eq 1 then begin
 		iRange = [-1,-1]
-        if arg_present(status) eq 0 then message, 'No points in interval.'
+		if arg_present(status) eq 0 then message, 'No points in interval.'
 		return, iRange
 	endif
-    
+
 ;---------------------------------------------------------------------
 ; Ascending Data /////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
 
-    ;If RANGE is smaller than DATA[0], then take index 0
-    irange = 0 > irange < (nPts-1)
-    
-    if ascending then begin
-        ;Descending Range
-        if highLow then begin
-            ;Endpoints greater (less) than the maximum (minimum) range desired?
-            if data[iRange[0]] gt range[0] then iRange[0]--
-            if data[iRange[1]] lt range[1] then iRange[1]++
+	;If RANGE is smaller than DATA[0], then take index 0
+	irange = 0 > irange < (nPts-1)
 
-            ;Exclude the end points?
-            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
-            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
-            
-            ;No points found?
-            if iRange[0] lt iRange[1] then status = 1
-            
-        ;Ascening Range
-        endif else begin
-            ;Endpoints less (greater) than than the minimum (maximum) range desired?
-            if data[iRange[0]] lt range[0] then iRange[0]++
-            if data[iRange[1]] gt range[1] then iRange[1]--
+	if ascending then begin
+		;Descending Range
+		if highLow then begin
+			;Endpoints greater (less) than the maximum (minimum) range desired?
+			if data[iRange[0]] gt range[0] then iRange[0]--
+			if data[iRange[1]] lt range[1] then iRange[1]++
 
-            ;Exclude the end points?
-            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
-            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
-            
-            ;No points found?
-            if iRange[0] gt iRange[1] then status = 1
-        endelse
+			;Exclude the end points?
+			if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
+			if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
+		
+			;No points found?
+			if iRange[0] lt iRange[1] then status = 1
+		
+		;Ascening Range
+		endif else begin
+			;Endpoints less (greater) than than the minimum (maximum) range desired?
+			if data[iRange[0]] lt range[0] then iRange[0]++
+			if data[iRange[1]] gt range[1] then iRange[1]--
+
+			;Exclude the end points?
+			if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
+			if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
+		
+			;No points found?
+			if iRange[0] gt iRange[1] then status = 1
+		endelse
 
 ;---------------------------------------------------------------------
 ; Descending /////////////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-    endif else begin
-        ;Descending Range
-        if highLow then begin
-            ;Endpoints greater (less) than the maximum (minimum) range desired?
-            if data[iRange[0]] gt range[0] then iRange[0]++
-            if data[iRange[1]] lt range[1] then iRange[1]--
-            
-            ;Exclude the end points?
-            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
-            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
-            
-            ;No points found?
-            if iRange[0] gt iRange[1] then status = 1
-        
-        ;Ascending Range
-        endif else begin
-            ;Endpoints less (greater) than than the minimum (maximum) range desired?
-            if data[iRange[0]] lt range[0] then iRange[0]--
-            if data[iRange[1]] gt range[1] then iRange[1]++
-            
-            ;Exclude the end points?
-            if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
-            if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
-            
-            ;No points found?
-            if iRange[0] lt iRange[1] then status = 1
-        endelse
-    endelse
-    
-    ;Order from smallest to largest?
-    if order then if irange[0] gt irange[1] then irange = irange[[1,0]]
-    
-    ;Ensure indices do not extend outside of data range
-    iRange = 0 > iRange < (nPts-1)
-    
-    ;Errors?
-    if status ne 0 then begin
-        if arg_present(status) eq 0 then message, 'No points in interval.'
-    endif
+	endif else begin
+		;Descending Range
+		if highLow then begin
+			;Endpoints greater (less) than the maximum (minimum) range desired?
+			if data[iRange[0]] gt range[0] then iRange[0]++
+			if data[iRange[1]] lt range[1] then iRange[1]--
+		
+			;Exclude the end points?
+			if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]++
+			if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]--
+		
+			;No points found?
+			if iRange[0] gt iRange[1] then status = 1
+	
+		;Ascending Range
+		endif else begin
+			;Endpoints less (greater) than than the minimum (maximum) range desired?
+			if data[iRange[0]] lt range[0] then iRange[0]--
+			if data[iRange[1]] gt range[1] then iRange[1]++
+		
+			;Exclude the end points?
+			if left_exclusive  then if data[iRange[0]] eq range[0] then iRange[0]--
+			if right_exclusive then if data[iRange[1]] eq range[1] then iRange[1]++
+		
+			;No points found?
+			if iRange[0] lt iRange[1] then status = 1
+		endelse
+	endelse
 
-    return, iRange
+	;Order from smallest to largest?
+	if order then if irange[0] gt irange[1] then irange = irange[[1,0]]
+
+	;Ensure indices do not extend outside of data range
+	iRange = 0 > iRange < (nPts-1)
+
+	;Errors?
+	if status ne 0 then begin
+		if arg_present(status) eq 0 then message, 'No points in interval.'
+	endif
+
+	return, iRange
 end
 
 
@@ -308,6 +308,6 @@ print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT")',       
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   RIGHT")',        r2, ir7, data[ir7]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT & RIGHT")', r2, ir8, data[ir8]
 print, ''
-
-
-end
+;
+;
+;end
