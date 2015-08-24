@@ -212,6 +212,7 @@
 ;       2015-04-30  -   Written by Matthew Argall
 ;       2015-05-13  -   Error with /CLOSEST when all files started after TSTART. Fixed. - MRA
 ;       2015-06-29  -   Catch cases when no files found within time interval. - MRA
+;       2015-08-21  -   Fixed bug when extracting end time from file name. - MRA
 ;-
 function MrFile_Search, file_path, $
 CLOSEST=closest, $
@@ -374,18 +375,23 @@ VREGEX=vRegex
 		;Is the first token repeated?
 		tf_fend = strpos( strmid(inFile, token_pos[0]+2), '%'+tokens[0] ) ne -1
 		
-		;Convert the start time of each file to an integer
-		MrTimeParser, filesFound, inFile, timeOrder, fstart
-		ifstart = long64(fstart)
-		
 		;Is there an end time in the file name?
 		;   - Look for a repeated token
+		;   - Repeated token will be found at position TOKEN_POS[0]+2+IREPEAT
 		iRepeat = strpos( strmid(inFile, token_pos[0]+2), '%'+tokens[0] )
 		tf_fend = iRepeat ne -1
-		
+
+		;Convert the start time of each file to an integer
+		;  - MrTimeParser will take the last match (i.e. FEND)
+		;  - If the file name has an end time, parse up to the first repeated token.
+		if tf_fend $
+			then MrTimeParser, filesFound, strmid(inFile, 0, iRepeat+2+token_pos[0]), timeOrder, fstart $
+			else MrTimeParser, filesFound, inFile, timeOrder, fstart
+		ifstart = long64(fstart)
+
 		;Convert the end time to an integer
 		if tf_fend then begin
-			MrTimeParser, strmid(filesFound, iRepeat+token_pos[0]+2), inFile, timeOrder, fend
+			MrTimeParser, filesFound, strmid(inFile, iRepeat+token_pos[0]+2), timeOrder, fend
 			ifend = long64(fend)
 		endif
 			

@@ -65,7 +65,7 @@
 ;   Compare arrays of files with a version number "v0.0"
 ;       IDL> files1 = ['file_v0.0.txt', 'file_v0.1.txt', 'file_v1.0.txt']
 ;       IDL> file2  = 'file_v0.1.txt'
-;       IDL> print, MrFile_VersionCompare(files1, file2, '([0-9])\.([0-9]+)'
+;       IDL> print, MrFile_VersionCompare(files1, file2, '([0-9])\.([0-9]+)')
 ;             -1       0       1
 ;
 ; :Author:
@@ -79,6 +79,7 @@
 ; :History:
 ;   Modification History::
 ;       2015-04-28  -   Written by Matthew Argall
+;       2015-08-21  -   Keep only subexpressions in regex matching. - MRA
 ;-
 function MrFile_VersionCompare, file1, file2, regex
 	compile_opt idl2
@@ -93,11 +94,11 @@ function MrFile_VersionCompare, file1, file2, regex
 	if n_elements(regex) eq 0 then regex = '([0-0]+)\.([0-9]+)\.([0-9]+)'
 
 	;Find the file version
-	vfile1 = fix( stregex( file1, regex, /SUBEXP, /EXTRACT) )
-	vfile2 = fix( stregex(_file2, regex, /SUBEXP, /EXTRACT) )
-	
+	vfile1 = fix( (stregex( file1, regex, /SUBEXP, /EXTRACT))[1:*,*] )
+	vfile2 = fix( (stregex(_file2, regex, /SUBEXP, /EXTRACT))[1:*,*] )
+
 	;Compare
-	i      = 1
+	i      = 0
 	iEqual = lindgen(nFiles)
 	nEqual = nFiles
 	result = intarr(nFiles)
