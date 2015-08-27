@@ -147,6 +147,7 @@
 ;       2014-06-29  -   Added support for "\%", "%(" and "%)". - MRA
 ;       2014-06-30  -   Removed MrTimeParser_ExtractTokens and incorporated MrTokens_Extract. - MRA
 ;       2015-04-30  -   Was dissecting DOY incorrectly. Fixed. - MRA
+;       2015-08-21  -   Fixed logic that caused error when converting %D -> %D. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -573,9 +574,8 @@ OFFSET=offset
                     if n_elements(year) gt 0 $
                         then doy = year_day(year + month + day) $
                         else doy = year_day('2001' + month + day)
-                endif else begin
-                    message, 'Cannot form "%D". Must give %D or [(%M, %C or %c) and %d with optional (%Y or %y)].'
-                endelse
+                endif
+                
                 subStr = string(doy, FORMAT='(i03)')
             endcase
             
