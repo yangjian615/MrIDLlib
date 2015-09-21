@@ -45,6 +45,11 @@
 ;       the names are sequential.
 ;    2. If GROUPS is empty, analyze COLUMN_NAMES to create proper groups.
 ;
+; :Uses:
+;   Uses the following external programs::
+;      MrIsA.pro
+;      typeNameToCode.pro
+;
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire

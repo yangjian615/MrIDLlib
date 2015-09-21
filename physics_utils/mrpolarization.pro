@@ -877,11 +877,8 @@ _REF_EXTRA = extra
             ;Check and set them explicitly to +/- 1. Otherwise, produces error:
             ;   % Program caused arithmetic error: Floating illegal operand
             iGT1 = where(abs(sin2B) gt 1, nGT1)
-            if nGT1 gt 0 then begin
-                iRound = where(abs(abs(sin2B) - 1) lt 1e-6, nRound)
-                if nRound gt 0 then sin2B[iGT1[iRound]] = -1.0 > sin2B[iGT1[iRound]] < 1.0
-            endif
-            
+            if nGT1 gt 0 then sin2B[iGT1] = -1.0 > sin2B[iGT1] < 1.0
+
             ;Compute ellipticity
             ellipticity[iPol] = tan(0.5 * asin(sin2B))
         endif
@@ -889,7 +886,7 @@ _REF_EXTRA = extra
         ellipticity = reform(ellipticity, npts, nfreqs)
         ellipticity = ellipticity[*, if_keep]
     endif
-                
+
 ;-----------------------------------------------------
 ;VII. Other Useful Parameters \\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------

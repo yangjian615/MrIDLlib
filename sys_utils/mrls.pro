@@ -15,14 +15,17 @@
 ;       IDL> MrLS
 ;
 ; :Params:
-;       PATTERN:        in, optional, type=string, default=''
-;                       A pattern used to match files. Any pattern recognized by IDL's
-;                           StrMatch function will do.
+;       SEARCHSTR:      in, optional, type=string, default=''
+;                       A pattern to match against files in the current directory.
+;                           Files and directoires matching this search string will
+;                           be returned. If the search string is preceeded by a
+;                           directory path, the search will take place in that
+;                           directory instead of the current directory.
 ;
 ; :Keywords:
 ;       COUNT:          in, optional, type=integer
 ;                       Number of files found.
-;       DIRECTORIES:    in, optional, type=boolean, default=0
+;       DIRECTORY:      in, optional, type=boolean, default=0
 ;                       Return only directories.
 ;       OUTPUT:         out, optional, type=string/strarr
 ;                       A named variable into which the directory contents are returned.
@@ -42,47 +45,85 @@
 ;   Modification History::
 ;       2015-03-30  -   Written by Matthew Argall
 ;       2015-04-28  -   Marking directories causes regex filter to fail. Fixed. - MRA
+;       2015-09-02  -   Search in any directory. DIRECTORIES keyword renamed
+;                           to DIRECTORY and does not have redundant check.
 ;-
-pro MrLS, pattern, $
+pro MrLS, searchstr, $
 COUNT=count, $
-DIRECTORIES=directories, $
+DIRECTORY=directory, $
 OUTPUT=output, $
 REGEX=regex, $
 SORT=tf_sort
-	on_error, 2
+	
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		cd, pwd
+		void = cgErrorMSG(/QUIET)
+		return
+	endif
 
 	;Defaults
-	directories = keyword_set(directories)
-	regex       = keyword_set(regex)
-	tf_sort     = keyword_set(tf_sort)
-	if n_elements(pattern) eq 0 then pattern = ''
+	tf_regex = keyword_set(regex)
+	tf_sort  = keyword_set(tf_sort)
+	output   = ''
 
-	;Search for all things in the current directory
-	files = file_search(COUNT=count, NOSORT=~tf_sort, TEST_DIRECTORY=directories)
-	
-	;Select directories
-	if count gt 0 && directories then begin
-		;Search for directories
-		iDirs = where(file_test(files, /DIRECTORY), count)
-		if count eq 0 then return
-		
-		;Weed out files
-		files = files[iDirs]
-	endif
-	
-	;File pattern
-	if count gt 0 && pattern ne '' then begin
-		;Apply the pattern
-		if regex $
-			then tf_match = stregex(files, pattern, /BOOLEAN) $
-			else tf_match = strmatch(files, pattern)
+	;Get the current directory
+	cd, CURRENT=pwd
 
-		;Weed out matches
-		iMatch = where(tf_match, count)
-		if count eq 0 $
-			then files = '' $
-			else files = files[iMatch]
+	;Extract the directory from the search pattern.
+	if n_elements(searchstr) gt 0 then begin
+		dir  = file_dirname(searchstr)
+		srch = file_basename(searchstr)
+	endif else begin
+		dir  = '.'
+		srch = ''
+	endelse
+	
+	;Looking in special directories?
+	;   '~'  home directory
+	;   '.'  current directory
+	;   '..' Up one directory
+	if stregex(srch, '^(~|\.|\.\.)', /BOOLEAN) then begin
+		dir  = srch
+		srch = ''
+	;Look in a specific directory?
+	endif else if file_test(filepath(ROOT_DIR=dir, srch), /DIRECTORY) then begin
+		dir  = filepath(srch, ROOT_DIR=dir)
+		srch = ''
 	endif
+
+	;Change directories if we are not looking in the current directory
+	if ~stregex(dir, '^\.' + path_sep() + '?$', /BOOLEAN) then begin
+		if ~file_test(dir) then message, 'Cannot look in "' + dir + '".'
+		cd, dir
+	endif
+
+	;Regular search.
+	;   - The empty string does not warrant a special search
+	if srch eq '' then tf_regex = 0
+	if ~tf_regex then begin
+		files = file_search(srch, COUNT=count, NOSORT=~tf_sort, TEST_DIRECTORY=directory)
+	
+	;Search with regular expression.
+	endif else begin
+		files = file_search(COUNT=count, NOSORT=~tf_sort, TEST_DIRECTORY=directory)
+
+		;File pattern
+		if count gt 0 && srch ne '' then begin
+			;Apply the pattern
+			tf_match = stregex(files, srch, /BOOLEAN)
+
+			;Weed out matches
+			iMatch = where(tf_match, count)
+			if count eq 0 $
+				then files = '' $
+				else files = files[iMatch]
+		endif
+	endelse
+	
+	;Change back to the original directory
+	cd, pwd
 
 	;Output or print?
 	if arg_present(output) then begin
