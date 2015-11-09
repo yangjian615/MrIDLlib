@@ -33,6 +33,59 @@
 ;       REGEX:          in, optional, type=boolean, default=0
 ;                       If set, StRegExp will be used with `PATTERN` instead of StrMatch.
 ;
+; :Examples:
+;   List the contents of the current directory::
+;       IDL> MrLS
+;         Applications
+;         Desktop
+;         Documents
+;         Downloads
+;         Library
+;         Movies
+;         Music
+;         Pictures
+;
+;   List contents that begin with "Do"
+;       IDL> MrLS, 'Do*'
+;         Documents
+;         Downloads
+;
+;   List contents of the "./Documents" directory
+;       IDL> MrLS, 'Documents'
+;         gitWiki
+;         IDL
+;         img2pdf.workflow
+;         Letter to a Prospective Student.odt
+;         MATLAB
+;         OpenOfficeFormula.pdf
+;         Papers
+;         pdf2tiff.workflow
+;         unix_commands.txt
+;         Work
+;
+;   List contents of the "../" directory
+;       IDL> MrLS, '..'
+;         argall
+;         Shared
+;
+;   List contents two directories up: "../../"
+;       IDL> MrLS, '../../'
+;         Applications
+;         bin
+;         dev
+;         etc
+;         home
+;         opt
+;         Users
+;         usr
+;
+;   List contents of a parallel directory: '../shared'
+;       IDL> MrLS, '../../'
+;         adi
+;         Library
+;         SC Info
+;      
+;
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
@@ -46,7 +99,8 @@
 ;       2015-03-30  -   Written by Matthew Argall
 ;       2015-04-28  -   Marking directories causes regex filter to fail. Fixed. - MRA
 ;       2015-09-02  -   Search in any directory. DIRECTORIES keyword renamed
-;                           to DIRECTORY and does not have redundant check.
+;                           to DIRECTORY and does not have redundant check. - MRA
+;       2015-09-29  -   Special directories and wildcards work. Added examples. - MRA
 ;-
 pro MrLS, searchstr, $
 COUNT=count, $
@@ -79,16 +133,17 @@ SORT=tf_sort
 		dir  = '.'
 		srch = ''
 	endelse
-	
+
 	;Looking in special directories?
 	;   '~'  home directory
 	;   '.'  current directory
 	;   '..' Up one directory
-	if stregex(srch, '^(~|\.|\.\.)', /BOOLEAN) then begin
-		dir  = srch
+	if stregex(srch, '^((~|\.|\.\.)' + path_sep() + '?)+', /BOOLEAN) then begin
+		dir  = filepath(srch, ROOT_DIR=dir)
 		srch = ''
 	;Look in a specific directory?
-	endif else if file_test(filepath(ROOT_DIR=dir, srch), /DIRECTORY) then begin
+	;   - Do not expand wildcard characters.
+	endif else if file_test(filepath(srch, ROOT_DIR=dir), /DIRECTORY, /NOEXPAND_PATH) then begin
 		dir  = filepath(srch, ROOT_DIR=dir)
 		srch = ''
 	endif
@@ -131,6 +186,6 @@ SORT=tf_sort
 	endif else begin
 		;Count does not like scalars
 		if count le 1 then files = [files]
-		print, transpose(files)
+		print, '  ' + transpose(files)
 	endelse
 end

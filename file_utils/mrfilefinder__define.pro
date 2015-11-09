@@ -63,6 +63,14 @@
 ; :Params:
 ;       DESTINATION:    in, optional, type=string
 ;                       Directory to be made the present working directory.
+;
+; :Examples:
+;   Change directories
+;       IDL> oFF -> PWD
+;          /Users/argall/
+;       IDL> oFF -> CD, 'Documents'
+;       IDL> oFF -> PWD
+;          /Users/argall/Documents
 ;-
 pro MrFileFinder::CD, destination
 	compile_opt strictarr
@@ -245,6 +253,41 @@ end
 ; :Returns:
 ;       FILES:          Fully qualified path to the files or directories that match
 ;                           `PATTERN`.
+;
+; :Examples:
+;   Find files via a standard File_Search()
+;      IDL> directory = '/Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/'
+;      IDL> path      = filepath('mms1_hpca_srvy_l1b_ion*.cdf', ROOT_DIR=directory)
+;      IDL> files     = oFF -> Find(path)
+;      IDL> print, files
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622021541_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622080034_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622094331_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622140037_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622160906_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622200041_v0.0.0.cdf
+;
+;   Recursively search for files via File_Search() (Only a subset of results are shown).
+;      IDL> path  = '/Users/argall/data/mms/'
+;      IDL> recur = 'mms*.cdf'
+;      IDL> files = oFF -> Find(path, recur)
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/ion/2015/mms1_hpca_srvy_l1b_ion_20150622021541_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/l1b/srvy/hpca/moments/2015/mms1_hpca_srvy_l1b_moments_20150622021549_v0.0.0.cdf
+;          /Users/argall/data/mms/mms1/ql/srvy/afg/2015/mms1_afg_srvy_ql_20150505_v0.0.0.cdf
+;          /Users/argall/data/mms/mms2/sitl/fast/fpi/2015/mms2_fpi_fast_sitl_20150622000000_v0.0.0.cdf
+;          /Users/argall/data/mms/mms3/l1b/srvy/feeps/electron/2015/mms3_feeps_srvy_l1b_electron_20150622000000_v1.1.1.cdf
+;          /Users/argall/data/mms/mms3/ql/srvy/afg/2015/mms3_afg_srvy_ql_20150505_v0.0.0.cdf
+;          /Users/argall/data/mms/mms3/sitl/fast/fpi/2015/mms3_fpi_fast_sitl_20150507000000_v0.0.0.cdf
+;          /Users/argall/data/mms/mms4/ql/srvy/afg/2015/mms4_afg_srvy_ql_20150505_v0.0.0.cdf
+;
+;   Find files using MrTokens
+;      IDL> dir   = '/Users/argall/autoplot_data/fscache/http/mmsdata.sr.unh.edu/mms1/dfg/srvy/ql/%Y/%M/'
+;      IDL> path  = filepath('mms1_dfg_srvy_ql_%Y%M%d_v0.0.3.cdf', ROOT_DIR=dir)
+;      IDL> files = oFF -> Find(path)
+;      IDL> print, files
+;          /Users/argall/autoplot_data/fscache/http/mmsdata.sr.unh.edu/mms1/dfg/srvy/ql/2015/08/mms1_dfg_srvy_ql_20150815_v0.0.3.cdf
+;          /Users/argall/autoplot_data/fscache/http/mmsdata.sr.unh.edu/mms1/dfg/srvy/ql/2015/08/mms1_dfg_srvy_ql_20150816_v0.0.3.cdf
+;          /Users/argall/autoplot_data/fscache/http/mmsdata.sr.unh.edu/mms1/dfg/srvy/ql/2015/08/mms1_dfg_srvy_ql_20150820_v0.0.3.cdf
 ;-
 function MrFileFinder::Find, path, recur, $
 COUNT=count
@@ -346,6 +389,58 @@ end
 ;       _REF_EXTRA:     in, optional, type=any
 ;                       Any keyword accepted by MrLS. These include COUNT, DIRECTORY,
 ;                           OUTPUT, REGEX, SORT.
+;
+; :Examples:
+;   List the contents of the current directory::
+;       IDL> oFF -> LS
+;         Applications
+;         Desktop
+;         Documents
+;         Downloads
+;         Library
+;         Movies
+;         Music
+;         Pictures
+;
+;   List contents that begin with "Do"
+;       IDL> oFF -> LS, 'Do*'
+;         Documents
+;         Downloads
+;
+;   List contents of the "./Documents" directory
+;       IDL> oFF -> LS, 'Documents'
+;         gitWiki
+;         IDL
+;         img2pdf.workflow
+;         Letter to a Prospective Student.odt
+;         MATLAB
+;         OpenOfficeFormula.pdf
+;         Papers
+;         pdf2tiff.workflow
+;         unix_commands.txt
+;         Work
+;
+;   List contents of the "../" directory
+;       IDL> oFF -> LS, '..'
+;         argall
+;         Shared
+;
+;   List contents two directories up: "../../"
+;       IDL> oFF -> LS, '../../'
+;         Applications
+;         bin
+;         dev
+;         etc
+;         home
+;         opt
+;         Users
+;         usr
+;
+;   List contents of a parallel directory: '../Shared'
+;       IDL> oFF -> LS, '../Shared'
+;         adi
+;         Library
+;         SC Info
 ;-
 pro MrFileFinder::LS, searchstr, $
 _REF_EXTRA=ref_extra
@@ -364,49 +459,14 @@ end
 
 ;+
 ;   Print the present working directory.
+;
+; :Examples:
+;    Get the present working directory.
+;       IDL> oFF -> PWD
+;          /home/username
 ;-
 pro MrFileFinder::PWD
-	print, self.pwd
-end
-
-
-;+
-;   Search the file system for files that match the file pattern. Filter results
-;   according to time range, version
-;
-; :Params:
-;       PATH_STR:       in, optional, type=string
-;                       File paths to match
-;
-; :Keywords:
-;       COUNT:          out, optional, type=integer
-;                       Number of files found.
-;
-; :Returns:
-;       FILES:          Fully qualified path to the files or directories that match
-;                           `PATTERN`.
-;-
-function MrFileFinder::Search, file_path, $
-CLOSEST=closest, $
-COUNT=count, $
-NEWEST=newest
-	compile_opt strictarr
-	on_error, 2
-
-	;Search for files
-	files = MrFile_Search( file_path, $
-	                       CLOSEST   = closest, $
-	                       COUNT     = count, $
-	                       NEWEST    = newest, $
-	                       DIRECTORY = self.pwd, $
-	                       TIMEORDER = self.time_order, $
-	                       TSTART    = self.tstart, $
-	                       TEND      = self.tend, $
-	                       TPATTERN  = self.tpattern, $
-	                       VERSION   = self.version, $
-	                       VREGEX    = self.vregex $
-	                     )
-	return, files
+	print, '  ' + self.pwd
 end
 
 
@@ -568,7 +628,7 @@ VREGEX    = vregex
 	endif
 	
 	;Defaults
-	if n_elements(directory) eq 0 then directory = ''
+	if n_elements(directory) eq 0 then cd, CURRENT=directory
 	if n_elements(timeOrder) eq 0 then timeOrder = '%Y%M%d'
 	if n_elements(tPattern)  eq 0 then tPattern  = '%Y-%M-%dT%H:%m:%S'
 	if n_elements(version)   eq 0 then version   = ''
