@@ -5,13 +5,13 @@
 ;
 ; :Examples:
 ;   Try the main level program at the end of this document::
-;       IDL> .r remove_tags
+;       IDL> .r MrStruct_RemoveTags
 ;
 ; :Categories:
 ;   Structure Utilities
 ;
 ; :Params:
-;       STRUCTURE:          in, required, type=structure
+;       STRUCTURE:          in, required, type=structure/structarr
 ;                           The structure for which tags are to be removed.
 ;       TAGS:               in, required, type=string/strarr
 ;                           Tags to be removed from `STRUCTURE`.
@@ -35,17 +35,13 @@
 ; :Returns:
 ;       STRUCTURE:          A copy of `STRUCTURE`, but with the desired tags removed.
 ;
-; :Uses:
-;   Uses the following programs::
-;       MrIsMember.pro
-;
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :Copyright:
 ;       Copyright 2013 by Matthew Argall
@@ -55,20 +51,28 @@
 ;       10/16/2011  -   Written by Matthew Argall
 ;       03/22/2013  -   If all tags are removed, return the empty structure. - MRA
 ;       2014/05/26  -   Removed ALL keyword. Added RECURSIVE and LEVEL keywords. - MRA
+;       2015/10/24  -   STRUCTURE can be an array of structures. - MRA
 ;-
-function remove_tags, structure, tags, current_level, $
+function MrStruct_RemoveTags, structure, tags, current_level, $
 KEEP=keep, $
 LEVEL=level, $
+NO_COPY=no_copy, $
 RECURSIVE=recursive
 	compile_opt idl2
 	on_error, 2
 
+;-----------------------------------------------------
+; Check Inputs \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+
 	;tag_names() returns upper case strings, so convert all tags to be removed
 	;to uppercase.
+	nstruct   = n_elements(structure)
 	_tags     = strupcase(tags)
 	nTags     = n_elements(tags)
 	recursive = keyword_set(recursive)
 	keep      = keyword_set(keep)
+	no_copy   = keyword_set(no_copy)
 	if n_elements(current_level) eq 0 then current_level = 0
 	if n_elements(level) eq 0 then begin
 		_level = recursive ? !values.f_infinity : 0
@@ -77,14 +81,20 @@ RECURSIVE=recursive
 		recursive = 1
 	endelse
 
+;-----------------------------------------------------
+; Structure Information \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
 	;get the names of the tags within the given structure
 	name_tags  = tag_names(structure)
 	nName_tags = n_elements(name_tags)
 
+;-----------------------------------------------------
+; Remove Tags 1-by-1 \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
 	;loop through all of the name_tags, creating a new structure that excludes
 	;any matches with tags
 	for ii=0, nName_tags-1 do begin
-	    ;Check if the current take is to be removed
+		;Check if the current take is to be removed
 		check = where(_tags eq name_tags[ii], nmatch)
 
 		;if requested to keep the tags instead of remove them, we have to
@@ -93,28 +103,45 @@ RECURSIVE=recursive
 
 		;Keep the tag?
 		if nMatch eq 0 then begin
+			;Get the value
+			tag_val = structure[0].(ii)
+			
 			;if requested, remove the tags from sub-structures as well
 			;otherwise get the data for the tag
-			if recursive && current_level lt _level then begin
-				;if the type of the element is a structure, then call remove_tags again
+			if recursive               && $
+			   current_level lt _level && $
+			   size(tag_val, /TNAME) eq 'STRUCT' $
+			then begin
+				;if the type of the element is a structure, then recurse
 				;otherwise get the data for the tag
-				type = size(structure.(ii), /TNAME)
-				if type eq 'STRUCT' $
-					then tag_val = remove_tags(structure.(ii), tags, current_level+1, RECURSIVE=recursive, LEVEL=_level, KEEP=keep) $
-					else tag_val = structure.(ii)
+				tag_val = MrStruct_RemoveTags(tag_val, tags, current_level+1, $
+				                              RECURSIVE = recursive, $
+				                              LEVEL     = _level, $
+				                              KEEP      = keep, $
+				                              /NO_COPY)
+			endif
 
-			endif else begin
-				tag_val = structure.(ii)
-			endelse
-
-			;create a new structure with only the tags to be kept
+			;Create a new structure with tags removed
 			if n_elements(tag_val) gt 0 then begin
 				if n_elements(temp) eq 0 $
-					then temp = create_struct(name_tags[ii], tag_val) $
-					else temp = create_struct(temp, name_tags[ii], tag_val)
+					then temp = create_struct(name_tags[ii], temporary(tag_val)) $
+					else temp = create_struct(temp, name_tags[ii], temporary(tag_val))
 			endif
 		endif
 	endfor
+
+;-----------------------------------------------------
+; Return \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+	;If an array of structures was given, replicate element
+	if nstruct gt 1 then begin
+		temp = replicate(temp, nstruct)
+		
+		;Copy values from old to new
+		if current_level gt 0 $
+			then struct_assign, temporary(structure), temp, /NOZERO $
+			else struct_assign, structure, temp, /NOZERO
+	endif
 
 	;If all tags were removed, then return an empty structure 
 	if n_elements(temp) eq 0 then temp = {}
@@ -125,9 +152,9 @@ end
 
 
 
-;---------------------------------------------------
-; Main Level Example Program (.r remove_tags) //////
-;---------------------------------------------------
+;-------------------------------------------------------
+; Main Level Example Program (.r MrStruct_RemoveTags) //
+;-------------------------------------------------------
 ;create a structure with multiple sub-structures
 struct = {tagA: 'A', $
           tagB: 'B', $
@@ -145,10 +172,10 @@ struct = {tagA: 'A', $
 ;Remove tags at different recursion levels
 rTags = ['tagA', 'tagv', 'tag_b']
 kTags = ['tagA', 'tagD', 'tagiii', 'tagF']
-struct_level0 = remove_tags(struct, ['tagA', 'tagv', 'tag_b'])
-struct_level1 = remove_tags(struct, ['tagA', 'tagv', 'tag_b'], LEVEL=1)
-struct_levelN = remove_tags(struct, ['tagA', 'tagv', 'tag_b'], /RECURSIVE)
-struct_keep   = remove_tags(struct, ['tagA', 'tagD', 'tagiii', 'tagF'], /KEEP, /RECURSIVE)
+struct_level0 = MrStruct_RemoveTags(struct, rTags)
+struct_level1 = MrStruct_RemoveTags(struct, rTags, LEVEL=1)
+struct_levelN = MrStruct_RemoveTags(struct, rTags, /RECURSIVE)
+struct_keep   = MrStruct_RemoveTags(struct, kTags, /KEEP, /RECURSIVE)
 
 print, '------------------------------------'
 all = all_tags(struct)
@@ -181,5 +208,21 @@ treeKeep = all_tags(struct_keep)
 print, FORMAT='(%"Keep only tags [%s, %s, %s, %s].")', kTags
 print, '  Note: Tags without contents are removed.'
 print, transpose(treeKeep)
+
+;-------------------------------------------------------
+; Array of Structures //////////////////////////////////
+;-------------------------------------------------------
+struct = { a: 0B, $
+           b: findgen(6), $
+           c: 'Tag', $
+           d: {x: intarr(10), y: findgen(10)} $
+         }
+struct = replicate(struct, 10)
+struct = MrStruct_RemoveTags(struct, ['c', 'a'])
+
+print, '------------------------------------'
+help, struct
+help, struct[0]
+
 
 end
