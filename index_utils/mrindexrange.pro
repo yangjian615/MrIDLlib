@@ -84,6 +84,8 @@
 ;       2014/11/12  -   Typo was adjusting the input range instead of the output range. Fixed. - MRA
 ;       2015/02/04  -   Added the STATUS, LEFT_EXCLUSIVE and RIGHT_EXCLUSIVE keywords. - MRA
 ;       2015/06/23  -   If the range is beyond the data, set STATUS = 1. - MRA
+;       2015/10/18  -   Check if ascending/descending using first and last point instead
+;                          of first and second point. More forgiving of repeated values. - MRA
 ;-
 function MrIndexRange, data, range, $
 LEFT_EXCLUSIVE=left_exclusive, $
@@ -102,12 +104,14 @@ STRIDE=stride
 	right_exclusive = keyword_set(right_exclusive)
 	if nPts              eq 0 then message, 'DATA must have at least 1 element.'
 	if n_elements(range) ne 2 then message, 'RANGE must have 2 elements: [min, max].'
+	if data[0] eq data[nPts-1] then $
+		message, 'First and last points are equal. Cannot determine if ascending or descending.'
 
 	;Descending order?
 	highLow = range[0] gt range[1] ? 1 : 0
 	if nPts lt 2 $
 		then ascending = 1 $
-		else ascending = data[1] gt data[0] ? 1 : 0
+		else ascending = data[nPts-1] gt data[0] ? 1 : 0
 
 	;Stride
 	;   - If highLow and ascending are the same, then STRIDE=-1
@@ -308,6 +312,6 @@ print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT")',       
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   RIGHT")',        r2, ir7, data[ir7]
 print, FORMAT='(%"[%4.1f, %4.1f]   [%2i, %2i]   [%4.1f, %4.1f]   LEFT & RIGHT")', r2, ir8, data[ir8]
 print, ''
-;
-;
-;end
+
+
+end

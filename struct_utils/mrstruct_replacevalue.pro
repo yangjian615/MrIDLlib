@@ -5,7 +5,7 @@
 ;
 ; :Examples:
 ;   Try the example program at the end of this document::
-;       IDL> .r MrStruct_Replace_Val
+;       IDL> .r MrStruct_ReplaceValue
 ;
 ; :Categories:
 ;
@@ -45,8 +45,9 @@
 ; :History:
 ;   Modification History::
 ;       2015/06/28  -   Written by Matthew Argall
+;       2015/06/28  -   Renamed from MrStruct_Replace_Val to MrStruct_ReplaceValue. - MRA
 ;-
-function MrStruct_Replace_Val, structure, value, current_level, $
+function MrStruct_ReplaceValue, structure, value, current_level, $
 LEVEL=level, $
 RECURSIVE=recursive
 	compile_opt idl2
@@ -100,7 +101,7 @@ end
 
 
 ;---------------------------------------------------
-; Main Level Example Program (.r remove_tags) //////
+; Main Level Example Program (.r MrStruct_ReplaceValue)
 ;---------------------------------------------------
 ;create a structure with multiple sub-structures
 struct = {tagA: 'A', $
@@ -118,9 +119,9 @@ struct = {tagA: 'A', $
 
 ;Remove tags at different recursion levels
 values = create_struct('tagA', 'first_tag', 'tagv', 'I_am_Sam', 'tag_b', 'Shh_Secret')
-struct_level0 = MrStruct_Replace_Val(struct, values)
-struct_level1 = MrStruct_Replace_Val(struct, values, LEVEL=1)
-struct_levelN = MrStruct_Replace_Val(struct, values, /RECURSIVE)
+struct_level0 = MrStruct_ReplaceValue(struct, values)
+struct_level1 = MrStruct_ReplaceValue(struct, values, LEVEL=1)
+struct_levelN = MrStruct_ReplaceValue(struct, values, /RECURSIVE)
 
 ;TODO: Display contents of tags
 end

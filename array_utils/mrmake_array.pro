@@ -332,7 +332,6 @@ ULONG64  = tulong64
 ;-----------------------------------------------------
 ; Make Array \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    
 	;Incremented array
 	if index then begin
 		array = make_array(_d1, /INDEX, TYPE=_type)
