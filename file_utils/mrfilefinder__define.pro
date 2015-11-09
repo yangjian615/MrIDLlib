@@ -68,13 +68,166 @@ pro MrFileFinder::CD, destination
 	compile_opt strictarr
 	on_error, 2
 
-	;Try to change directories
-	cd, destination
+	;Forward to SetPath
+	self -> SetPWD, destination
+end
+
+
+;+
+;   Search for files
+;
+; :Private:
+;-
+function MrFileFinder::FindFile, path, recur, $
+COUNT=count, $
+_REF_EXTRA=extra
+	compile_opt idl2
+	on_error, 2
 	
-	;Update the current directory
-	;   - Use CD so that the path is fully qualified
+	;Search for files
+	if n_elements(recur) eq 0 $
+		then files = file_search(path,        COUNT=count, /TEST_REGULAR, /FULLY_QUALIFY_PATH, _STRICT_EXTRA=extra) $
+		else files = file_search(path, recur, COUNT=count, /TEST_REGULAR, /FULLY_QUALIFY_PATH, _STRICT_EXTRA=extra)
+
+	;Return
+	return, files
+end
+
+
+;+
+;   Search for files
+;
+; :Private:
+;-
+function MrFileFinder::FindPattern, pattern, $
+COUNT=count, $
+PATHSEP=pathsep
+	compile_opt idl2
+	
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		cd, old_dir
+		void = cgErrorMSG()
+		return, ''
+	endif
+
+;---------------------------------------------------------------------
+; Get Current Directory //////////////////////////////////////////////
+;---------------------------------------------------------------------
+	
+	;Get the current directory for save keeping
 	cd, CURRENT=pwd
-	self.pwd = pwd
+	if n_elements(pathsep) eq 0 then pathsep = path_sep()
+
+	;Look for the system root specifier.
+	;   - Searching for MrTokens requires me to split FILEPATH at each SEP
+	;   - Unix root is '/', so will be removed. Windows is C:, so will not be removed
+	case !version.os_family of
+		'unix':    sysroot = '/'
+		'windows': sysroot = ''
+		else: begin
+			message, 'Unexpected file system. Errors may occur.', /INFORMATIONAL
+			sysroot = ''
+		endcase
+	endcase
+
+;---------------------------------------------------------------------
+; First Token ////////////////////////////////////////////////////////
+;---------------------------------------------------------------------
+	
+	;Break the directory pattern into parts
+	parts = strsplit(pattern, pathsep, COUNT=nParts, /EXTRACT)
+
+	;Find the directory elements with a "%" token identifier
+	allTokens = strjoin(MrTokens())
+	iToken    = where(stregex(parts, '%', /BOOLEAN), nTokens)
+
+	;Parse the pattern into a part without tokens and a part with tokens
+	;   root       - Leading path segments without tokens
+	;   subpattern - Trailing path segments with tokens
+	case iToken[0] of
+		;Zero tokens.
+		-1: begin
+			root       = file_dirname(pattern)
+			subpattern = file_basename(pattern)
+		endcase
+		
+		;Token is in the first directory of the directory tree
+		0: begin
+			root       = sysroot
+			subpattern = parts[0]
+		endcase
+		
+		;Token is in the middle of the directory tree
+		else: begin
+			root       = filepath('', ROOT_DIR=sysroot, SUBDIR=parts[0:iToken[0]-1])
+			subpattern = parts[iToken[0]]
+			subpattern = MrTokens_ToRegex(subpattern)
+		endcase
+	endcase
+	
+	;Look for whole words
+	subpattern = '^' + subpattern + '$'
+
+;---------------------------------------------------------------------
+; Parse This Piece ///////////////////////////////////////////////////
+;---------------------------------------------------------------------
+
+	;Change to the directory
+	cd, root
+	
+	;Get all of the files in the current directory
+	MrLS, subpattern, COUNT=count, OUTPUT=pathOut, /REGEX
+	if count eq 0 then begin
+		cd, pwd
+		return, ''
+	endif
+
+	;Combine the matches with the root
+	; - Nothing left to parse if there are no more tokens or if we are at the last token.
+	; - Append the remaining parts together.
+	if nTokens eq 0 || iToken[0] eq nParts-1 $
+		then remainder = '' $
+		else remainder = filepath('', ROOT_DIR=pathsep, SUBDIR=parts[iToken[0]+1:nParts-1])
+
+;---------------------------------------------------------------------
+; Parse Next Piece ///////////////////////////////////////////////////
+;---------------------------------------------------------------------
+	if remainder ne '' then begin
+		;Step through each directory found
+		for i = 0, count - 1 do begin
+			;Append the directory to the root
+			; - root / dirOut[i] / remainder
+			next = filepath(remainder, ROOT_DIR=root, SUBDIR=pathOut[i])
+			
+			;Search again
+			tempTree = MrFile_Finder(next, COUNT=tempCount)
+		
+			;Create the tree
+			if tempCount gt 0 then begin
+				if n_elements(tree) eq 0 $
+					then tree = temporary(tempTree) $
+					else tree = [tree, temporary(tempTree)]
+			endif
+		endfor
+
+;---------------------------------------------------------------------
+; Parse Last Piece ///////////////////////////////////////////////////
+;---------------------------------------------------------------------
+	endif else begin
+		;Form the complete file path
+		tree = filepath(pathOut, ROOT_DIR=root)
+	endelse
+	
+	;Switch back to the original directory
+	cd, pwd
+
+	;Count the results
+	count = n_elements(tree)
+	if count eq 0 then tree = ''
+
+	return, tree
 end
 
 
@@ -93,13 +246,31 @@ end
 ;       FILES:          Fully qualified path to the files or directories that match
 ;                           `PATTERN`.
 ;-
-function MrFileFinder::Find, pattern, $
+function MrFileFinder::Find, path, recur, $
 COUNT=count
 	compile_opt strictarr
-	on_error, 2
+	
+	catch, the_error
+	if the_error gt 0 then begin
+		catch, /CANCEL
+		cd, old_dir
+		void = cgErrorMSG(/QUIET)
+		return, ''
+	endif
+
+	;Switch to directory of interest
+	cd, self.pwd, CURRENT=old_dir
 
 	;Find files
-	files = MrFile_Finder(pattern, COUNT=count)
+	;   - Search using MrTokens if there are "%"-signs present
+	;   - Otherwise use File_Search() 
+	if n_elements(recur) gt 0 || strpos(path, '%') eq -1 $
+		then files = self -> FindFile(path, recur, COUNT=count) $
+		else files = self -> FindPattern(path, COUNT=count)
+
+	;Return to the working directory
+	cd, old_dir
+	
 	return, files
 end
 
@@ -136,7 +307,7 @@ pro MrFileFinder::GetProperty, $
 PWD=pwd, $
 TSTART=tstart, $
 TEND=tend, $
-TPATTERN=tpatern
+TPATTERN=tpatern, $
 TIMEORDER=timeOrder, $
 VERSION=version, $
 VREGEX=vregex
@@ -180,7 +351,14 @@ pro MrFileFinder::LS, searchstr, $
 _REF_EXTRA=ref_extra
 	on_error, 2
 
+	;Change to the current directory
+	cd, self.pwd, CURRENT=old_dir
+
+	;Get the directory listings
 	MrLS, searchstr, _STRICT_EXTRA=extra
+	
+	;Change back
+	cd, old_dir
 end
 
 
@@ -318,15 +496,28 @@ end
 ;                       Directory to be made the present working directory.
 ;-
 pro MrFileFinder::SetPWD, destination
-	on_error, 2
 
-	;Set the current directory
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		cd, old_path
+		void = cgErrorMSG(/QUIET)
+		return
+	endif
+
+	;To make sure the object and IDL do not get out of
+	;sync, we are going to keep track of the path independently
+	;from wherever IDL is currently at.
+	cd, self.pwd, CURRENT=old_path
 	cd, destination
 
 	;Update
 	;   - Use CD to fully qualify the path
 	cd, CURRENT=pwd
 	self.pwd = pwd
+	
+	;Return to the old path
+	cd, old_path
 end
 
 
@@ -383,19 +574,11 @@ VREGEX    = vregex
 	if n_elements(version)   eq 0 then version   = ''
 	if n_elements(vregex)    eq 0 then vregex    = '([0-9]+)\.([0-9]+)\.([0-9])'
 	
-	;Make sure the time matches its string
-	if ~MrTokens_IsMatch(tstart, timeOrder) $
-		then message, 'TSTART must match TIMEORDER (' + timeOrder + ').'
-	if ~MrTokens_IsMatch(tend, timeOrder) $
-		then message, 'TEND must match TIMEORDER (' + timeOrder + ').'
-	
 	;Change directories
 	if directory ne '' then self -> SetPWD, directory
 	
 	;Set times
-	self.tstart     = tstart
-	self.tend       = tend
-	self.time_order = timeOrder
+	self -> SetTime, tstart, tend, TIMEORDER=timeOrder
 	
 	;Set other properties
 	self -> SetProperty, TPATTERN  = tpattern, $
