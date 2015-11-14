@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;    MrStdOut
+;    MrStdLog
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2015, Matthew Argall                                                   ;
@@ -33,20 +33,19 @@
 ;
 ; PURPOSE:
 ;+
-;   Process EDI ambient mode data to produce a quick-look data product with counts
-;   sorted by 0 and 180 degree pitch angle.
+;   Assign a file to the standard error logging object.
 ;
 ; :Categories:
 ;    File Utility
 ;
 ; :Params:
 ;       FILE:       in, optional, type=string
-;                   The name of logical unit number of a file to be assigned to stdout.
-;                       If the empty string (''), 'stdout', 'stderr', '<stdout>', '<stderr'>
-;                       '<stderr>', -2, or -1, any previously open
-;                       file will be closed and output will be directed to IDL's default
-;                       standard output or error (the console). If FILE is not provided,
-;                       the current MrLogFile object is returned.
+;                   The name or logical unit number of a file to be assigned to stderr.
+;                       The values '', 'stdout', 'stderr', '<stdout>', '<stderr'>
+;                       '<stderr>', -2, or -1, will close any previously opened
+;                       file and direct output to IDL's default tandard error (the console).
+;                       If FILE is not provided, the current error logging object is
+;                       returned.
 ;
 ; :Keywords:
 ;       _REF_EXTRA: in, optional, type=any
@@ -111,7 +110,7 @@ _REF_EXTRA=extra
 ; Open a File by Name \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 	endif else if size(file, /TNAME) eq 'STRING' then begin
-		;If it already exists, change file names
+		;If the error logging object already exists, change file names
 		if tf_exist then begin
 			status = stdlog -> Open(file)
 			if status eq 0 then message, 'File cannot be opened: "' + file + '".'

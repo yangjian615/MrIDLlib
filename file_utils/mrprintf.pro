@@ -181,26 +181,26 @@ _REF_EXTRA=extra
 			'<stdout>': theLUN = MrStdOut()
 			'stderr':   theLUN = MrStdErr()
 			'<stderr>': theLUN = MrStdErr()
-			'stdlog': BEGIN
+			'stdlog': begin
 				oLog = MrStdLog()
 				oLog -> AddError, str
-			ENDCASE
-			'logerr': BEGIN
+			endcase
+			'logerr': begin
 				oLog = MrStdLog()
 				oLog -> AddError, str
-			ENDCASE
-			'logwarn': BEGIN
+			endcase
+			'logwarn': begin
 				oLog = MrStdLog()
 				oLog -> AddWarning, str
-			ENDCASE
-			'logout': BEGIN
+			endcase
+			'logout': begin
 				oLog = MrStdLog()
 				oLog -> AddText, str, /ADD_CALLER
-			ENDCASE
-			'logtext': BEGIN
+			endcase
+			'logtext': begin
 				oLog = MrStdLog()
 				oLog -> AddText, str, /ADD_CALLER
-			ENDCASE
+			endcase
 			else: message, 'Invalid value for LUN: "' + lun + '".'
 		endcase
 	endif else begin
