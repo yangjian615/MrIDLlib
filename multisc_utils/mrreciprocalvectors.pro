@@ -54,7 +54,7 @@
 ;                   Position vectors (kilometers) of the fourth tetrahedron vertex.
 ;
 ; :Returns:
-;       RECVEC:     An Nx3x4 array of reciprocal vectors (1/meters). The fourth
+;       RECVEC:     A 3xNx4 array of reciprocal vectors (1/meters). The fourth
 ;                       dimensions is the tetrahedron vertex associated with the
 ;                       reciprocal vector.
 ;
@@ -77,7 +77,7 @@ function MrReciprocalVectors, r1, r2, r3, r4
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		if n_elements(pr) gt 0 then ptr_free, pr
-		void = cgErrorMSG(/QUIET)
+		MrPrintF, 'LogErr'
 		return, -1
 	endif
 

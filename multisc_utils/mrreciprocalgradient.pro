@@ -99,44 +99,73 @@ function MrReciprocalGradient, r1, r2, r3, r4, v1, v2, v3, v4
 	nv = sz1[0] eq 1 ? 1 : sz1[2]
 	
 	;Create a pointer array to cycle through quantities.
+	;   - Transpose to be [time, component]
 	pv    = ptrarr(4)
-	pv[0] = v1
-	pv[1] = v2
-	pv[2] = v3
-	pv[3] = v4
+	pv[0] = ptr_new(transpose(v1))
+	pv[1] = ptr_new(transpose(v2))
+	pv[2] = ptr_new(transpose(v3))
+	pv[3] = ptr_new(transpose(v4))
 	
 	;Get the reciprocal vectors
+	;   - Order as [time, component, vertex]
 	recvec = MrReciprocalVectors(r1, r2, r3, r4)
 	recvec = transpose(recvec, [1,0,2])
 	
 	;
-	;Compute the current density
+	; Gradient of a scalar
+	;   - grad(s) = ∂_i S
+	;             = (dS/dx, dS/dy, dS/dz)
 	;
+	; Gradient of a vector
+	;   - grad(v) = ∂_i V_j
+	;             = (dvx/dx + dvx/dy + dvx/dz)_x
+	;               (dvy/dx + dvy/dy + dvy/dz)_y
+	;               (dvz/dx + dvz/dy + dvz/dz)_z
+	;
+	; Sum the contribution at each vertex.
+	;
+	; Indices in comments refer to
+	;   - i : component i
+	;   - j : component j
+	;   - v : tetrahedron vertex v
+	;   - t : time
+	; and where
+	;   - S : scalar
+	;   - V : vector
+	;   - T : tensor
+	; 
 	
 	;SCALAR Field
 	if sz1[0] eq 1 then begin
 		grad = fltarr(nv, 3)
 		for i = 0, 3 do begin
-			grad[0,0] += recvec[*,0,i] * *pv[i]
-			grad[0,1] += recvec[*,1,i] * *pv[i]
-			grad[0,2] += recvec[*,2,i] * *pv[i]
+			grad[0,0] += recvec[*,0,i] * *pv[i]  ; dS / dx
+			grad[0,1] += recvec[*,1,i] * *pv[i]  ; dS / dy
+			grad[0,2] += recvec[*,2,i] * *pv[i]  ; dS / dz
 		endfor
+		;Transpose to [component, time]: V_it
 		grad = transpose(grad, [1,0])
 	
 	;VECTOR Field
 	endif else begin
 		grad = fltarr(nv, 3, 3)
 		for i = 0, 3 do begin
-			grad[0,0,0] += recvec[*,0,i] * (*pv[i])[*,0]
-			grad[0,0,1] += recvec[*,0,i] * (*pv[i])[*,1]
-			grad[0,0,2] += recvec[*,0,i] * (*pv[i])[*,2]
-			grad[0,1,0] += recvec[*,1,i] * (*pv[i])[*,0]
-			grad[0,1,1] += recvec[*,1,i] * (*pv[i])[*,1]
-			grad[0,1,2] += recvec[*,1,i] * (*pv[i])[*,2]
-			grad[0,1,0] += recvec[*,2,i] * (*pv[i])[*,0]
-			grad[0,1,1] += recvec[*,2,i] * (*pv[i])[*,1]
-			grad[0,1,2] += recvec[*,2,i] * (*pv[i])[*,2]
+			;T_tij = ∆_tiv * V_tj
+			grad[0,0,0] += recvec[*,0,i] * (*pv[i])[*,0]  ; dvx / dx
+			grad[0,0,1] += recvec[*,0,i] * (*pv[i])[*,1]  ; dvx / dy
+			grad[0,0,2] += recvec[*,0,i] * (*pv[i])[*,2]  ; dvx / dz
+			grad[0,1,0] += recvec[*,1,i] * (*pv[i])[*,0]  ; dvy / dx
+			grad[0,1,1] += recvec[*,1,i] * (*pv[i])[*,1]  ; dvy / dy
+			grad[0,1,2] += recvec[*,1,i] * (*pv[i])[*,2]  ; dvy / dz
+			grad[0,2,0] += recvec[*,2,i] * (*pv[i])[*,0]  ; dvz / dx
+			grad[0,2,1] += recvec[*,2,i] * (*pv[i])[*,1]  ; dvz / dy
+			grad[0,2,2] += recvec[*,2,i] * (*pv[i])[*,2]  ; dvz / dz
 		endfor
+		;Transpose to [component, component, vertex]
+		;   - This is such that T_tij --> T_jit
+		;   - When T_jit is printed, it appears math-like
+		;   - To dot T_jit into a 3xN vector:
+		;       ∑_j ( T_jit * V_jt )
 		grad = transpose(grad, [1,2,0])
 	endelse
 	
