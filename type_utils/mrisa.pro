@@ -115,6 +115,9 @@
 ;       2014/01/21  -   Conflicting cases return False immediately (e.g. /ROW, /COLUMN) - MRA
 ;       2014/06/19  -   Re-organized and added NULL keyword. - MRA
 ;       2015/03/09  -   Greatly simplified logic by removing all calls to IsA(). - MRA
+;       2015/11/15  -   Null pointer/object returns true if /SCALAR is set. Special
+;                           treatment of pointers and objects is limited to when they
+;                           are scalars. - MRA
 ;-
 function MrIsA, x, type, $
  COLUMN  = column, $
@@ -182,13 +185,24 @@ function MrIsA, x, type, $
 ;-----------------------------------------------------
     if theType eq '' then begin
         ;Check if the variable is defined.
-        ;   - Pointers and objects must be valid
-        ;   - Objects must be valid
-        ;   - Type code is non-zero
+        ;   - If a scalar object or pointer is given, test if it is valid
+        ;       * An undefined pointer or object is still a scalar
+        ;       * As a special case, return true if the /SCALAR keyword is set
+        ;       * NOTE: A 1-element array will still return true. However, the
+        ;               SCALAR logic below will turn it false.
+        ;   - Otherwise, test if the variable contains zero elements.
         case x_type of
-            'POINTER': tf_isa = ptr_valid(x)
-            'OBJREF':  tf_isa = obj_valid(x)
-            else:      tf_isa = x_size[x_size[0]+2] gt 0
+            'POINTER': begin
+                if x_size[x_size[0]+2] eq 1 $
+                    then tf_isa = ptr_valid(x) || scalar $
+                    else tf_isa = x_size[x_size[0]+2] gt 0
+            endcase
+            'OBJREF': begin
+                if x_size[x_size[0]+2] eq 1 $
+                    then tf_isa = obj_valid(x) || scalar $
+                    else tf_isa = x_size[x_size[0]+2] gt 0
+            endcase
+            else: tf_isa = x_size[x_size[0]+2] gt 0
         endcase
 
         ;If TYPE was not given, then (TF_ISA and TF_TYPE) needs to reflect the status
@@ -200,13 +214,18 @@ function MrIsA, x, type, $
 ;-----------------------------------------------------
     endif else begin
         ;Does the given type match the variable type?
-        ;   - Check structure name?
-        ;   - Check object class?
+        ;   - Check structure name
+        ;   - Check object class (for scalar objects or 1-element ojbect arrays)
+        ;       * A LIST is a scalar object with more than one element.
         ;   - Compare against the variable's actual type.
         case x_type of
             'STRUCT':    tf_type = theType eq 'STRUCT' ? 1 : size(x, /SNAME) eq theType
-            'OBJREF':    tf_type = theType eq 'OBJREF' ? 1 : obj_isa(x, theType)
-            else:        tf_type = theType eq x_type
+            'OBJREF': begin
+                if x_size[x_size[0]+2] eq 1 $
+                    then tf_type = theType eq 'OBJREF' ? 1 : obj_isa(x, theType) $
+                    else tf_type = theType eq 'OBJREF' || theType eq 'LIST'
+            endcase
+            else: tf_type = theType eq x_type
         endcase
 
         tf_isa = 1
@@ -388,7 +407,7 @@ print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING',
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING, /SCALAR', MrIsA('hello', /STRING, /SCALAR)
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '"Hello"',                  '/STRING, /ARRAY',  MrIsA('hello', /STRING, /ARRAY)
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'List(1,2,3)',              '"List"',           MrIsA(List(1,2,3), 'List')
-print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'List(1,2,3)',              '"Array"',          MrIsA(List(1,2,3), 'Array')
+print, FORMAT='(a25, 4x, a-20, 2x, i1)',  'List(1,2,3)',              '/ARRAY',           MrIsA(List(1,2,3), /ARRAY)
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '',                 MrIsA({MyStruct, Field1: "hi"})
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '"MyStruct"',       MrIsA({MyStruct, Field1: "hi"}, 'MyStruct')
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '{MyStruct, Field1: "hi"}', '/ARRAY',           MrIsA({MyStruct, Field1: "hi"}, /ARRAY)
