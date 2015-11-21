@@ -89,14 +89,22 @@
 ;-
 function MrReciprocalDivergence, r1, r2, r3, r4, v1, v2, v3, v4
 	compile_opt idl2
+	
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		if n_elements(pv) gt 0 then ptr_free, pv
+		MrPrintF, 'LogErr'
+		return, -1
+	endif
 
 	;Check magnetic field inputs
 	sz1 = size(v1)
 	sz2 = size(v2)
 	sz3 = size(v3)
 	sz4 = size(v4)
-	if sz1[0] ne 1 || sz1[0] ne 2 then message, 'V1 must be a 1D or 2D array.'
-	if sz1[1] ne 3 || sz1[1] ne 6 || sz[1] ne 9 then message, 'V1 must be a set of vectors or tensors.'
+	if sz1[0] ne 1 && sz1[0] ne 2 then message, 'V1 must be a 1D or 2D array.'
+	if sz1[1] ne 3 && sz1[1] ne 6 && sz[1] ne 9 then message, 'V1 must be a set of vectors or tensors.'
 	if sz2[1] ne sz1[1] || sz3[1] ne sz1[1] || sz4[1] ne sz1[1] $
 		then message, 'Inputs must be all vectors or all tensors.'
 	if (sz1[0] eq 2) && (sz2[2] ne sz1[2] || sz3[2] ne sz1[2] || sz4[2] ne sz1[2]) $
@@ -148,14 +156,14 @@ function MrReciprocalDivergence, r1, r2, r3, r4, v1, v2, v3, v4
 	;   - V : vector
 	;   - T : tensor
 	; 
-	
+
 	;Vector
-	if to eq 3 then begin
+	if order eq 3 then begin
 		;∂_tiv • V_ti
 		for i = 0, 3 do div += total(recvec[*,*,i] * *pv[i], 2)
 	
 	;Symmetric Tensor
-	endif else if to eq 6 then begin
+	endif else if order eq 6 then begin
 		for i = 0, 3 do begin
 			div[0,0] += recvec[*,0,i] * (*pv[i])[*,0] + $  ; dTxx / dx
 			            recvec[*,1,i] * (*pv[i])[*,1] + $  ; dTyx / dy  (symmetric)

@@ -90,7 +90,7 @@ function MrReciprocalCurl, r1, r2, r3, r4, v1, v2, v3, v4
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		if n_elements(pv) gt 0 then ptr_free, pv
-		void = cgErrorMSG(/QUIET)
+		MrPrintF, 'LogErr'
 		return, -1
 	endif
 
