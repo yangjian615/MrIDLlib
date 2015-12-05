@@ -41,8 +41,9 @@
 ; :Params:
 ;       ARRAY:              in, required, type=string/long
 ;                           Monotonically increasing, uniformly spaced array.
-;       DX:                 in, optional, type=float, default=ARRAY[1:*] - ARRAY
-;                           Spacing between elements of `ARRAY`.
+;       DX:                 in, optional, type=float, default=Median(ARRAY[1:*] - ARRAY)
+;                           Spacing between elements of `ARRAY`. If not provided, the
+;                               median separation of data points is used.
 ;
 ; :Keywords:
 ;       COUNT:              in, optional, type=intarr
@@ -50,6 +51,13 @@
 ;       GAPSIZE:            out, optional, type=integer/intarr
 ;                           Size of each gap, in units of `DX`. If `COUNT` is 0, then
 ;                               GAPSIZE=0.
+;
+; :Returns:
+;       IGAPS:              Indices into `ARRAY` where data gaps begin and end.
+;                               IGAPS[*,0] indicate the last point in `ARRAY` before
+;                               a gap, while `IGAPS[*,1] indicate the first point in
+;                               `ARRAY` after the data gap. If `ARRAY` does not contain
+;                               any gaps, -1 is returned and `COUNT`=0.
 ;       
 ; :Author:
 ;   Matthew Argall::
