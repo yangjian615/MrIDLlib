@@ -89,6 +89,7 @@
 ; :History:
 ;   Modification History::
 ;       2015/10/30  -   Adapted from David Fanning's ErrorLogger__Define.pro by Matthew Argall
+;       2015/12/04  -   Fixed problem with multi-line error messages. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -133,7 +134,7 @@ PRO MrLogFile::AddError, theText
 	self -> AddText, 'Error in ' + caller + ': ' + theText + ' (line ' + strtrim(line, 2) + ')'
 
 	;Add the traceback report
-	IF self.traceback THEN self -> AddText, '    ' + traceback
+	IF self.traceback THEN self -> AddText, '   ' + traceback
 
 	; Set the status to error condition.
 	self -> SetStatus, 2
@@ -421,7 +422,6 @@ LINE=line
 END
 
 
-
 ;+
 ;   Parse the Help, /LAST_MESSAGE report. Output format is:
 ;       "In ROUTINE at (line ###)"
@@ -436,33 +436,47 @@ function MrLogFile::Traceback, caller, line
 	compile_opt idl2
 	on_error, 2
 	
-	;Get the traceback report from the last message
-	;   - First element is the error message
-	;   - Last element is $MAIN$
-	Help, /LAST_MESSAGE, OUTPUT=traceback
-	ntrace = n_elements(traceback)
-
-	;Error occurred from $MAIN$
-	if ntrace eq 2 then begin
-		routine = '$MAIN$'
-		lines   = 0
-	
-	;Error occurred in a function or procedure.
+	;
 	;  Example (parse routine name and line number):
 	;     % MMS_EDI_RMT: Only MAX_ADDR = {30 | 31 | 32} beams allowed.
 	;     % Execution halted at:  MMS_EDI_RMT       304 /home/argall/IDL/MMS/costfn/mms_edi_rmt.pro
 	;     %                       MMS_EDI_TEST_COSTFN 1194 /home/argall/IDL/MMS/diagnostics/mms_edi_test_costfn.pro
 	;     %                       $MAIN$
+	;
+	
+	;Get the traceback report from the last message
+	;   - First element is the error message
+	;   - Last element is $MAIN$
+	Help, /LAST_MESSAGE, OUTPUT=traceback
+	ntrace = n_elements(traceback)
+	
+	;Find the line that says, "Execution halted ... "
+	;   - The error message segment can be multiple lines (elements) long
+	;   - This will be the place at which to start parsing
+	istart = where(strpos(traceback, 'Execution halted') ne -1, n)
+	if n ne 1 then message, 'Unexpected traceback format.'
+	istart = istart[0]
+	iend   = ntrace-2
+
+	;Error occurred from $MAIN$
+	if istart gt iend then begin
+		routine = '$MAIN$'
+		lines   = 0
+
+	;Error occurred in procedure or function
 	endif else begin
-		routine = strarr(ntrace-2)
-		lines   = lonarr(ntrace-2)
-		for i = 1, ntrace-2 do begin
-			info         = stregex(traceback[i], ':?[ ]+([A-Z_0-9:]+)[ ]+([0-9]+)', /SUBEXP, /EXTRACT)
-			routine[i-1] = info[1]
-			lines[i-1]   = info[2]
+		;Allocate memory
+		routine = strarr(iend-istart+1)
+		lines   = lonarr(iend-istart+1)
+
+		;Parse each line of the traceback report
+		for i = istart, iend do begin
+			info              = stregex(traceback[i], ':?[ ]+([A-Z_0-9:]+)[ ]+([0-9]+)', /SUBEXP, /EXTRACT)
+			routine[i-istart] = info[1]
+			lines[i-istart]   = info[2]
 		endfor
 	endelse
-		
+
 	;Caller and line number
 	caller = routine[0]
 	line   = lines[0]
@@ -472,6 +486,7 @@ function MrLogFile::Traceback, caller, line
 
 	return, traceback
 END
+
 
 ;+
 ;   Clears the error log file of text.
@@ -505,7 +520,6 @@ PRO MrLogFile::Close
 		THEN Free_Lun, self.lun $
 		ELSE IF self.lun GT 0 THEN Close, self.lun
 END 
-
 
 
 ;+
@@ -743,7 +757,6 @@ END
 FUNCTION MrLogFile::Status
 	RETURN, self.status
 END 
-
 
 
 ;+

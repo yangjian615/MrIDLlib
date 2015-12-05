@@ -104,6 +104,7 @@ PATHSEP=pathsep
 		catch, /CANCEL
 		cd, pwd
 		void = cgErrorMSG()
+		count = 0
 		return, ''
 	endif
 	
