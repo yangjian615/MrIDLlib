@@ -69,6 +69,7 @@
 ; :History:
 ;   Modification History::
 ;       2015-10-13  -   Written by Matthew Argall
+;       2015-11-25  -   Fixed indexing permutation problems. - MRA
 ;-
 function MrReciprocalVectors, r1, r2, r3, r4
 	compile_opt idl2
@@ -91,6 +92,8 @@ function MrReciprocalVectors, r1, r2, r3, r4
 		then message, 'All inputs must be 3xN.'
 	if (sz1[0] eq 2) && (sz2[2] ne sz1[2] || sz3[2] ne sz1[2] || sz4[2] ne sz1[2]) $
 		then message, 'Inputs must contain the same number of vectors.'
+	
+	;Total number of vectors
 	nv = sz1[0] eq 1 ? 1 : sz1[2]
 
 	;Create a poitner array that we can cycle through
@@ -117,14 +120,14 @@ function MrReciprocalVectors, r1, r2, r3, r4
 		;of the face of the tetrahedron opposite to vertex m. The normal vector to this
 		;surface can be found by taking the cross product between to vectors that lie in
 		;the plane of the surface.
-		area = MrVector_Cross(r_ij, r_ik)
+		area = MrVector_Cross(r_ik, r_im)
 	
 		;calculate the volume of the tetrahedron
-		volume = MrVector_Dot(r_im, MrVector_Cross(r_ij, r_ik))
+		volume = MrVector_Dot(r_ij, area)
 	
 		;the reciprical vector is the area's normal vector normalized to the tetrahedron
 		;volume
-		recvec[0,0,i] = [ area[0,*] / volume, $
+		recvec[0,0,j] = [ area[0,*] / volume, $
 		                  area[1,*] / volume, $
 		                  area[2,*] / volume ]
 

@@ -85,26 +85,45 @@
 ;-
 function MrReciprocalGradient, r1, r2, r3, r4, v1, v2, v3, v4
 	compile_opt idl2
+	
+	catch, the_error
+	if the_error ne 0 then begin
+		catch, /CANCEL
+		if n_elements(pv) gt 0 then ptr_free, pv
+		MrPrintF, 'LogErr'
+		return, -1
+	endif
 
 	;Check magnetic field inputs
 	sz1 = size(v1)
 	sz2 = size(v2)
 	sz3 = size(v3)
 	sz4 = size(v4)
-	if (sz1[0] ne 1 || sz1[0] ne 2) && sz1[1] ne 3 then message, 'V1 must be 3xN.'
+	if (sz1[0] gt 2) || (sz1[0] eq 2 && (sz1[1] ne 1 && sz1[1] ne 3)) $
+		then message, 'V1 must be a scalar or vector field.'
 	if sz2[1] ne sz1[1] || sz3[1] ne sz1[1] || sz4[1] ne sz1[1] $
-		then message, 'All inputs must be 3xN.'
+		then message, 'Inputs must be all scalar fields or all vector fields.'
 	if (sz1[0] eq 2) && (sz2[2] ne sz1[2] || sz3[2] ne sz1[2] || sz4[2] ne sz1[2]) $
-		then message, 'Inputs must contain the same number of vectors.'
-	nv = sz1[0] eq 1 ? 1 : sz1[2]
-	
+		then message, 'Inputs must contain the same number of elements.'
+
+	;Tensor order and number of vectors
+	order = (sz1[0] eq 0) ? 0 : (sz1[0] eq 2 && sz1[1] eq 1) ? 1 : 3
+	nv    = sz1[0] eq 1 ? 1 : sz1[2]
+
 	;Create a pointer array to cycle through quantities.
 	;   - Transpose to be [time, component]
-	pv    = ptrarr(4)
-	pv[0] = ptr_new(transpose(v1))
-	pv[1] = ptr_new(transpose(v2))
-	pv[2] = ptr_new(transpose(v3))
-	pv[3] = ptr_new(transpose(v4))
+	pv = ptrarr(4)
+	if order eq 0 then begin
+		pv[0] = ptr_new(v1)
+		pv[1] = ptr_new(v2)
+		pv[2] = ptr_new(v3)
+		pv[3] = ptr_new(v4)
+	endif else begin 
+		pv[0] = ptr_new(transpose(v1))
+		pv[1] = ptr_new(transpose(v2))
+		pv[2] = ptr_new(transpose(v3))
+		pv[3] = ptr_new(transpose(v4))
+	endelse
 	
 	;Get the reciprocal vectors
 	;   - Order as [time, component, vertex]
@@ -136,7 +155,7 @@ function MrReciprocalGradient, r1, r2, r3, r4, v1, v2, v3, v4
 	; 
 	
 	;SCALAR Field
-	if sz1[0] eq 1 then begin
+	if order le 1 then begin
 		grad = fltarr(nv, 3)
 		for i = 0, 3 do begin
 			grad[0,0] += recvec[*,0,i] * *pv[i]  ; dS / dx
@@ -151,15 +170,15 @@ function MrReciprocalGradient, r1, r2, r3, r4, v1, v2, v3, v4
 		grad = fltarr(nv, 3, 3)
 		for i = 0, 3 do begin
 			;T_tij = ∆_tiv * V_tj
-			grad[0,0,0] += recvec[*,0,i] * (*pv[i])[*,0]  ; dvx / dx
-			grad[0,0,1] += recvec[*,0,i] * (*pv[i])[*,1]  ; dvx / dy
-			grad[0,0,2] += recvec[*,0,i] * (*pv[i])[*,2]  ; dvx / dz
-			grad[0,1,0] += recvec[*,1,i] * (*pv[i])[*,0]  ; dvy / dx
-			grad[0,1,1] += recvec[*,1,i] * (*pv[i])[*,1]  ; dvy / dy
-			grad[0,1,2] += recvec[*,1,i] * (*pv[i])[*,2]  ; dvy / dz
-			grad[0,2,0] += recvec[*,2,i] * (*pv[i])[*,0]  ; dvz / dx
-			grad[0,2,1] += recvec[*,2,i] * (*pv[i])[*,1]  ; dvz / dy
-			grad[0,2,2] += recvec[*,2,i] * (*pv[i])[*,2]  ; dvz / dz
+			grad[0,0,0] += recvec[*,0,i] * (*pv[i])[*,0]  ; dvx / dx  --> T_xx
+			grad[0,0,1] += recvec[*,1,i] * (*pv[i])[*,0]  ; dvy / dx  --> T_xy
+			grad[0,0,2] += recvec[*,2,i] * (*pv[i])[*,0]  ; dvz / dx  --> T_xz
+			grad[0,1,0] += recvec[*,0,i] * (*pv[i])[*,1]  ; dvx / dy  --> T_yx
+			grad[0,1,1] += recvec[*,1,i] * (*pv[i])[*,1]  ; dvy / dy  --> T_yy
+			grad[0,1,2] += recvec[*,2,i] * (*pv[i])[*,1]  ; dvz / dy  --> T_yz
+			grad[0,2,0] += recvec[*,0,i] * (*pv[i])[*,2]  ; dvx / dz  --> T_zx
+			grad[0,2,1] += recvec[*,1,i] * (*pv[i])[*,2]  ; dvy / dz  --> T_zy
+			grad[0,2,2] += recvec[*,2,i] * (*pv[i])[*,2]  ; dvz / dz  --> T_zz
 		endfor
 		;Transpose to [component, component, vertex]
 		;   - This is such that T_tij --> T_jit
@@ -170,7 +189,7 @@ function MrReciprocalGradient, r1, r2, r3, r4, v1, v2, v3, v4
 	endelse
 	
 	;Free pointers
-	ptr_free, pr, pv
+	ptr_free, pv
 
 	return, grad
 end

@@ -104,11 +104,12 @@ function MrReciprocalCurl, r1, r2, r3, r4, v1, v2, v3, v4
 		then message, 'All inputs must be 3xN.'
 	if (sz1[0] eq 2) && (sz2[2] ne sz1[2] || sz3[2] ne sz1[2] || sz4[2] ne sz1[2]) $
 		then message, 'Inputs must contain the same number of vectors.'
+	
+	;Total number of vectors
 	nv = sz1[0] eq 1 ? 1 : sz1[2]
 
 	;Create a pointer array to cycle through quantities.
-	;   - Order as [time, component]
-	curl  = fltarr(nv, 3)
+	;   - Order as [component, time]
 	pv    = ptrarr(4)
 	pv[0] = ptr_new(v1)
 	pv[1] = ptr_new(v2)
@@ -116,11 +117,11 @@ function MrReciprocalCurl, r1, r2, r3, r4, v1, v2, v3, v4
 	pv[3] = ptr_new(v4)
 	
 	;Get the reciprocal vectors
-	;   - Order as [time, component, vertex]
+	;   - Ordered as [time, component, vertex]
 	recvec = MrReciprocalVectors(r1, r2, r3, r4)
 
 	;Compute the current density
-	curl = fltarr(3, nv)
+	curl  = fltarr(3, nv)
 	for i = 0, 3 do curl += MrVector_Cross(recvec[*,*,i], *pv[i])
 	
 	;Free pointers

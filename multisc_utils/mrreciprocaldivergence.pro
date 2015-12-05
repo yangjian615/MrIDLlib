@@ -104,7 +104,7 @@ function MrReciprocalDivergence, r1, r2, r3, r4, v1, v2, v3, v4
 	sz3 = size(v3)
 	sz4 = size(v4)
 	if sz1[0] ne 1 && sz1[0] ne 2 then message, 'V1 must be a 1D or 2D array.'
-	if sz1[1] ne 3 && sz1[1] ne 6 && sz[1] ne 9 then message, 'V1 must be a set of vectors or tensors.'
+	if sz1[1] ne 3 && sz1[1] ne 6 && sz1[1] ne 9 then message, 'V1 must be a set of vectors or tensors.'
 	if sz2[1] ne sz1[1] || sz3[1] ne sz1[1] || sz4[1] ne sz1[1] $
 		then message, 'Inputs must be all vectors or all tensors.'
 	if (sz1[0] eq 2) && (sz2[2] ne sz1[2] || sz3[2] ne sz1[2] || sz4[2] ne sz1[2]) $
