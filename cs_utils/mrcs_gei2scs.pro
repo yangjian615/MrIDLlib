@@ -61,12 +61,12 @@
 ;
 ; :History:
 ;   Modification History::
-;       2015-09-25  -   Written by Matthew Argall.
+;       2015-09-25  -   Written by Matthew Argall
+;       2015-11-26  -   Inputs can be row or column vectors - MRA
 ;-
 function MrCS_gei2scs, year, month, day, sec, ra, dec
 	compile_opt idl2
 	on_error, 2
-	
 	
 	;Convert to radians
 	ra_rad  = ra * !dtor
@@ -91,9 +91,10 @@ function MrCS_gei2scs, year, month, day, sec, ra, dec
 	;     with the center of the earth as the origin.
 	;   - Transforming GEI to SCS transforms [0 0 1] to [x y z] = OMEGA
 	;   - Already normalized: spherical to cartesian with r = 1.
-	scsz  = transpose( [ [cos(ra_rad) * cosDec], $
-	                     [sin(ra_rad) * cosDec], $
-	                     [sin(dec_rad)] ] )
+	scsz      = fltarr(3, n_elements(ra_rad))
+	scsz[0,*] = cos(ra_rad) * cosDec
+	scsz[1,*] = sin(ra_rad) * cosDec
+	scsz[2,*] = sin(dec_rad)
 
 	;Form the X- and Y-vectors
 	;   - X must point in the direction of the sun.

@@ -104,6 +104,7 @@ PATHSEP=pathsep
 		catch, /CANCEL
 		cd, pwd
 		MrPrintF, 'LogErr'
+		count = 0
 		return, ''
 	endif
 	
