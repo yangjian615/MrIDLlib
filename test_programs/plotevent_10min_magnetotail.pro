@@ -5,7 +5,7 @@ PRO plotevent
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMSG()
+        MrPrintF, 'LogErr'
         return
     endif
 

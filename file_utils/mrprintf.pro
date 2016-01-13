@@ -53,7 +53,12 @@
 ;                   If one of the above is given, ARG2-20 are ignored.
 ;       ARG2-20:    in, optional, type=any
 ;                   Up to 20 additional expressions to be output. See IDL's String()
-;                       procedure for details.
+;                       procedure for details. If not provided, then two can things happen:
+;                       1) if `LUN` is directed to standard error via any of the special
+;                       `LUN` values, then the last error message is written, with line
+;                       number and offending program. 2) if `LUN` is directed to standard
+;                       output via any of the special `LUN` values, or is a normal logical
+;                       unit number, then the empty string is written.
 ;
 ; :Keywords:
 ;       FORMAT:     in, optional, type=string
@@ -64,7 +69,7 @@
 ;                   Any keyword accepted by IDL's String() function.
 ;
 ; :See Also:
-;   MrStdErr, MrStdOut, MrStdLog, MrLogFile__Define
+;   MrStdErr, MrStdOut, MrStdLog, MrLogFile__Define, MrTraceback
 ;
 ; :Author:
 ;    Matthew Argall::
@@ -77,6 +82,8 @@
 ; :History:
 ;    Modification History::
 ;       2015/10/29  -   Written by Matthew Argall
+;       2015/12/03  -   If no string is provided, stderr writes the last error
+;                           message. - MRA
 ;-
 pro MrPrintF, lun,  arg1,  arg2,  arg3,  arg4,  arg5,  arg6,  arg7,  arg8,  arg9, arg10, $
                    arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, $
@@ -171,9 +178,20 @@ _REF_EXTRA=extra
 ; STDOUT, STDERR, STDLOG, ETC. \\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 	if size(lun, /TNAME) eq 'STRING' then begin
-		;Only log error messages can have undefined inputs
-		if nparams eq 0 && ~stregex(lun, '(stdlog|logerr)', /BOOLEAN, /FOLD_CASE) $
-			then str = ''
+		;No string given?
+		if nparams eq 0 then begin
+			;For errors, report the error, line, and offending program
+			;   - The logging object handles this automatically.
+			if stregex(lun, 'stderr', /BOOLEAN, /FOLD_CASE) then begin
+				str       = !error_state.msg
+				traceback = MrTraceback(caller, line)
+				str       = 'Error in ' + caller + ': ' + str + ' (line' + strtrim(line,2) + ')'
+			
+			;For standard output, use the empty string
+			endif else if stregex(lun, '(out|text)', /BOOLEAN, /FOLD_CASE) then begin
+				str = ''
+			endif
+		endif
 		
 		;Pick the output method.
 		case strlowcase(lun) of

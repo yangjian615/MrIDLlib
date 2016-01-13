@@ -100,7 +100,7 @@ _REF_EXTRA = extra
         ;Plotting Window
         if obj_valid(polWin) then obj_destroy, polWin
             
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, MrNull('ObjRef')
     endif
     
@@ -159,7 +159,7 @@ _REF_EXTRA = extra
                                   KDOTB_ANGLE = kdotb_angle_data, $
                                   COHERENCY = coherency_data, $
                                  _EXTRA = extra)
-        ;Remove background signal?
+    ;Remove background signal?
     if n_elements(background) gt 0 $
         then iMissing = where(intensity_data le background, nMissing) $
         else nMissing = 0
@@ -188,10 +188,12 @@ _REF_EXTRA = extra
                            YLOG          = ylog)
 
         IntCB = MrColorbar(/CURRENT, $
-                           NAME      = 'CB: Intensity', $
-                           TITLE     = 'Intensity!C(Units$\up2$/Hz)', $
-                           TARGET    = IntImage, $
-                           WIDTH     = 1.5)
+                           LOCATION    = 'Right', $
+                           NAME        = 'CB: Intensity', $
+                           ORIENTATION = 1, $
+                           TITLE       = 'Intensity!C(Units$\up2$/Hz)', $
+                           TARGET      = IntImage, $
+                           WIDTH       = 1.0)
     endif
     intensity_data = !Null
 
@@ -211,7 +213,7 @@ _REF_EXTRA = extra
                         /SCALE, $
                         NAME          = 'Polarization', $
                         MISSING_COLOR = 'Antique White', $
-                        PALETTE       = ctBW, $
+                        RGB_TABLE     = ctBW, $
                         RANGE         = [0, 1], $
                         TITLE         = 'Percent Polarization', $
                         XTICKFORMAT   = 'time_labels', $
@@ -220,12 +222,14 @@ _REF_EXTRA = extra
                         YLOG          = ylog)
 
         PolCB = MrColorbar(/CURRENT, $
+                           LOCATION      = 'Right', $
                            NAME          = 'CB: Polarization', $
+                           ORIENTATION   = 1, $
                            TITLE         = '% Polarization', $
                            TARGET        = PolIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 0.5, $
-                           WIDTH         = 1.5, $
+                           WIDTH         = 1.0, $
                           _EXTRA         = cbkwds)
     endif
     pzation_data = !Null
@@ -249,7 +253,7 @@ _REF_EXTRA = extra
                         /SCALE, $
                         NAME          = 'Ellipticity', $
                         MISSING_COLOR = 'Antique White', $
-                        PALETTE       = palette, $
+                        RGB_TABLE     = palette, $
                         RANGE         = [-1,1], $
                         TITLE         = 'Ellipticity', $
                         XTICKFORMAT   = 'time_labels', $
@@ -258,12 +262,14 @@ _REF_EXTRA = extra
                         YLOG          = ylog)
 
         EllCB = MrColorbar(/CURRENT, $
+                           LOCATION      = 'Right', $
                            NAME          = 'CB: Ellipticity', $
+                           ORIENTATION   = 1, $
                            TITLE         = 'Ellipticity', $
                            TARGET        = EllIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 1, $
-                           WIDTH         = 1.5, $
+                           WIDTH         = 1.0, $
                           _EXTRA         = cbkwds)
     endif
     ellipticity_data = !Null
@@ -287,7 +293,7 @@ _REF_EXTRA = extra
                        /SCALE, $
                        NAME          = 'k dot B', $
                        MISSING_COLOR = 'Antique White', $
-                       PALETTE       = ctBW, $
+                       RGB_TABLE     = ctBW, $
                        RANGE         = [0,90], $
                        TITLE         = 'Angle Between k and B', $
                        XTICKFORMAT   = 'time_labels', $
@@ -296,12 +302,14 @@ _REF_EXTRA = extra
                        YLOG          = ylog)
         
         kdbCB = MrColorbar(/CURRENT, $
+                           LOCATION      = 'Right', $
                            NAME          = 'CB: k dot B', $
+                           ORIENTATION   = 1, $
                            TITLE         = 'k dot B!C(Deg)', $
                            TARGET        = kdbIm, $
                            YMINOR        = 2, $
                            YTICKINTERVAL = 30, $
-                           WIDTH         = 1.5, $
+                           WIDTH         = 1.0, $
                           _EXTRA         = cbkwds)
     endif
     kdotb_angle_data = !Null
@@ -326,7 +334,7 @@ _REF_EXTRA = extra
                         /SCALE, $
                         NAME          = 'Coherency', $
                         MISSING_COLOR = 'Antique White', $
-                        PALETTE       = ctBW, $
+                        RGB_TABLE     = ctBW, $
                         RANGE         = [0,1], $
                         TITLE         = 'Coherency', $
                         XTICKFORMAT   = 'time_labels', $
@@ -335,12 +343,14 @@ _REF_EXTRA = extra
                         YLOG          = ylog)
         
         CohCB = MrColorbar(/CURRENT, $
+                           LOCATION      = 'Right', $
                            NAME          = 'CB: Coherency', $
+                           ORIENTATION   = 1, $
                            TITLE         = 'Coherency', $
                            TARGET        = CohIm, $
                            YMINOR        = 5, $
                            YTICKINTERVAL = 0.5, $
-                           WIDTH         = 1.5, $
+                           WIDTH         = 1.0, $
                           _EXTRA         = cbkwds)
     endif
     coherency_data = !Null

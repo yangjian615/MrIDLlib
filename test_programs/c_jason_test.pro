@@ -101,7 +101,7 @@ LMN_FRAME = lmn_frame
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMSG()
+        MrPrintF, 'LogErr'
 
         ;Plotting window
         if obj_valid(eBulk_win) then obj_destroy, eBulk_win

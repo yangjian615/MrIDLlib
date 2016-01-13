@@ -147,7 +147,7 @@ TO_TT2000=to_tt2000
     catch, error
     if error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 

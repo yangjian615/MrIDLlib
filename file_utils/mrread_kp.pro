@@ -140,7 +140,7 @@ FLUX_QUAL=flux_qual
     if the_error ne 0 then begin
         catch, /CANCEL
         if n_elements(lun) gt 0 then free_lun, lun
-        void = cgErrorMSG()
+        MrPrintF, 'LogErr'
         return
     endif
     

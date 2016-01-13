@@ -112,7 +112,7 @@ pro c_PEA_DistFn_linear, HEEA_DEFlux, HEEA_E,  HEEA_E_DPlus,  HEEA_E_DMinus, $
         catch, /cancel
         if n_elements(this_decomposed) gt 0 then device, DECOMPOSED=this_decomposed
         if n_elements(r) gt 0 then tvlct, r, g, b
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 
@@ -354,7 +354,7 @@ pro c_PEA_DistFn_log, HEEA_DEFlux, HEEA_E, HEEA_PA, HEEA_PA_DMinus, $
         catch, /cancel
         if n_elements(this_decomposed) gt 0 then device, DECOMPOSED=this_decomposed
         if n_elements(r) gt 0 then tvlct, r, g, b
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -491,7 +491,7 @@ pro c_PEA_DistFn, it
     if theError ne 0 then begin
         catch, /cancel
         if obj_valid(oFile) then obj_destroy, oFile
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 

@@ -55,6 +55,7 @@
 ; :History:
 ;   Modification History::
 ;       2015-09-13  -   Written by Matthew Argall
+;       2015-12-03  -   Error handled by MrPrintF, 'LogErr'. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -106,6 +107,17 @@ end
 ;   Search for files
 ;
 ; :Private:
+;
+; :Params:
+;       PATTERN:        in, required, type=string
+;                       A search pattern that can include any token recognized by
+;                           MrTokens.
+;
+; :Keywords:
+;       COUNT:          out, optional, type=integer
+;                       A named variable to receive the number of files found.
+;       PATHSEP:        in, optional, type=string, default=Path_Sep()
+;                       Character(s) that separate path segments.
 ;-
 function MrFileFinder::FindPattern, pattern, $
 COUNT=count, $
@@ -116,7 +128,7 @@ PATHSEP=pathsep
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		cd, old_dir
-		void = cgErrorMSG()
+		MrPrintF, 'LogErr'
 		return, ''
 	endif
 
@@ -297,7 +309,7 @@ COUNT=count
 	if the_error gt 0 then begin
 		catch, /CANCEL
 		cd, old_dir
-		void = cgErrorMSG(/QUIET)
+		MrPrintF, 'LogErr'
 		return, ''
 	endif
 
@@ -360,7 +372,7 @@ VREGEX=vregex
 	catch, the_error
 	if the_error ne 0 then begin
 		catch, /cancel
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		return
 	endif
 
@@ -538,7 +550,7 @@ VREGEX    = vregex
 	catch, the_error
 	if the_error ne 0 then begin
 		catch, /cancel
-		void = cgErrorMsg()
+		MrPrintF, 'logerr'
 		return
 	endif
 
@@ -561,7 +573,7 @@ pro MrFileFinder::SetPWD, destination
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		cd, old_path
-		void = cgErrorMSG(/QUIET)
+		MrPrintF, 'logerr'
 		return
 	endif
 
@@ -623,7 +635,7 @@ VREGEX    = vregex
 	catch, the_error
 	if the_error ne 0 then begin
 		catch, /cancel
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		return, 0
 	endif
 	

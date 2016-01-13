@@ -84,7 +84,7 @@ TIME = time
         if n_elements(data) eq 0 then $
             data = transpose(temporary(data_temp), shift(dims, -thisDim))
             
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
     endif
 
 ;-----------------------------------------------------

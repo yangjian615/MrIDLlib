@@ -62,7 +62,7 @@ function read_bas_search_coil, filename, time
         ;close the file and free its logical unit number
         if n_elements(lun) ne 0 then close, lun
         
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !null
     endif
     

@@ -103,7 +103,7 @@ PATHSEP=pathsep
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		cd, pwd
-		void = cgErrorMSG()
+		MrPrintF, 'LogErr'
 		return, ''
 	endif
 	

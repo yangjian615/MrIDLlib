@@ -33,7 +33,7 @@ pro test_h5a_get_num_attrs
     if the_error ne 0 then begin
         catch, /CANCEL
         h5_close
-        void = cgErrorMSG()
+        MrPrintF, 'LogErr'
         return
     endif
     

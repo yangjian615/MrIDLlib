@@ -46,10 +46,10 @@
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :Copyright:
 ;       Matthew Argall 2013
@@ -61,6 +61,8 @@
 ;                           now be an input. - MRA
 ;       08/03/2013  -   Added keyword ISMEAN. - MRA
 ;       2013-11-01  -   Added the EDGE_TRUNCATE and _REF_EXTRA keywords. - MRA
+;       2013-11-29  -   The z-axis of the FA-system always points toward +z in the
+;                           old system. Update library programs. - MRA
 ;-
 function fa_system, data, navg, $
 AVG_DATA = avg_data, $
@@ -88,16 +90,18 @@ _REF_EXTRA=extra
     endif else avg_data = data
 
     ;The z-axis will be along the average field direction
-    z_hat = divide_vec(avg_data, magnitude_vec(avg_data))
+    z_hat = MrVector_Normalize(avg_data)
+    iflip = where(z_hat[2,*] lt 0, nflip)
+    if nflip gt 0 then z_hat[*,iflip] = -z_hat[*,iflip]
 
     ;Since many common coordinate systems (e.g. GSE, GSM) are defined with the x-axis
     ;pointing towards the sun, we will find the x-axis by crossing [0, 1, 0] with Z_HAT.
-    x_hat = cross_product([0, 1, 0], z_hat)
-    x_hat = normalize(x_hat)
+    x_hat = MrVector_Cross([0, 1, 0], z_hat)
+    x_hat = MrVector_Normalize(x_hat)
 
     ;Compute y_hat
-    y_hat = cross_product(z_hat, x_hat)
-    y_hat = normalize(y_hat)
+    y_hat = MrVector_Cross(z_hat, x_hat)
+    y_hat = MrVector_Normalize(y_hat)
 
     ;Put the unit vectors along the rows.
     ;                    | x_hat(x)    x_hat(y)   x_hat(z) |

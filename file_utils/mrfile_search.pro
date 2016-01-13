@@ -232,7 +232,7 @@ VREGEX=vRegex
 	if the_error ne 0 then begin
 		catch, /cancel
 		if n_elements(pwd) gt 0 then CD, pwd
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		return, ''
 	endif
 

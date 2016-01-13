@@ -121,7 +121,7 @@ DT_B = dt_B
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         
         ;If NO_COPY was set, then A is no longer defined. Must put the data back.
         if ptr_valid(pA) then begin
