@@ -79,7 +79,7 @@
 ; :Returns:
 ;   IX_OUT:       out, required, type = 2xN double array
 ;-
-function ix_out = MrIntervalsXY_Remove(ix, iy, x, y)
+function MrIntervalsXY_Remove, ix, iy, x, y
 
 	nx = n_elements( ix[0, *] )
 	ny = n_elements( iy[0, *] )

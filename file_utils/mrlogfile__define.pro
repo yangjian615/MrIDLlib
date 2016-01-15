@@ -122,13 +122,35 @@ PRO MrLogFile::AddError, theText
 		traceback = self -> Callstack(3, CALLER=caller, LINE=line)
 		Message, theText, /CONTINUE, /NOPRINT, /NONAME, /NOPREFIX
 	ENDELSE
-
+	
+	;
 	; !Error_State.Msg can have the calling routine in it already. E.g.
 	;
 	;   MMS_EDI_RMT: RMT Failure: Not enough beams in each to/away class
 	;
 	; If this is the case, remove the calling program from THETEXT
-	if strpos(thetext, caller) ne -1 then thetext = strmid(thetext, strpos(thetext, ':')+2)
+	;
+	
+	;The calling program is separated from the text by a colon.
+	;   - Object methods are separated from the object class by a double-colon
+	;   - Process object methods separately
+	doubleColon = strpos(theText, '::')
+	if doubleColon eq -1 then begin
+		if strpos(thetext, caller) ne -1 then thetext = strmid(thetext, strpos(thetext, ':')+2)
+	endif else begin
+		;Get the object class, object method, and message
+		;   - CLASS::METHOD: Message String
+		class      = strmid(theText, 0, doubleColon+2)
+		submessage = strmid(theText, doubleColon+2)
+		colon      = strpos(submessage, ':')
+		
+		;Is there a single colon?
+		;   - Compare it to the calling routine. If they match, remove it.
+		if colon ne -1 then begin
+			if class + strmid(submessage, 0, colon) eq caller $
+				then theText = strmid(submessage, colon+1)
+		endif
+	endelse
 
 	;Add the error
 	self -> AddText, 'Error in ' + caller + ': ' + theText + ' (line ' + strtrim(line, 2) + ')'
