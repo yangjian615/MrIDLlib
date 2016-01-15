@@ -360,7 +360,7 @@ _REF_EXTRA = extra
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         
         ;Reset the color table
         if n_elements(rr) ne 0   then tvlct, rr, gg, bb

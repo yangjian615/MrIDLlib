@@ -58,7 +58,7 @@ KERNEL = kernel
         ;unload the kernel
         if n_elements(kernel) ne 0 then cspice_unload, kernel
         
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !null
     endif
 

@@ -182,7 +182,7 @@ WINDOW = window
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
     
@@ -341,7 +341,7 @@ _REF_EXTRA=extra
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 
@@ -391,7 +391,7 @@ MODE=mode
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 
@@ -496,7 +496,7 @@ _REF_EXTRA = extra
     if the_error ne 0 then begin
         catch, /cancel
         if current eq 0 then if obj_valid(pwr_win) then obj_destroy, pwr_win
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, obj_new()
     endif
     

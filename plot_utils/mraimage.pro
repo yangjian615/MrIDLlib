@@ -459,7 +459,7 @@ _EXTRA = extra
         if n_elements(x_current) ne 0 then !X = x_current
         if n_elements(y_current) ne 0 then !Y = y_current
         if n_elements(newWin) ne 0 then wdelete, newWin
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 

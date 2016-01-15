@@ -90,7 +90,7 @@ _REF_EXTRA = extra
         catch, /cancel
         if max(obj_valid(imArr)) then obj_destroy, imArr
         if n_elements(cbArr) gt 0 && max(obj_valid(cbArr)) eq 1 then obj_destroy, cbArr
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !null
     endif
     

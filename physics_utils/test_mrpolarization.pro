@@ -70,7 +70,7 @@ function test_mrpolarization
         catch, /cancel
         if obj_valid(MyWin)  then obj_destroy, MyWin
         if obj_valid(polWin) then obj_destroy, polWin
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, obj_new()
     endif
 

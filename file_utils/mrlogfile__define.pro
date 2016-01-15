@@ -89,6 +89,7 @@
 ; :History:
 ;   Modification History::
 ;       2015/10/30  -   Adapted from David Fanning's ErrorLogger__Define.pro by Matthew Argall
+;       2015/12/03  -   Added the ADD_FILES and WARN_TRACEBACK properties.
 ;       2015/12/04  -   Fixed problem with multi-line error messages. - MRA
 ;-
 ;*****************************************************************************************
@@ -188,7 +189,7 @@ ADD_CALLER=add_caller
 	Catch, theError
 	IF theError NE 0 THEN BEGIN
 		Catch, /CANCEL
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		RETURN
 	ENDIF
 
@@ -259,7 +260,7 @@ PRO MrLogFile::AddWarning, theText
 	self -> AddText, 'Warning: ' + theText + ' (' + caller + ' ' + strtrim(line, 2) + ')'
 
 	;Add the traceback report
-	IF self.traceback THEN self -> AddText, '    ' + traceback
+	IF self.warn_traceback THEN self -> AddText, '    ' + traceback
 END
 
 
@@ -439,6 +440,7 @@ LINE=line
 	
 	;Traceback report
 	traceback = 'In ' + stack.routine + ' at (line ' + strtrim(stack.line, 2) + ')'
+	if self.add_files then traceback += ' --> ' + stack.filename
 
 	return, traceback
 END
@@ -487,15 +489,14 @@ function MrLogFile::Traceback, caller, line
 
 	;Error occurred in procedure or function
 	endif else begin
-		;Allocate memory
-		routine = strarr(iend-istart+1)
-		lines   = lonarr(iend-istart+1)
-
-		;Parse each line of the traceback report
-		for i = istart, iend do begin
-			info              = stregex(traceback[i], ':?[ ]+([A-Z_0-9:]+)[ ]+([0-9]+)', /SUBEXP, /EXTRACT)
-			routine[i-istart] = info[1]
-			lines[i-istart]   = info[2]
+		routine = strarr(ntrace-2)
+		lines   = lonarr(ntrace-2)
+		files   = strarr(ntrace-2)
+		for i = 1, ntrace-2 do begin
+			info         = stregex(traceback[i], ':?[ ]+([A-Z_0-9:]+)[ ]+([0-9]+)[ ]+(.*)', /SUBEXP, /EXTRACT)
+			routine[i-1] = info[1]
+			lines[i-1]   = info[2]
+			files[i-1]   = info[3]
 		endfor
 	endelse
 
@@ -505,6 +506,7 @@ function MrLogFile::Traceback, caller, line
 	
 	;Traceback report
 	traceback = 'In ' + routine + ' at (line ' + strtrim(lines, 2) + ')'
+	if self.add_files then traceback += ' --> ' + files
 
 	return, traceback
 END
@@ -567,6 +569,9 @@ END
 ;   Allows the user to get properties from the object via keywords.
 ;
 ; :Keywords:
+;       ADD_FILES:      in, optional, type=boolean, default=0
+;                       If set, file names will be added to the traceback report. By
+;                           default, only the routine names and line numbers are included.
 ;       ALERT:          out, optional, type=boolean
 ;                       If set, the user will be alerted of errors via a dialog pop-up.
 ;       DELETE:         out, optional, type=boolean
@@ -583,8 +588,13 @@ END
 ;                       If set, no traceback report will be added to error messages.
 ;       STATUS:         out, optional, type=integer
 ;                       The current error log status.
+;       WARN_TRACEBACK: in, optional, type=boolean, default=0
+;                       If set, traceback reports will be added to the warning messages.
+;                           All warning messages always contain the caller and line
+;                           number where the warning occurred.
 ;-
 PRO MrLogFile::GetProperty, $
+ADD_FILES=add_files, $
 ALERT=alert, $
 DELETE=delete, $
 FILENAME=filename, $
@@ -592,18 +602,21 @@ LAST_MESSAGE=last_message, $
 LUN=lun, $
 NOCLUTTER=noclutter, $
 NOTRACEBACK=notraceback, $
-STATUS=status
+STATUS=status, $
+WARN_TRACEBACK=warn_traceback
 	on_error, 2
 
 	;Get Properties
-	IF Arg_Present(alert)        THEN alert        = self.alert
-	IF Arg_Present(delete)       THEN delete       = self.delete
-	IF Arg_Present(filename)     THEN filename     = self.filename
-	IF Arg_Present(last_message) THEN last_message = self -> LastMessage()
-	IF Arg_Present(lun)          THEN lun          = self.lun
-	IF Arg_Present(noclutter)    THEN noclutter    = self.noclutter
-	IF Arg_Present(notraceback)  THEN notraceback  = ~self.traceback
-	IF Arg_Present(status)       THEN status       = self.status
+	IF Arg_Present(add_files)      THEN add_files      = self.add_files
+	IF Arg_Present(alert)          THEN alert          = self.alert
+	IF Arg_Present(delete)         THEN delete         = self.delete
+	IF Arg_Present(filename)       THEN filename       = self.filename
+	IF Arg_Present(last_message)   THEN last_message   = self -> LastMessage()
+	IF Arg_Present(lun)            THEN lun            = self.lun
+	IF Arg_Present(noclutter)      THEN noclutter      = self.noclutter
+	IF Arg_Present(notraceback)    THEN notraceback    = ~self.traceback
+	IF Arg_Present(warn_traceback) THEN warn_traceback = self.warn_traceback
+	IF Arg_Present(status)         THEN status         = self.status
 END 
 
 
@@ -647,7 +660,7 @@ DELETE_CURRENT=delete_current
 	Catch, theError
 	IF theError NE 0 THEN BEGIN
 		Catch, /CANCEL
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		IF N_Elements(lun) NE 0 THEN BEGIN
 			Free_Lun, lun
 			File_Delete, newLogFilename, /ALLOW_NONEXISTENT
@@ -712,6 +725,9 @@ END
 ;   Allows the user to set properties of the object via keywords.
 ;
 ; :Keywords::
+;       ADD_FILES:      in, optional, type=boolean, default=0
+;                       If set, file names will be added to the traceback report. By
+;                           default, only the routine names and line numbers are included.
 ;       ALERT:          in, optional, type=boolean
 ;                       If set, the user will be alerted of errors via a dialog pop-up.
 ;       DELETE:         in, optional, type=boolean
@@ -722,20 +738,28 @@ END
 ;                       If set, no traceback report will be added to error messages.
 ;       STATUS:         in, optional, type=integer
 ;                       The current error log status.
+;       WARN_TRACEBACK: in, optional, type=boolean, default=0
+;                       If set, traceback reports will be added to the warning messages.
+;                           All warning messages always contain the caller and line
+;                           number where the warning occurred.
 ;-
 PRO MrLogFile::SetProperty, $
+ADD_FILES=add_files, $
 ALERT=alert, $
 DELETE=delete, $
 NOCLUTTER=noclutter, $
 NOTRACEBACK=notraceback, $
-STATUS=status
+STATUS=status, $
+WARN_TRACEBACK=warn_traceback
 	on_error, 2
 
 	;Set Properties
-	IF N_Elements(alert)       NE 0 THEN self.alert     =  Keyword_Set(alert)
-	IF N_Elements(delete)      NE 0 THEN self.delete    =  Keyword_Set(delete)
-	IF N_Elements(notraceback) NE 0 THEN self.tracebace = ~Keyword_Set(notraceback)
-	IF N_Elements(status)      NE 0 THEN self -> SetStatus, status
+	IF N_Elements(add_files)      NE 0 THEN self.add_files      =  Keyword_Set(add_files)
+	IF N_Elements(alert)          NE 0 THEN self.alert          =  Keyword_Set(alert)
+	IF N_Elements(delete)         NE 0 THEN self.delete         =  Keyword_Set(delete)
+	IF N_Elements(notraceback)    NE 0 THEN self.tracebace      = ~Keyword_Set(notraceback)
+	IF N_Elements(warn_traceback) NE 0 THEN self.warn_traceback =  Keyword_Set(warn_traceback)
+	IF N_Elements(status)         NE 0 THEN self -> SetStatus, status
 	
 	;NoClutter
 	IF N_Elements(noclutter) NE 0 THEN BEGIN
@@ -807,53 +831,62 @@ END
 ;   The initialization method for the object.
 ;
 ; :Params:
-;       FILENAME:    in, optional, type=string/int, default='MrLogFile_[date]_[random-numbers].log'
-;                    The name of the error log file. If not provided, a default name
-;                        will be created based on the current system time. (Optional)
+;       FILENAME:       in, optional, type=string/int, default='MrLogFile_[date]_[random-numbers].log'
+;                       The name of the error log file. If not provided, a default name
+;                           will be created based on the current system time. (Optional)
 ;
 ; :Keywords:
-;       ALERT:       in, optional, type=boolean, default=0
-;                    The default behavior of the error logger is simply to write text to
-;                        a file. But if the ALERT keyword is set, the program will alert
-;                        the user via a message dialog that an error has occurred when
-;                        using the AddError method. Default is 0. (Input)
-;      DELETE:       in, optional, type=boolean, default=0
-;                    If this keyword is set, the error log file will be deleted when the
-;                        MrLogFile object is destroyed, but only if the MrLogFile
-;                        object is not in an error state at that time (error status = 2).
-;      IMMEDIATE:    in, optional, type=boolean, default=1
-;                    All messages will flush to disk as soon as they are logged.
-;      NOCLUTTER:    in, optional, type=boolean, defualt=0
-;                    Believe it or not, some people who use an MrLogFile prefer that
-;                        an error log file is never left behind. (They prefer that the
-;                        program act like cgErrorMsg.) For those people, the NOCLUTTER
-;                        keyword provides a way for them to automatically set the `ALERT`
-;                        and `DELETE` keywords to 1. It also prevents the error  logger
-;                        from ever setting the error status to 2. Thus, when the
-;                        MrLogFile is destroyed, the file is always deleted. When set,
-;                        overrides `ALERT` and `DELETE` settings.
-;      NOTRACEBACK:  in, optional, type=boolean, default=0
-;                    Set this keyword to suppress traceback information in the error log
-;                        output and in any alerts issued by the program.
-;      TIMESTAMP:    in, optional, type=boolean, default=0
-;                    Set this keyword if you wish a time stamp to be appended to the
-;                        provided filename. Otherwise, the filename is used as defined.
-;                        Default filenames always have a timestamp appended to the file
-;                        name.
+;      ADD_FILES:       in, optional, type=boolean, default=0
+;                       If set, file names will be added to the traceback report. By
+;                           default, only the routine names and line numbers are included.
+;      ALERT:           in, optional, type=boolean, default=0
+;                       The default behavior of the error logger is simply to write text to
+;                           a file. But if the ALERT keyword is set, the program will alert
+;                           the user via a message dialog that an error has occurred when
+;                           using the AddError method. Default is 0. (Input)
+;      DELETE:          in, optional, type=boolean, default=0
+;                       If this keyword is set, the error log file will be deleted when the
+;                           MrLogFile object is destroyed, but only if the MrLogFile
+;                           object is not in an error state at that time (error status = 2).
+;      IMMEDIATE:       in, optional, type=boolean, default=1
+;                       All messages will flush to disk as soon as they are logged.
+;      NOCLUTTER:       in, optional, type=boolean, defualt=0
+;                       Believe it or not, some people who use an MrLogFile prefer that
+;                           an error log file is never left behind. (They prefer that the
+;                           program act like cgErrorMsg.) For those people, the NOCLUTTER
+;                           keyword provides a way for them to automatically set the `ALERT`
+;                           and `DELETE` keywords to 1. It also prevents the error  logger
+;                           from ever setting the error status to 2. Thus, when the
+;                           MrLogFile is destroyed, the file is always deleted. When set,
+;                           overrides `ALERT` and `DELETE` settings.
+;      NOTRACEBACK:     in, optional, type=boolean, default=0
+;                       Set this keyword to suppress traceback information in the error log
+;                           output and in any alerts issued by the program.
+;      TIMESTAMP:       in, optional, type=boolean, default=0
+;                       Set this keyword if you wish a time stamp to be appended to the
+;                           provided filename. Otherwise, the filename is used as defined.
+;                           Default filenames always have a timestamp appended to the file
+;                           name.
+;      WARN_TRACEBACK:  in, optional, type=boolean, default=0
+;                       If set, traceback reports will be added to the warning messages.
+;                           All warning messages always contain the caller and line
+;                           number where the warning occurred.
 ;-
 FUNCTION MrLogFile::INIT, file, $
+ADD_FILES=add_files, $
 ALERT=alert, $
 DELETE=delete, $
 IMMEDIATE = immediate, $
 NOCLUTTER=noclutter, $
 NOTRACEBACK=notraceback, $
-TIMESTAMP=timestamp
+TIMESTAMP=timestamp, $
+WARN_TRACEBACK=warn_traceback
 	COMPILE_OPT idl2
 
 	Catch, theError
 	IF theError NE 0 THEN BEGIN
 		Catch, /CANCEL
-		void = cgErrorMsg()
+		MrPrintF, 'LogErr'
 		IF N_Elements(lun) NE 0 THEN BEGIN
 			Free_Lun, lun
 			File_Delete, logFilename, /ALLOW_NONEXISTENT
@@ -912,11 +945,13 @@ TIMESTAMP=timestamp
 	self.lastMessage = Ptr_New(/ALLOCATE_HEAP)
 
 	; Set properties.
-	self.filename  = filename
-	self.alert     = Keyword_Set(alert)
-	self.traceback = ~Keyword_Set(notraceback)
-	self.delete    = Keyword_Set(delete)
-	self.immediate = N_Elements(immediate) eq 0 ? 1B : Keyword_Set(immediatee)
+	self.filename       = filename
+	self.add_files      = Keyword_Set(add_files)
+	self.alert          = Keyword_Set(alert)
+	self.delete         = Keyword_Set(delete)
+	self.immediate      = N_Elements(immediate) eq 0 ? 1B : Keyword_Set(immediate)
+	self.traceback      = ~Keyword_Set(notraceback)
+	self.warn_traceback = Keyword_Set(warn_traceback)
 	
 	;
 	; Files are Opened in ::AddText only if SELF.LUN = 0.
@@ -938,18 +973,27 @@ TIMESTAMP=timestamp
 END 
 
 
+;+
+;   Class definition
+;
+; :Params:
+;       CLASS:          out, optional, type=structure
+;                       Class definition structure.
+;-
 PRO MrLogFile__Define, class
 
-   class = { MrLogFile, $
-             Inherits IDL_Object, $
-             filename:    "", $         ; The error log filename.
-             lun:         0L, $         ; The file logical unit number.
-             alert:       0B, $         ; A flag, if set, will give user alerts on errors.
-             traceback:   0B, $         ; If set, will include traceback information into the log file.
-             lastMessage: Ptr_New(), $  ; The last message written into the file.
-             immediate:   0B, $         ; A flag causing messages to flush to disk immediately
-             delete:      0B, $         ; A flag causing log file to be deleted when object is destroyed.
-             noclutter:   0B, $         ; A flag that sets up file deletion on destroy.
-             status:      0B $          ; The current status of the error logger. 0-waiting, 1-normal, 2-error.
-           }
+	class = { MrLogFile, $
+	          Inherits IDL_Object, $
+	          filename:       "", $         ; The error log filename.
+	          lun:            0L, $         ; The file logical unit number.
+	          add_files:      0B, $         ; Add file names to the traceback report.
+	          alert:          0B, $         ; A flag, if set, will give user alerts on errors.
+	          traceback:      0B, $         ; If set, will include traceback information into the log file.
+	          lastMessage:    Ptr_New(), $  ; The last message written into the file.
+	          immediate:      0B, $         ; A flag causing messages to flush to disk immediately
+	          delete:         0B, $         ; A flag causing log file to be deleted when object is destroyed.
+	          noclutter:      0B, $         ; A flag that sets up file deletion on destroy.
+	          status:         0B, $         ; The current status of the error logger. 0-waiting, 1-normal, 2-error.
+	          warn_traceback: 0B $          ; Add traceback report to the warning messages.
+	        }
 END

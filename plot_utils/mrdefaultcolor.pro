@@ -140,7 +140,7 @@ TRIPLE=triple
 	if the_error ne 0 then begin
 		catch, /CANCEL
 		if n_elements(r) gt 0 then tvlct, r, g, b
-		void = cgErrorMSG()
+		MrPrintF, 'LogErr'
 		return, -1
 	endif
 

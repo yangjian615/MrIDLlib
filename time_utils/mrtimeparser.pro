@@ -1125,7 +1125,7 @@ TZ_OUT=tz_out
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     

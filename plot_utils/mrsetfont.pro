@@ -592,7 +592,7 @@ _REF_EXTRA = extra
             ps_styles = old_ps_styles
         endif
         
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 

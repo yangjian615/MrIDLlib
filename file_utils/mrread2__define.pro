@@ -82,7 +82,7 @@ function MrRead2::Concatenate, data, iCat
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
     
@@ -131,7 +131,7 @@ NFILES=nFiles
     if the_error ne 0 then begin
         catch, /cancel
         if obj_valid(oFile) then obj_destroy, oFile
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, ''
     endif
     
@@ -161,7 +161,7 @@ ETIME=eTime
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -219,7 +219,7 @@ _REF_EXTRA=extra
     if the_error ne 0 then begin
         catch, /cancel
         if obj_valid(oCDF) then obj_destroy, oCDF
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 
@@ -378,7 +378,7 @@ TO_STRUCTURE=to_structure
     if the_error ne 0 then begin
         catch, /cancel
         if obj_valid(oCDF) then obj_destroy, oCDF
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 
@@ -578,7 +578,7 @@ ETIME=eTime
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -623,7 +623,7 @@ function MrRead2::init, pattern, sTime, eTime
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, 0
     endif
     

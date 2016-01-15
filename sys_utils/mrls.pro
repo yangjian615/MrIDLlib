@@ -135,13 +135,21 @@ SORT=tf_sort
 	endelse
 
 	;Looking in special directories?
-	;   '~'  home directory
-	;   '.'  current directory
-	;   '..' Up one directory
+	;   - Special directories:
+	;         '~'   =  home directory
+	;         '.'   = current directory
+	;         '..'  = Up one directory
+	;   - The strings "~/", "./", and "../" will return "." as dirname and
+	;     "~", ".", and ".." as basename.
+	;   - Switch the special directory over to DIR
 	if stregex(srch, '^((~|\.|\.\.)' + path_sep() + '?)+', /BOOLEAN) then begin
 		dir  = filepath(srch, ROOT_DIR=dir)
 		srch = ''
+	
 	;Look in a specific directory?
+	;   - In a directory chain, File_BaseName() returns the final directory while
+	;     File_DirName() returns the penultimate and all others.
+	;   - Re-combine both to test if it is a directory.
 	;   - Do not expand wildcard characters.
 	endif else if file_test(filepath(srch, ROOT_DIR=dir), /DIRECTORY, /NOEXPAND_PATH) then begin
 		dir  = filepath(srch, ROOT_DIR=dir)

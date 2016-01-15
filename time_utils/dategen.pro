@@ -62,7 +62,7 @@ DELIMITER = delimiter
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, -1
     endif
     

@@ -443,7 +443,7 @@ _REF_EXTRA = extra
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, -1
     endif
 
@@ -691,8 +691,8 @@ _REF_EXTRA = extra
         y_component = cross_product(reform(k_hat[i,*,*]), [0.0, 0.0, 1.0])
         iNegK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[i,*,2] lt 0, nNegK)
         iPosK = where(magnitude_vec(y_component) lt 1e-6 and k_hat[i,*,2] gt 0, nPosK)
-        if nNegK gt 0 then y_component[*,iNegK] = rebin([[0.0],[-1.0], [0.0]], nNegK, 3)
-        if nPosK gt 0 then y_component[*,iPosK] = rebin([[0.0], [1.0], [0.0]], nPosK, 3)
+        if nNegK gt 0 then y_component[iNegK,*] = rebin([[0.0],[-1.0], [0.0]], nNegK, 3)
+        if nPosK gt 0 then y_component[iPosK,*] = rebin([[0.0], [1.0], [0.0]], nPosK, 3)
 
         ;x- and y- components of the transformation matrix.
         R[i,*,*,1] = normalize(y_component)

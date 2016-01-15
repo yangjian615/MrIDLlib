@@ -73,7 +73,7 @@ function hms_to_ssm, hms_time_in, minute, second, milli, micro, nano, pico
     if the_error ne 0 then begin
         catch, /cancel
         if tf_trans eq 1 then hms_time_in = temporary(hms_time)
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !null
     endif
 

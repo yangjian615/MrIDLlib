@@ -208,7 +208,7 @@ AM_PM=am_pm
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 
@@ -365,7 +365,7 @@ function MrFileFinder::ExtractInterval, names, pattern
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, !Null
     endif
 
@@ -591,7 +591,7 @@ COUNT=count
     if the_error ne 0 then begin
         catch, /cancel
         if n_elements(pwd) gt 0 then self -> CD, pwd
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, ''
     endif
 
@@ -713,7 +713,7 @@ UNIQUE=unique
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         nFiles = 0
         return, !Null
     endif
@@ -802,7 +802,7 @@ TPATTERN=tPattern
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -965,7 +965,7 @@ TPATTERN=tPattern
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -1125,7 +1125,7 @@ TPATTERN=tPattern
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, 0
     endif
     

@@ -98,7 +98,7 @@ _REF_EXTRA = extra
     if the_error ne 0 then begin
         catch, /cancel
         if current eq 0 then if obj_valid(pwr_win) then obj_destroy, pwr_win
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, obj_new()
     endif
     

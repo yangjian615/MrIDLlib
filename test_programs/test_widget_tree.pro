@@ -86,7 +86,7 @@ pro test_widget_tree_cleanup, event
     catch, the_error
     if the_error ne 0 then begin
         catch, /CANCEL
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
