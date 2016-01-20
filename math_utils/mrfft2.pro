@@ -182,7 +182,7 @@ WINDOW = window
 	if n_elements(dimension) eq 0 then dimension = iMaxDim + 1
 	n1 = dims[dimension-1]
 	if nDims eq 2 $
-		then n2 = dimension le 1 ? dims[0] : dims[1] $
+		then n2 = dimension le 1 ? dims[1] : dims[0] $
 		else n2 = 1
 
 	;Create defaults
@@ -210,8 +210,11 @@ WINDOW = window
 	endif
 	
 	;Number of intervals
+	;   - Add one so that we can process backward from the end of the array
+	;     to capture all leftover points.
 	n_int = nfft_intervals(n1, nfft, nshift)
-	
+	if n_int*nfft lt n1 then n_int += 1
+
 ;-----------------------------------------------------
 ; Compute Time? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -244,20 +247,19 @@ WINDOW = window
 	;   - [frequency, time, component]
 	;   - TF_CALC_DT => A time array was given and we have to compute DT
 	;   - TF_TIME    => User wants us to return time stamps for each FFT interval
-	d_fft  = make_array(nfft, n_int, n2, DCOMPLEX=tf_double, COMPLEX=~tf_double)
-	freqs  = make_array(nfft, n_int, /FLOAT, VALUE=!values.f_nan)
-	if tf_calc_dt then dt_out = fltarr(n_int)
+	d_fft  = make_array(n_int, nfft, n2, DCOMPLEX=tf_double, COMPLEX=~tf_double)
+	freqs  = make_array(n_int, nfft, /FLOAT, VALUE=!values.f_nan)
+	dt_out = fltarr(n_int)
 	if tf_time then time = fltarr(n_int)
 	
 	nf_tot = 0
-	t_0    = t0
 	
 ;-----------------------------------------------------
 ; Step Through Intervals \\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 	istart = 0
 	iend   = nfft-1
-	for i = 0, n_int do begin
+	for i = 0, n_int-1 do begin
 		;Extract subinterval
 		;   - Put FFT dimension first to simplify array checking below
 		dtemp = dimension le 1 ? data[istart:iend,*] : transpose(data[*,istart:iend])
@@ -309,13 +311,14 @@ WINDOW = window
 			if finite(fillval) $
 				then iFill = where(dtemp[*,0] eq fillval, nFill, COMPLEMENT=igood, NCOMPLEMENT=ngood) $
 				else iFill = where(finite(dtemp[*,0]) eq 0, nFill, COMPLEMENT=igood, NCOMPLEMENT=ngood)
+			pct_fill = (nFill / n1) * 100.0
 	
 			;Interpolate/Replace fill values
 			if nFill gt 0 then begin
 				;Interpolate if we can.
 				if pct_fill le interp_pct then begin
 					if tf_verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
-					for j = 0, dims[1] - 1 do $
+					for j = 0, n2 - 1 do $
 						dtemp[0,j] = interpol(dtemp[igood,j], igood, lindgen(nfft))
 	
 				;Replace if we must.
@@ -363,36 +366,32 @@ WINDOW = window
 		
 		;Save data
 		;   The trailing "*" is ignored when irrelevant
-		d_fft[0:nf_out-1, i, *] = temporary(fft_temp)
+		d_fft[i, 0:nf_out-1, *] = temporary(fft_temp)
 
-		if tf_calc_dt then begin
-			freqs[0:nf_out-1, *] = temporary(ftemp)
-			dt_out[i] = SI
-		endif
+		;Save frequencies and time itnerval
+		;   - Necessary only for I=0 if TF_CALC_DT is false
+		;   - Keep track of all here to simplify logic
+		freqs[*,0:nf_out-1] = temporary(ftemp)
+		dt_out[i] = SI
 		
 		;Time stamp
 		if tf_time then begin
-			time[i] = i eq 0 ? t_0 : t_0 + SI
-			t_0     = time[i]
+			time[i] = i eq 0 ? t0 : time[i-1] + nshift*dt_out[i-1]
 		endif
 
 	;-----------------------------------------------------
 	; Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 	;-----------------------------------------------------
 		;Advance forward by NSHIFT
-		if i lt n_int-1 then begin
+		if i lt n_int-2 then begin
 			istart += nshift
 			iend   += nshift
 			
 		;Extend backward from the end of the array
 		;   TODO: Fix time stamp for this interval
 		endif else begin
-			if iend eq n1-1 then begin
-				i += 1
-			endif else begin
-				iend   = n1 - 1
-				istart = n1 - nfft
-			endelse
+			iend   = n1 - 1
+			istart = n1 - nfft
 		endelse
 	endfor
 

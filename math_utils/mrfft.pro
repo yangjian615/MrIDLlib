@@ -99,14 +99,6 @@
 ;                           Indicate that the frequency range it to be reduced to
 ;                               LOGRANGE number of logarithmically spaced frequencies
 ;                               between FMIN and FMAX. See "Limitations" in comment header.
-;       NWIN1:              in, optional, type=long, default=`NFFT`
-;                           If `WINDOW` is set, this is the number of points to use in
-;                               the filtering window. If used with `NWIN2`, then the
-;                               window will be 2D and NWIN1 indicates the number of
-;                               columns in the 2D window.
-;       NWIN2:              in, optional, type=long
-;                           If `WINDOW` is set and `NWIN1` is specified, then this is the
-;                               number of rows of a 2D filtering window.
 ;       T0:                 in, optional, type=float, default=0.0
 ;                           Time offset in seconds at which `TIME` begins.
 ;       TIME:               out, type=dblarr
@@ -146,10 +138,10 @@
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :Copyright:
 ;       Matthew Argall 2013
@@ -186,7 +178,6 @@ FREQUENCIES = frequencies, $
 INTERP_PCT = interp_pct, $
 LOGRANGE = logrange, $
 LINRANGE = linrange, $
-NWINDOW = nwindow, $
 T0 = t0, $
 TIME = time, $
 TCENTER = tcenter, $
@@ -196,21 +187,26 @@ WINDOW = window
     compile_opt idl2
     on_error, 2
 
+;-----------------------------------------------------
+; Check Inputs \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+
+    ;Accept only 1D or 2D data.
     dims  = size(data, /DIMENSIONS)
     nDims = size(data, /N_DIMENSIONS)
+    type  = size(data, /TNAME)
     void  = max(dims, iMaxDim)
-
-    ;Only accept 1D or 2D data.
     if nDims gt 2 then message, 'Only 1D or 2D time series data is allowed.'
 
-    ;Default to taking the FFT along the longest dimension.
+    ;FFT over longest dimension
     if n_elements(dimension) eq 0 then dimension = iMaxDim + 1
     npts = dims[dimension-1]
 
-    ;Create defaults.
-    vverbose = keyword_set(vverbose)
-    verbose  = keyword_set(verbose) || vverbose
-    check_fillval = n_elements(fillval) gt 0
+    ;Create defaults
+    tf_center   = keyword_set(center)
+    tf_vverbose = keyword_set(vverbose)
+    tf_verbose  = keyword_set(verbose) || vverbose
+    tf_fillval  = n_elements(fillval) gt 0
     if n_elements(interp_pct) eq 0 then interp_pct = 100.0
     if n_elements(nfft)       eq 0 then nfft       = npts
     if n_elements(dt)         eq 0 then dt         = 1.0
@@ -231,7 +227,7 @@ WINDOW = window
     endif
     
     ;Keep array type the same.
-    double = n_elements(double) eq 0 ? MrIsA(data, 'DOUBLE') : keyword_set(double)
+    double = n_elements(double) eq 0 ? (type eq 'DOUBLE') : keyword_set(double)
     if double then out_type = 9 else out_type = 6
     
     ;Time stamp at the center of the packet or at the beginning?
@@ -257,16 +253,18 @@ WINDOW = window
     frequencies = fft_freqs(nfft, dt, FNYQUIST=fnyquist, INYQUIST=inyquist)
 
     ;Set the default FMIN
-    if n_elements(fmin) eq 0 then $
+    if n_elements(fmin) eq 0 then begin
         if n_elements(logrange) eq 0 $
             then fmin = frequencies[0] $
             else fmin = alog10(frequencies[1])
+    endif
 
     ;Set the default FMAX
-    if n_elements(fmax) eq 0 then $
+    if n_elements(fmax) eq 0 then begin
         if n_elements(logrange) eq 0 $
             then fmax = frequencies[iNyquist] $
             else fmax = alog10(frequencies[iNyquist])
+    endif
 
 ;-----------------------------------------------------
 ; Print FFT Parameters \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -382,8 +380,8 @@ WINDOW = window
 
     ;Create the window
     if window then begin
-        theWindow = hanning(nwin1, ALPHA=alpha)
-        if ndims eq 2 then theWindow = rebin(theWindow, [nwin1, dims[1]])
+        theWindow = hanning(nfft, ALPHA=alpha)
+        if ndims eq 2 then theWindow = rebin(theWindow, [nfft, dims[1]])
     endif
 
     sindex = 0
@@ -411,7 +409,7 @@ WINDOW = window
             if nFill gt 0 && pct_fill le interp_pct then begin
                 if vverbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
                 for j = 0, dims[1] - 1 do $
-                    fill_data[0,j] = replace_fillval(fill_data[*,j], fillval, findgen(nfft))
+                    fill_data[0,j] = MrInterpol(fill_data[*,j], fillval, findgen(nfft))
             ;Replace if we must.
             endif else if pct_fill gt 0.0 then begin
                 if verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values (> %0.1f\%)")', i+1, pct_fill, interp_pct

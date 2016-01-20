@@ -167,7 +167,6 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 ;INTENSITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-
     ;Check for the intensity
     if (intensity eq 1) then begin
         ;Create the image
@@ -221,7 +220,8 @@ _REF_EXTRA = extra
                         YTITLE        = 'Frequency (Hz)', $
                         YLOG          = ylog)
 
-        PolCB = MrColorbar(/CURRENT, $
+        PolCB = MrColorbar(/BORDER, $
+                           /CURRENT, $
                            LOCATION      = 'Right', $
                            NAME          = 'CB: Polarization', $
                            ORIENTATION   = 1, $
@@ -261,7 +261,8 @@ _REF_EXTRA = extra
                         YTITLE        = 'Frequency (Hz)', $
                         YLOG          = ylog)
 
-        EllCB = MrColorbar(/CURRENT, $
+        EllCB = MrColorbar(/BORDER, $
+                           /CURRENT, $
                            LOCATION      = 'Right', $
                            NAME          = 'CB: Ellipticity', $
                            ORIENTATION   = 1, $
@@ -301,7 +302,8 @@ _REF_EXTRA = extra
                        YTITLE        = 'Frequency (Hz)', $
                        YLOG          = ylog)
         
-        kdbCB = MrColorbar(/CURRENT, $
+        kdbCB = MrColorbar(/BORDER, $
+                           /CURRENT, $
                            LOCATION      = 'Right', $
                            NAME          = 'CB: k dot B', $
                            ORIENTATION   = 1, $
@@ -342,7 +344,8 @@ _REF_EXTRA = extra
                         YTITLE        = 'Frequency (Hz)', $
                         YLOG          = ylog)
         
-        CohCB = MrColorbar(/CURRENT, $
+        CohCB = MrColorbar(/BORDER, $
+                           /CURRENT, $
                            LOCATION      = 'Right', $
                            NAME          = 'CB: Coherency', $
                            ORIENTATION   = 1, $

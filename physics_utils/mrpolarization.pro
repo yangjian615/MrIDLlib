@@ -506,16 +506,17 @@ _REF_EXTRA = extra
 ;-----------------------------------------------------
 ;I. Take the FFT \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-    
     ;Compute the FFT of the data
-    fft_data = MrFFT(temporary(temp_data), nfft, dt, nshift, $
-                     DIMENSION    = dimension, $
-                     T0           = t0, $
-                     TIME         = time, $
-                     FILLVAL      = theFillVal, $
-                     FREQUENCIES  = frequencies, $
-                     INTERP_PCT   = interp_pct, $
-                    _STRICT_EXTRA = extra)
+    fft_data = MrFFT2(temporary(temp_data), dt, $
+                      DIMENSION    = dimension, $
+                      T0           = t0, $
+                      TIME         = time, $
+                      FILLVAL      = theFillVal, $
+                      FREQUENCIES  = frequencies, $
+                      INTERP_PCT   = interp_pct, $
+                      NFFT         = nfft, $
+                      NSHIFT       = nshift, $
+                     _STRICT_EXTRA = extra)
 
     ;Which frequency components will be kept?
     if_keep = where(frequencies gt 0)
