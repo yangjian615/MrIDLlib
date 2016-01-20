@@ -91,6 +91,7 @@
 ;       2015/10/30  -   Adapted from David Fanning's ErrorLogger__Define.pro by Matthew Argall
 ;       2015/12/03  -   Added the ADD_FILES and WARN_TRACEBACK properties.
 ;       2015/12/04  -   Fixed problem with multi-line error messages. - MRA
+;       2016/01/16  -   Allocate memory error does not have caller. Handled. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -115,7 +116,7 @@ PRO MrLogFile::AddError, theText
 	IF N_Elements(theText) EQ 0 THEN BEGIN
 		theText   = !Error_State.Msg
 		traceback = self -> Traceback(caller, line)
-	
+
 	;If text was given, assume the user is logging an error
 	;   - ::Callstack will determine on which line ::AddError was called
 	;   - Add THETEXT to !Error_State by calling Message.
@@ -129,7 +130,11 @@ PRO MrLogFile::AddError, theText
 	;
 	;   MMS_EDI_RMT: RMT Failure: Not enough beams in each to/away class
 	;
-	; If this is the case, remove the calling program from THETEXT
+	; If this is the case, remove the calling program from THETEXT. For
+	; some errors, there is no calling routine, CALLER is the empty
+	; string. E.g.
+	;
+	;   Unable to allocate memory: to make array.
 	;
 	
 	;The calling program is separated from the text by a colon.
@@ -137,7 +142,8 @@ PRO MrLogFile::AddError, theText
 	;   - Process object methods separately
 	doubleColon = strpos(theText, '::')
 	if doubleColon eq -1 then begin
-		if strpos(thetext, caller) ne -1 then thetext = strmid(thetext, strpos(thetext, ':')+2)
+		if caller ne '' && strpos(thetext, caller) ne -1 $
+			then thetext = strmid(thetext, strpos(thetext, ':')+2)
 	endif else begin
 		;Get the object class, object method, and message
 		;   - CLASS::METHOD: Message String
