@@ -65,6 +65,9 @@
 ;                               the zero frequency is shifted to the center of the array.
 ;                               In the reverse (inverse) direction, the input is assumed
 ;                               to be a centered FFT.
+;       DF:                 out, optional, type=float/fltarr
+;                           Named variable to recieve the half-width of each frequency
+;                               bin. If `DT_MEDIAN` is uniform, then a scalar is returned.
 ;       DIMENSION:          in, optional, type=int, default=longest dimension of `DATA`
 ;                           The dimension over which to take the FFT. As an example, say
 ;                               ARRAY is a [3,10] element array. MrFFT(ARRAY, DIMENSION=2),
@@ -72,12 +75,15 @@
 ;                               [MrFFT(Array[0,*]), MrFFT(Array[1,*]), MrFFT(Array[2,*])].
 ;       DOUBLE:             in, optional, type=boolean, default=0
 ;                           Force computation to be done in double precision.
-;       DT_OUT:             out, optional, type=float
-;                           A named variable to receive the sampling interval between
-;                              time stamps in `TIME`. If the DT_OUT is uniform, then a
-;                              scalar is returned. Otherwise, an array is returned. DT_OUT
-;                              can be an array, for example, if `DT` was given as a time
-;                              array in which the sampling interval changed.
+;       DT_MEDIAN:          out, optional, type=float
+;                           A named variable to receive the median sampling interval
+;                              between adjacent elements in `DT`, when `DT` is an array.
+;                              This serves as the sampling interval for each FFT interval.
+;                              If the DT_MEDIAN is uniform, then a scalar is returned.
+;                              Otherwise, an array is returned.
+;       DT_PLUS:            out, optional, type=float
+;                           A named variable to receive the upper-limit on each time stamp
+;                               in `TIME`.
 ;       FILLVAL:            in, optional, type=same as `DATA`
 ;                           A value that represents bad points within `DATA`. They will
 ;                               be converted to NaNs before the FFT is performed, unless
@@ -89,7 +95,7 @@
 ;                           The maximum positive frequency to be kept. If LOGRANGE is set,
 ;                               this is alog10(FNYQUIST).
 ;       FREQUENCIES:        out, type=fltarr(NFFT)
-;                           The frequency bins of the FFT
+;                           Named variable to receive the frequency bin centers of the FFT.
 ;       INTERP_PCT:         in, optional, type=float, default=0.0
 ;                           The maximum percentage of `FILLVAL` allowed in an FFT of size
 ;                               `NPTS`. Below this percent, instances of the fill value
@@ -104,10 +110,11 @@
 ;       T0:                 in, optional, type=float, default=0.0
 ;                           Time offset in seconds at which `TIME` begins. Used only if
 ;                               `DT` is scalar.
-;       TIME:               out, type=dblarr
-;                           The time associated with each Power Spectral Density slice.
-;                               Where each time tag falls within the FFT interval is
-;                               determined by the `TCENTER` keyword.
+;       TIME:               out, optional, type=dblarr
+;                           The time stamps, located at the beginning of the sampling
+;                               interval, associated with each Power Spectral Density
+;                               slice. Where each time tag falls within the FFT interval
+;                               is determined by the `TCENTER` keyword.
 ;       TCENTER:            in, optional, type=Boolean, default=1
 ;                           Indicate that the times returned in `TIME` are centered within
 ;                               their respective FFT bin. A value of 0 will cause the
@@ -147,9 +154,11 @@ function MrFFT2, data, dt, $
 AMPLITUDE = amplitude, $
 ALPHA = alpha, $
 CENTER = center, $
+DF = df, $
 DIMENSION = dimension, $
 DOUBLE = double, $
-DT_OUT = dt_out, $
+DT_MEDIAN = dt_median, $
+DT_PLUS = dt_plus, $
 FILLVAL = fillval, $
 FMIN = fmin, $
 FMAX = fmax, $
@@ -213,7 +222,7 @@ WINDOW = window
 	;   - Add one so that we can process backward from the end of the array
 	;     to capture all leftover points.
 	n_int = nfft_intervals(n1, nfft, nshift)
-	if n_int*nfft lt n1 then n_int += 1
+	if ((n_int-1)*nshift + nfft) lt n1 then n_int += 1
 
 ;-----------------------------------------------------
 ; Compute Time? \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -248,9 +257,17 @@ WINDOW = window
 	;   - TF_CALC_DT => A time array was given and we have to compute DT
 	;   - TF_TIME    => User wants us to return time stamps for each FFT interval
 	d_fft  = make_array(n_int, nfft, n2, DCOMPLEX=tf_double, COMPLEX=~tf_double)
-	freqs  = make_array(n_int, nfft, /FLOAT, VALUE=!values.f_nan)
-	dt_out = fltarr(n_int)
-	if tf_time then time = fltarr(n_int)
+	
+	;Frequencies
+	freqs     = make_array(n_int, nfft, /FLOAT, VALUE=!values.f_nan)
+	df        = fltarr(n_int)
+	dt_median = fltarr(n_int)
+	
+	;Times
+	if tf_time then begin
+		dt_plus = fltarr(n_int)
+		time    = fltarr(n_int)
+	endif
 	
 	nf_tot = 0
 	
@@ -311,19 +328,19 @@ WINDOW = window
 			if finite(fillval) $
 				then iFill = where(dtemp[*,0] eq fillval, nFill, COMPLEMENT=igood, NCOMPLEMENT=ngood) $
 				else iFill = where(finite(dtemp[*,0]) eq 0, nFill, COMPLEMENT=igood, NCOMPLEMENT=ngood)
-			pct_fill = (nFill / n1) * 100.0
-	
+			pct_fill = (float(nFill) / float(nfft)) * 100.0
+
 			;Interpolate/Replace fill values
 			if nFill gt 0 then begin
 				;Interpolate if we can.
 				if pct_fill le interp_pct then begin
-					if tf_verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
+					if tf_verbose then print, FORMAT='(%"Interval %i has %i of %i (%0.1f\%) fill values. Interpolating.")', i+1, nFill, nfft, pct_fill
 					for j = 0, n2 - 1 do $
 						dtemp[0,j] = interpol(dtemp[igood,j], igood, lindgen(nfft))
 	
 				;Replace if we must.
 				endif else begin
-					if tf_verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values (> %0.1f\%)")', i+1, pct_fill, interp_pct
+					if tf_verbose then print, FORMAT='(%"Interval %i has %i of %i (%0.1f\%) fill values.")', i+1, nFill, nfft, pct_fill
 					dtemp[iFill,*] = tf_double ? !values.d_nan : !values.f_nan
 				endelse
 			endif
@@ -337,7 +354,7 @@ WINDOW = window
 		if tf_window then begin
 			;Create the window function
 			theWindow = hanning(nfft, ALPHA=alpha)
-			if ndims eq 2 then theWindow = rebin(theWindow, [nwindow, dims[1]])
+			if ndims eq 2 then theWindow = rebin(theWindow, [nfft, dims[1]])
 		
 			;If the second dimension is empty, IDL will ignore it.
 			dtemp *= theWindow
@@ -371,13 +388,13 @@ WINDOW = window
 		;Save frequencies and time itnerval
 		;   - Necessary only for I=0 if TF_CALC_DT is false
 		;   - Keep track of all here to simplify logic
-		freqs[*,0:nf_out-1] = temporary(ftemp)
-		dt_out[i] = SI
+		freqs[i,0:nf_out-1] = ftemp
+		dt_median[i]        = SI
+		dt_plus[i]          = nfft * SI
+		df[i]               = 1.0 / (nfft * SI)
 		
 		;Time stamp
-		if tf_time then begin
-			time[i] = i eq 0 ? t0 : time[i-1] + nshift*dt_out[i-1]
-		endif
+		if tf_time then time[i] = i eq 0 ? t0 : time[i-1] + nshift*dt_median[i-1]
 
 	;-----------------------------------------------------
 	; Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -388,8 +405,9 @@ WINDOW = window
 			iend   += nshift
 			
 		;Extend backward from the end of the array
-		;   TODO: Fix time stamp for this interval
+		;   - Final time stamp is adjusted below.
 		endif else begin
+			ilast  = iend
 			iend   = n1 - 1
 			istart = n1 - nfft
 		endelse
@@ -398,20 +416,29 @@ WINDOW = window
 ;-----------------------------------------------------
 ; Finishing Touches \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
+	;Adjust last time step
+	if tf_time then begin
+		;If we were given time:
+		;   - Last time stamp - duration of FFT interval
+		;Otherwise:
+		;   - Total number of points less one FFT interval,
+		;     multiplied by constant sampling interval
+		if tf_calc_dt $
+			then time[n_int-1] = dt[n1-1] - nfft*dt_median[n_int-1] $
+			else time[n_int-1] = (n1 - nfft) * dt_median[n_int-1]
+	endif
+	
 	;Reduce dimensions if sampling interval never changed
 	;   - fN = 1 / T = 1 / (nfft*dt)
 	;   - NFFT is constant, but DT is permitted to vary
 	;   - If DT changes, then we must keep track of FN as a function of time
 	;   - If not, then FN and F do not vary with time, and we can reduce to one copy
-	if tf_calc_dt then begin
-		if total( (dt_out - dt_out[0]) lt 0.1*dt_out[0] ) eq 0 then begin
-			freqs  = freqs[*,0]
-			dt_out = dt_out[0]
-		endif
-	endif else begin
-		freqs  = temporary(ftemp)
-		dt_out = SI
-	endelse
+	if ~tf_calc_dt || total( (dt_median - dt_median[0]) lt 0.1*dt_median[0] ) eq 0 then begin
+		freqs     = reform(freqs[0,*])
+		df        = df[0]
+		dt_median = dt_median[0]
+		dt_plus   = dt_plus[0]
+	endif
 
 	;Remove extra frequencies
 	if nf_tot gt 0 then begin
@@ -420,7 +447,6 @@ WINDOW = window
 	endif
 	
 	;Center times
-	;   TODO: Adjust last time step
 	if tf_tcenter then time[0,n_int-1] += (time[1:*] - time) / 2.0
 	
 	;Amplitude and phase

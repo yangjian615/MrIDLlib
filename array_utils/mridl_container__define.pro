@@ -89,7 +89,7 @@ function MrIDL_Container::_OverloadBracketsRightSide, isRange, subscript1
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, obj_new()
     endif
 
@@ -147,7 +147,7 @@ function MrIDL_Container::_OverloadForeach, value, key
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, obj_new()
     endif
     
@@ -245,7 +245,7 @@ POSITION = Index
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -276,7 +276,7 @@ function MrIDL_Container::GetIndex, Objects
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, -1
     endif
     
@@ -297,7 +297,7 @@ pro MrIDL_Container::PrintInfo
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
 
@@ -395,7 +395,7 @@ TYPE = type
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -465,7 +465,7 @@ pro MrIDL_Container::cleanup
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return
     endif
     
@@ -484,7 +484,7 @@ function MrIDL_Container::init
     catch, the_error
     if the_error ne 0 then begin
         catch, /cancel
-        void = cgErrorMsg()
+        MrPrintF, 'LogErr'
         return, 0
     endif
 

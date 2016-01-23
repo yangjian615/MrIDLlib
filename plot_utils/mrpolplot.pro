@@ -95,13 +95,13 @@ _REF_EXTRA = extra
     ;catch errors
     catch, the_error
     if the_error ne 0 then begin
-        catch, /cancel
-        
+        catch, /CANCEL
+
         ;Plotting Window
-        if obj_valid(polWin) then obj_destroy, polWin
+        if ~keyword_set(current) && obj_valid(polWin) then obj_destroy, polWin
             
         MrPrintF, 'LogErr'
-        return, MrNull('ObjRef')
+        return, obj_new()
     endif
     
     dims = size(data, /DIMENSION)
@@ -151,14 +151,21 @@ _REF_EXTRA = extra
     
     ;Compute the spectrogram
     pzation_data = MrPolarization(data, nfft, dt, nshift, $
-                                  DIMENSION = dimension, $
+                                  DIMENSION   = dimension, $
+                                  DF          = df, $
+                                  DT_PLUS     = dt_plus, $
                                   FREQUENCIES = frequencies, $
-                                  TIME = time, $
+                                  TIME        = time, $
                                   ELLIPTICITY = ellipticity_data, $
-                                  INTENSITY = intensity_data, $
+                                  INTENSITY   = intensity_data, $
                                   KDOTB_ANGLE = kdotb_angle_data, $
-                                  COHERENCY = coherency_data, $
-                                 _EXTRA = extra)
+                                  COHERENCY   = coherency_data, $
+                                 _EXTRA       = extra)
+    
+    ;Did an error occur?
+    if pzation_data[0] eq -1 && n_elements(pzation_data) eq 1 $
+        then return, obj_new()
+    
     ;Remove background signal?
     if n_elements(background) gt 0 $
         then iMissing = where(intensity_data le background, nMissing) $
@@ -170,7 +177,7 @@ _REF_EXTRA = extra
     ;Check for the intensity
     if (intensity eq 1) then begin
         ;Create the image
-        IntImage = MrImage(intensity_data, time, frequencies, $
+        IntImage = MrImage(intensity_data, time, frequencies, 0.0, df, dt_plus, df, $
                            /AXES, $
                            /CURRENT, $
                            /LOG, $
@@ -187,6 +194,7 @@ _REF_EXTRA = extra
                            YLOG          = ylog)
 
         IntCB = MrColorbar(/CURRENT, $
+                           /BORDER, $
                            LOCATION    = 'Right', $
                            NAME        = 'CB: Intensity', $
                            ORIENTATION = 1, $
@@ -205,7 +213,7 @@ _REF_EXTRA = extra
         
         ;Reverse the Black->White colortable
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
-        PolIm = MrImage(pzation_data, time, frequencies, $
+        PolIm = MrImage(pzation_data, time, frequencies, 0.0, df, dt_plus, df, $
                         /AXES, $
                         /CURRENT, $
                         /NAN, $
@@ -246,7 +254,7 @@ _REF_EXTRA = extra
         palette = MrCreateCT(/RWB, /REVERSE)
 
         ;Create the image
-        EllIm = MrImage(ellipticity_data, time, frequencies, $
+        EllIm = MrImage(ellipticity_data, time, frequencies, 0.0, df, dt_plus, df, $
                         /AXES, $
                         /CURRENT, $
                         /NAN, $
@@ -287,7 +295,7 @@ _REF_EXTRA = extra
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
         
         ;Create the image
-        kdbIm= MrImage(kdotb_angle_data*!radeg, time, frequencies, $
+        kdbIm= MrImage(kdotb_angle_data*!radeg, time, frequencies, 0.0, df, dt_plus, df, $
                        /AXES, $
                        /CURRENT, $
                        /NAN, $
@@ -329,7 +337,7 @@ _REF_EXTRA = extra
         cgLoadCT, 0, RGB_TABLE=ctBW, /REVERSE
         
         ;Create the image
-        CohIm = MrImage(coherency_data, time, frequencies, $
+        CohIm = MrImage(coherency_data, time, frequencies, 0.0, df, dt_plus, df, $
                         /AXES, $
                         /CURRENT, $
                         /NAN, $
