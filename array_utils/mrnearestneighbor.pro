@@ -55,8 +55,11 @@ function MrNearestNeighbor, x, y
 	;Locate y in x
 	;   - Make sure they are all within range
 	if nx eq 1 $
-		then index = 0 $
+		then index = replicate(0, n_elements(y)) $
 		else index = value_locate(x, y) > 0
+	
+	;Always return a row vector (Nx1)
+	if size(index, /N_DIMENSIONS) eq 2 then index = reform(index)
 
 	;Find the neighboring index
 	;   - Make sure they are all in range
