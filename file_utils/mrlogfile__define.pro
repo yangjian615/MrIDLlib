@@ -193,14 +193,7 @@ PRO MrLogFile::AddText, theText, $
 PRINT=print, $
 ADD_CALLER=add_caller
 	Compile_Opt idl2
-
-	; Error handling.
-	Catch, theError
-	IF theError NE 0 THEN BEGIN
-		Catch, /CANCEL
-		MrPrintF, 'LogErr'
-		RETURN
-	ENDIF
+	On_Error, 2
 
 	; Have to have text to do anything.
 	IF N_Elements(theText) EQ 0 THEN RETURN
@@ -669,7 +662,8 @@ DELETE_CURRENT=delete_current
 	Catch, theError
 	IF theError NE 0 THEN BEGIN
 		Catch, /CANCEL
-		MrPrintF, 'LogErr'
+		Print, !Error_State.MSG
+		Print, '  ' + MrTraceback()
 		IF N_Elements(lun) NE 0 THEN BEGIN
 			Free_Lun, lun
 			File_Delete, newLogFilename, /ALLOW_NONEXISTENT
@@ -705,7 +699,7 @@ DELETE_CURRENT=delete_current
 			OpenW, lun, newLog, /GET_LUN
 
 			; Write a header into the file.
-			PrintF, lun, 'Error log file created: ' + Systime()
+			PrintF, lun, 'Error log file created: ' + SysTime(/UTC) + ' UTC'
 			PrintF, lun, ""
 		ENDCASE
 	ENDCASE

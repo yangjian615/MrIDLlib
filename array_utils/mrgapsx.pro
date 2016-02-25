@@ -70,6 +70,7 @@
 ; :History:
 ;   Modification History::
 ;       2014/04/30  -   Written by Matthew Argall
+;       2016/02/11  -   Fixed indexing error when retrieving gap size. - MRA
 ;-
 function MrGapsX, array, dx, $
 GAPSIZE=gapsize, $
@@ -101,10 +102,10 @@ COUNT=count
 	if count gt 0 then begin
 		;Start and stop of each gap
 		igaps = [[igaps], [igaps+1]]
-		
+
 		;Size of each gap
 		if arg_present(gapsize) $
-			then gapsize = ( array[igaps[2,*]] - array[igaps[1,*]] ) / dx
+			then gapsize = ( array[igaps[*,1]] - array[igaps[*,0]] ) / dx
 	endif else begin
 		gapsize = 0
 	endelse

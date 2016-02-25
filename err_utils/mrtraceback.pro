@@ -72,7 +72,7 @@ ADD_FILES=add_files
 	;     %                       MMS_EDI_TEST_COSTFN 1194 /home/argall/IDL/MMS/diagnostics/mms_edi_test_costfn.pro
 	;     %                       $MAIN$
 	;
-	
+
 	;Get the traceback report from the last message
 	;   - First element is the error message
 	;   - Last element is $MAIN$
