@@ -86,6 +86,9 @@
 ;        SetStatus:     Sets the current status of the error logger. Normally not used by the
 ;                       user, but used internally. (Procedure)
 ;
+; :See Also:
+;   MrCallstack, MrTraceback, MrStdLog, MrStdErr, MrStdOut, MrPrintF
+;
 ; :History:
 ;   Modification History::
 ;       2015/10/30  -   Adapted from David Fanning's ErrorLogger__Define.pro by Matthew Argall
@@ -763,7 +766,7 @@ WARN_TRACEBACK=warn_traceback
 	IF N_Elements(add_files)      NE 0 THEN self.add_files      =  Keyword_Set(add_files)
 	IF N_Elements(alert)          NE 0 THEN self.alert          =  Keyword_Set(alert)
 	IF N_Elements(delete)         NE 0 THEN self.delete         =  Keyword_Set(delete)
-	IF N_Elements(notraceback)    NE 0 THEN self.tracebace      = ~Keyword_Set(notraceback)
+	IF N_Elements(notraceback)    NE 0 THEN self.traceback      = ~Keyword_Set(notraceback)
 	IF N_Elements(warn_traceback) NE 0 THEN self.warn_traceback =  Keyword_Set(warn_traceback)
 	IF N_Elements(status)         NE 0 THEN self -> SetStatus, status
 	

@@ -205,7 +205,7 @@ WINDOW = window
     ;Create defaults
     tf_center   = keyword_set(center)
     tf_vverbose = keyword_set(vverbose)
-    tf_verbose  = keyword_set(verbose) || vverbose
+    tf_verbose  = keyword_set(verbose) || tf_vverbose
     tf_fillval  = n_elements(fillval) gt 0
     if n_elements(interp_pct) eq 0 then interp_pct = 100.0
     if n_elements(nfft)       eq 0 then nfft       = npts
@@ -273,7 +273,7 @@ WINDOW = window
         then dims = [dims, 1] $
         else dims = dims
 
-    if verbose then begin
+    if tf_verbose then begin
         print, FORMAT='(%"data size     = [%i,%i]")', dims
         print, FORMAT='(%"dimension     = %i")',      dimension
         print, FORMAT='(%"sample period = %f s")',    dt
@@ -389,7 +389,7 @@ WINDOW = window
     ;for each fft interval...
     for i = 0, n_intervals-1 do begin
         ;Print progress
-        if keyword_set(vverbose) and i mod 100 eq 0 then $
+        if tf_vverbose and i mod 100 eq 0 then $
             print, FORMAT='(%"%5.1f percent done. Interval %i of %i")', $
                    (float(i)+1)/float(n_intervals)*100, i+1, n_intervals
         
@@ -398,7 +398,7 @@ WINDOW = window
     ;-----------------------------------------------------
         ;Replace a fill value?
         fill_data = data_temp[sindex:eindex, *]
-        if check_fillval then begin
+        if tf_fillval then begin
             ;Find the fill values
             if finite(fillval) $
                 then iFill = where(fill_data eq fillval, nFill) $
@@ -407,12 +407,12 @@ WINDOW = window
             
             ;Interpolate if we can.
             if nFill gt 0 && pct_fill le interp_pct then begin
-                if vverbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
+                if tf_vverbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values. Interpolating.")', i+1, pct_fill
                 for j = 0, dims[1] - 1 do $
                     fill_data[0,j] = MrInterpol(fill_data[*,j], fillval, findgen(nfft))
             ;Replace if we must.
             endif else if pct_fill gt 0.0 then begin
-                if verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values (> %0.1f\%)")', i+1, pct_fill, interp_pct
+                if tf_verbose then print, FORMAT='(%"Interval %i is %0.1f\% fill values (> %0.1f\%)")', i+1, pct_fill, interp_pct
                 fill_data = replace_fillval(fill_data, fillval)
             endif
         endif
