@@ -78,14 +78,20 @@ ADD_FILES=add_files
 	;   - Last element is $MAIN$
 	Help, /LAST_MESSAGE, OUTPUT=traceback
 	ntrace = n_elements(traceback)
-	
+
 	;Find the line that says, "Execution halted ... "
 	;   - The error message segment can be multiple lines (elements) long
 	;   - This will be the place at which to start parsing
 	istart = where(strpos(traceback, 'Execution halted') ne -1, n)
-	if n ne 1 then message, 'Unexpected traceback format.'
-	istart = istart[0]
-	iend   = ntrace-2
+	if n eq 0 then begin
+		istart = 0
+		iend   = 0
+	endif else if n eq 1 then begin
+		istart = istart[0]
+		iend   = ntrace-2
+	endif else begin
+		message, 'Unexpected traceback format.'
+	endelse
 
 	;Error occurred from $MAIN$
 	if istart gt iend then begin
