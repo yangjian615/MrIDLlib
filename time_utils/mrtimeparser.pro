@@ -811,6 +811,575 @@ OFFSET=offset
     if n_elements(timeOut) eq 1 then timeOut = timeOut[0]
 end
 
+;+
+;   Given a pattern with tokens, build a time string given its components.
+;
+; :Private:
+;
+; :Params:
+;       TIME:               out, required, type=string/strarr
+;                           Result of combining the date and time elements via `PATTERN`.
+;       PATTERN:            in, required, type=string
+;                           Pattern describing how `TIME` should be built.
+;
+; :Keywords:
+;       YEAR:               in, optional, type=strarr
+;                           4-digit year that matches a %Y token.
+;       YR:                 in, optional, type=strarr
+;                           2-digit year that matches a %y token.
+;       DOY:                in, optional, type=strarr
+;                           3-digit day-of-year that matches a %D.
+;       MONTH:              in, optional, type=strarr
+;                           2-digit month that matches a %M token.
+;       CMONTH:             in, optional, type=strarr
+;                           Calendar month name (e.g. January, February, etc.) that
+;                               matches a %C tokenl.
+;       CALMO:              in, optional, type=strarr
+;                           3-character abbreviated calendar month name (e.g. Jan, Feb, ...)
+;                               that matches a %c token.
+;       WEEKDAY:            in, optional, type=strarr
+;                           Weekday (e.g. Monday, Tuesday, etc.) that matches a %W token
+;                               for the [start, end] of the file interval.
+;       WKDAY:              in, optional, type=strarr
+;                           3-character abbreviated week day (e.g. Mon, Tue, etc.) that
+;                               matches a %M token.
+;       DAY:                in, optional, type=strarr
+;                           2-digit day that matches a %d token.
+;       HOUR:               in, optional, type=strarr
+;                           2-digit hour on a 24-hour clock that matches a %H token.
+;       HR:                 in, optional, type=strarr
+;                           2-digit hour on a 12-hour clock that matches a %h token.
+;       MINUTE:             in, optional, type=strarr
+;                           2-digit minute that matches a %m token.
+;       SECOND:             in, optional, type=strarr
+;                           2-digit second that matches a %S token.
+;       DECIMAL:            in, optional, type=strarr
+;                           Fraction of a second that matches the %f token.
+;       MILLI:              in, optional, type=strarr
+;                           3-digit milli-second that matches a %1 token.
+;       MICRO:              in, optional, type=strarr
+;                           3-digit micro-second that matches a %2 token.
+;       NANO:               in, optional, type=strarr
+;                           3-digit nano-second that matches a %3 token.
+;       PICO:               in, optional, type=strarr
+;                           3-digit pico-second that matches a %4 token.
+;       AM_PM:              in, optional, type=strarr
+;                           "AM" or "PM" string that matches a %A.
+;       OFFSET:             in, optional, type=string
+;                           Offset from UTC. (+|-)hh[:][mm]. Matches %o.
+;       TIME_ZONE:          in, optional, type=string
+;                           Time zone abbreviated name. Matches %z.
+;-
+pro MrTimeParser_Compute_v2, timeOut, pattern, $
+YEAR=year, $
+YR=yr, $
+DOY=doy, $
+MONTH=month, $
+CMONTH=cMonth, $
+CALMO=calmo, $
+WEEKDAY=weekday, $
+WKDAY=wkday, $
+DAY=day, $
+HOUR=hour, $
+HR=hr, $
+MINUTE=minute, $
+SECOND=second, $
+DECIMAL=decimal, $
+MILLI=milli, $
+MICRO=micro, $
+NANO=nano, $
+PICO=pico, $
+AM_PM=am_pM, $
+TIME_ZONE=time_zone, $
+OFFSET=offset
+    compile_opt strictarr
+    on_error, 2
+
+    ;Extract the tokens
+    tokens = MrTokens_Extract(pattern, COUNT=nTokens, POSITIONS=positions)
+
+    ;Step through each token
+    curPos  = 0
+    timeOut = ''
+    for i = 0, nTokens - 1 do begin
+    ;----------------------------------------------------------
+    ; Replace Token with Time /////////////////////////////////
+    ;----------------------------------------------------------
+        case tokens[i] of
+            'Y': substr = MrTimeParser_GetYear(year, yr)
+            'y': substr = MrTimeParser_GetYr(yr, year)
+            'M': substr = MrTimeParser_GetMonth(month, cmonth, calmo, doy)
+            'C': substr = MrTimeParser_GetCMonth(cmonth, month, calmo, doy)
+            'c': substr = MrTimeParser_GetCalMo(calmo, month, cmonth, doy)
+            'd': substr = MrTimeParser_GetDay(day, doy)
+            'D': substr = MrTimeParser_GetDOY(doy, year, yr, month, cmonth, calmo)
+            
+            ;Days of week.
+            'W': begin
+                ;Abbreviated Week Day
+                if weekday[0] eq '' then if wkday[0] ne '' then begin
+                    wkno    = MrWeekDayToNumber(wkday, /ABBR)
+                    weekday = MrWeekNumberToDay(wkno)
+                
+                ;Date
+                endif else begin
+                    ;Year
+                    if year[0] eq '' then if yr[0] ne '' $
+                        then year = MrTimeParser_YearToYr(yr, /FROM_YR) $
+                        else message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    
+                    ;Month
+                    if month[0] eq '' then if cmonth[0] ne '' then begin
+                        month = monthNameToNumber(cmonth)
+                    endif else if calmo[0] ne '' then begin
+                        month = monthNameToNumber(calmo)
+                    endif else begin
+                        message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    endelse
+                    
+                    ;DOY
+                    if doy[0] ne '' then if month[0] eq '' || day[0] eq '' then begin
+                        if year[0] eq '' $
+                            then MrTimeParser_DissectDOY, doy, month, day, YEAR=yr $
+                            else MrTimeParser_DissectDOY, doy, month, day, YEAR=year
+                    endif
+                    
+                    ;Day
+                    if day[0] eq '' then $
+                        message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    
+                    ;Calculate the week day
+                    weekday = MrDayOfWeek(year, month, day)
+                endelse
+                subStr = weekday
+            endcase
+            
+            
+            'w': begin
+                ;Week day
+                if wkday[0] eq '' then if weekday[0] ne '' then begin
+                    wkno    = MrWeekDayToNumber(wkday)
+                    weekday = MrWeekNumberToDay(wkno, /ABBR)
+                
+                ;Date
+                endif else begin
+                    ;Year
+                    if year[0] eq '' then if yr[0] ne '' $
+                        then year = MrTimeParser_YearToYr(yr, /FROM_YR) $
+                        else message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    
+                    ;Month
+                    if month[0] eq '' then if cmonth[0] ne '' then begin
+                        month = monthNameToNumber(cmonth)
+                    endif else if calmo[0] ne '' then begin
+                        month = monthNameToNumber(calmo)
+                    endif else begin
+                        message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    endelse
+                    
+                    ;DOY
+                    if doy[0] ne '' then if month[0] eq '' || day[0] eq '' then begin
+                        if year[0] eq '' $
+                            then MrTimeParser_DissectDOY, doy, month, day, YEAR=yr $
+                            else MrTimeParser_DissectDOY, doy, month, day, YEAR=year
+                    endif
+                    
+                    ;Day
+                    if day[0] eq '' then $
+                        message, 'Cannot form %W. Must give %W or provice [%Y], [%M, %C, %C], [%D, %d].'
+                    
+                    ;Calculate the week day
+                    wkday = MrDayOfWeek(year, month, day, /ABBR)
+                endelse
+                subStr = wkday
+            endcase
+            
+            ;24-Hour Clock
+            'H': begin
+                ;12-Hour clock?
+                if hour[0] eq '' then if hr[0] ne '' then begin
+                    hour = hr
+                    ;AM/PM -- assume AM if not given
+                    if am_pm[0] eq '' then begin
+                        message, '%A not given. Assuming AM.', /INFORMATIONAL
+                    ;Convert to 24-hour clock by adding 12 to the hours 1-11pm
+                    endif else begin
+                        iPM = where(am_pm eq 'PM', nPM)
+                        if nPM gt 0 then begin
+                            iPNoon = where(fix(hr[iPM]) lt 12, nPNoon)
+                            if nPNoon gt 0 then hour[iPM[iPNoon]] = string(fix(hr[iPM[iPNoon]]) + 12, FORMAT='(i02)')
+                        endif
+                    endelse
+                endif else begin
+                    message, 'Cannot form "%H". Must give %H or %h.'
+                endelse
+                subStr = hour
+            endcase
+            
+            ;12-Hour Clock.
+            'h': begin
+                ;24-hour clock?
+                if hr[0] eq '' then if hour[0] ne '' then begin
+                    hr = hour
+                    iPM = where(fix(hour) ge 12, nPM)
+                    if nPM gt 0 then hr[iPM] = string(fix(hour[iPM]) - 12, FORMAT='(i02)')
+                    ;AM or PM?
+                    if am_pm[0] eq '' then begin
+                        am_pm = strarr(n_elements(hr)) + 'AM'
+                        if nPM gt 0 then am_pm[iPM] = 'PM'
+                    endif
+                endif else begin
+                    message, 'Cannot form "%h". Must give %H or %h (with optional %A).'
+                endelse
+                subStr = hr
+            endcase
+            
+            ;Minutes, Seconds, Milli, Micro, Nano, Pico, AM_PM
+            'm': if minute[0] eq '' then message, 'Cannot form "%m". Must give %m.' else subStr = minute
+            'S': if second[0] eq '' then message, 'Cannot form "%S". Must give %S.' else subStr = second
+            
+            ;Fraction of a second
+            'f': begin
+                ;Milli, etc. given?
+                if decimal[0] eq '' then if milli[0] ne '' then begin
+                    decimal = strmid(milli + '000', 0, 3)
+                    if micro[0] ne '' then decimal += micro
+                    if nano[0]  ne '' then decimal += nano
+                    if pico[0]  ne '' then decimal += pico
+                endif else begin
+                    decimal = '0'
+                endelse
+                subStr = '.' + decimal
+            endcase
+            
+            ;Milliseconds
+            '1': begin
+                if milli[0] eq '' then if decimal[0] ne '' $
+                    then milli = strmid(decimal + '000', 0, 3) $
+                    else milli = '000'
+                subStr = milli
+            endcase
+            
+            ;Microseconds
+            '2': begin
+                if micro[0] eq '' then if decimal[0] ne '' $
+                    then micro = strmid(decimal + '000000', 3, 3) $
+                    else micro = '000'
+                subStr = micro
+            endcase
+            
+            ;Nanoseconds
+            '3': begin
+                if nano[0] eq '' then if decimal[0] ne '' $
+                    then nano = strmid(decimal + '000000000', 6, 3) $
+                    else nano = '000'
+                subStr = nano
+            endcase
+            
+            ;Picoseconds
+            '4': begin
+                if pico[0] eq '' then if decimal[0] ne '' $
+                    then pico = strmid(decimal + '000000000000', 9, 3) $
+                    else pico = '000'
+                subStr = pico
+            endcase
+            
+            ;AM/PM
+            'A': if am_pm[0]  eq '' then message, 'Cannot form "%A". Must give %A.' else subStr = am_pm
+            
+            ;Time Zone
+            'z': begin
+                if time_zone eq '' then if offset ne '' $
+                    then time_zone = MrTimeZoneOffsetToName(offset) $
+                    else time_zone = 'Z'
+                
+                subStr = time_zone
+            endcase
+            
+            ;Offset
+            'o': begin
+                if offset eq '' then begin
+                    if offset ne '' $
+                        then offset = MrTimeZoneNameToOffset(time_zone) $
+                        else offset = '+00:00'
+                endif
+                
+                subStr = offset
+            endcase
+            
+            ;Ignore parentheses
+            '(': subStr = strmid(pattern, positions[i]+2, positions[i+1]-positions[i]-2)
+            
+            else: message, 'Token "' + tokens[i] + '" not recognized.'
+        endcase
+        
+    ;----------------------------------------------------------
+    ; Piece Together Result ///////////////////////////////////
+    ;----------------------------------------------------------
+        ;Allocate memory
+        ;   - Do not know initially which keywords were given (to check number of elements).
+        ;   - If the first token is "%(", SUBSTR does not have any time information and
+        ;       is a scalar. Must wait for a different token.
+        if n_elements(timeOut) eq 1 && n_elements(subStr) gt 1 $
+            then timeOut = replicate(timeOut, n_elements(subStr))
+
+        ;Take pieces between tokens from the pattern
+        ;   - CURPOS is the position after the previous token
+        ;   - POSITIONS[i]-CURPOS are the number of characters trailing the previous token.
+        timeOut += strmid(pattern, curPos, positions[i]-curPos) + subStr
+
+        ;Skip over the current token
+        ;   - Must also skip over the characters after the last token.
+        curPos += 2 + positions[i] - curPos
+        
+        ;Skip over ')'
+        if tokens[i] eq '(' then begin
+            i += 1
+            if i lt nTokens-1 then curPos = positions[i] + 2
+        endif
+    endfor
+    
+    ;Include the substring trailing the final token
+    tail = strmid(pattern, positions[i-1]+2)
+    if tail ne '' then timeOut += tail
+
+    if n_elements(timeOut) eq 1 then timeOut = timeOut[0]
+end
+
+
+;+
+;   Get (or calculate) the 4-digit year.
+;
+; :Returns:
+;       YEAR:       The 4-digit year
+;-
+function MrTimeParser_GetYear
+	compile_opt idl2
+	on_error, 2
+	
+	;Do not have YEAR
+	if year[0] eq '' then begin
+		;Must have YR
+		if yr[0] eq '' then message, 'Cannot form "%Y". Must give %Y or %y.'
+		
+		;2-Digit year
+		;   00-59 -> 1900-1959
+		;   60-99 -> 2060-2099
+		i19 = where(fix(yr) ge 60, n19, COMPLEMENT=i20, NCOMPLEMENT=n20)
+		year = yr
+		if n19 gt 0 then year[i19] = '19' + year[i19]
+		if n20 gt 0 then year[i20] = '20' + year[i20]
+	endif
+	
+	return, year
+end
+
+
+;+
+;   Get (or calculate) the 2-digit year.
+;
+; :Returns:
+;       YR:         The 2-digit year
+;-
+function MrTimeParser_GetYr
+	compile_opt idl2
+	on_error, 2
+
+	;Do not have YEAR
+	if yr[0] eq '' then begin
+		;Must have YEAR
+		if year[0] eq '' then message, 'Cannot form "%y". Must give %Y or %y.'
+		
+		;Issue error (losing information)
+		MrPrintF, 'LogWarn', 'Converting 4-digit year to 2-digit year.', /INFORMATIONAL
+		
+		;Parse YEAR
+		yr = stregex(year, '[0-9]{2}([0-9]{2})', /SUBEXP, /EXTRACT)
+		yr = reform(yr[1,*])
+	endif
+	
+	return, yr
+end
+
+
+;+
+;   Get (or calculate) the 2-digit month number.
+;
+; :Returns:
+;       MONTH:      The 2-digit year
+;-
+function MrTimeParser_GetMonth
+	compile_opt idl2
+	on_error, 2
+
+	;Calculate from (abbreviated) calendar month name or day-of-year
+	if month[0] eq '' then begin
+		case 1 of
+			cmonth[0] ne '': month = MonthNameToNumber(cmonth)
+			calmo[0]  ne '': month = MonthNameToNumber(calmo, /ABBR)
+			doy[0]    ne '': MrTimeParser_ParseDOY, month, day
+			else: message, 'Cannot form "%M". Must give (%M, %C, %c or %D).'
+		endcase
+	endif
+	
+	return, month
+end
+
+
+;+
+;   Get (or calculate) the calendar month name.
+;
+; :Returns:
+;       CMONTH:     The calendar month name.
+;-
+function MrTimeParser_GetCMonth
+	compile_opt idl2
+	on_error, 2
+
+	;Calculate from 2-digit month number, abbreviated calendar month name, or day-of-year
+	if cmonth[0] eq '' then begin
+		case 1 of
+			month[0]  ne '': cmonth = MonthNumberToName(month)
+			calmo[0]  ne '': cmonth = MonthNameToNumber( MonthNumberToName(calmo), /ABBR )
+			doy[0]    ne '': begin
+				MrTimeParser_ParseDOY, month, day
+				cmonth = MonthNumberToName(month)
+			endcase
+			else: message, 'Cannot form "%C". Must give %M, %C, %c or %D.'
+		endcase
+	endif
+	
+	return, cmonth
+end
+
+
+;+
+;   Get (or calculate) the abbreviated calendar month name.
+;
+; :Returns:
+;       CALMO:      The abbreviated calendar month name.
+;-
+function MrTimeParser_GetCalMo
+	compile_opt idl2
+	on_error, 2
+
+	;Calculate from 2-digit month number, abbreviated calendar month name, or day-of-year
+	if cmonth[0] eq '' then begin
+		case 1 of
+			month[0]  ne '': cmonth = MonthNumberToName(month, /ABBR)
+			calmo[0]  ne '': cmonth = MonthNameToNumber( MonthNumberToName(calmo) )
+			doy[0]    ne '': begin
+				MrTimeParser_ParseDOY, month, day
+				cmonth = MonthNumberToName(month, /ABBR)
+			endcase
+			else: message, 'Cannot form "%c". Must give %M and, %C, %c or %D.'
+		endcase
+	endif
+	
+	return, cmonth
+end
+
+
+;+
+;   Get (or calculate) the day-of-month.
+;
+; :Returns:
+;       DAY:        The abbreviated calendar month name.
+;-
+function MrTimeParser_GetDay
+	compile_opt idl2
+	on_error, 2
+
+	;Calculate from day-of-year
+	if day[0] eq '' then begin
+		case 1 of
+			doy[0] ne '': MrTimeParser_ParseDOY, month, day
+			else: message, 'Cannot form "%d". Must give %d or %D.'
+		endcase
+	endif
+	
+	return, day
+end
+
+
+;+
+;   Get (or calculate) the day-of-year.
+;
+; :Returns:
+;       DOY:        The day-of-year.
+;-
+function MrTimeParser_GetDOY
+	compile_opt idl2
+	on_error, 2
+
+	if doy[0] eq '' then begin
+		
+		;Get the month and day
+		catch, the_error
+		if the_error eq 0 then begin
+			month = MrTimeParser_GetMonth()
+			day   = MrTimeParser_GetDay()
+		endif else begin
+			;Redirect error to parent
+			catch, /CANCEL
+			on_error, 2
+			message, 'Cannot form "%D". Must give %D or [(%M, %C or %c) and %d with optional (%Y or %y)].'
+		endelse
+		
+		;Get the year
+		catch, the_error
+		if the_error eq 0 then begin
+			year = MrTimeParser_YearToYr(yr, /FROM_YR)
+			date = year + month + day
+		endif else begin
+			MrPrintF, 'LogWarn', 'Year not given. Finding DOY with non-leap year.'
+			date = '2001' + month + day
+		endelse
+		catch, /CANCEL
+		on_error, 2
+		
+		;Finally, create DOY
+		doy = year_day(date)
+	endif
+	
+	return, day
+end
+
+
+;+
+;   Parse the day-of-year into month and day.
+;
+; :Params:
+;       MONTH:      out, optional, type=string
+;                   Month corresponding to `DOY`.
+;       DAY:        out, optional, type=string
+;                   Day of the `MONTH` corresponding to `DOY`.
+;-
+pro MrTimeParser_ParseDOY, month_out, day_out
+	compile_opt strictarr
+	on_error, 2
+
+	;Check if DOY was given
+	if doy[0] eq '' then message, 'DOY not given. Cannot parse.'
+
+	;Try to get the year
+	catch, the_error
+	if the_error eq 0 then begin
+		year = MrTimeParser_GetYear()
+		catch, /CANCEL
+	endif else begin
+		catch, /CANCEL
+		MrPrintF, 'LogWarn', 'No year given. Converting %D to %M for non-leap year.'
+		year = replicate('2001', n_elements(doy))
+	endelse
+	on_error, 2
+
+	;Get the month and day
+	monthday = year_day(doy, YEAR=year, /TO_MODAY)
+	month    = strmid(monthday, 0, 2)
+	day      = strmid(monthday, 3, 2)
+end
+
 
 ;+
 ;   Convert a four-digit year to a two-digit year and vice versa
