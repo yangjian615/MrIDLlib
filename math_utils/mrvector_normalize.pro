@@ -33,8 +33,8 @@
 ;
 ; :History:
 ;   Modification History::
-;
 ;       2015/05/03  -   Written by Matthew Argall
+;       2016/03/12  -   Copy paste problem on the Nx3 case.
 ;-
 function MrVector_Normalize, A, $
 DOUBLE=double
@@ -47,7 +47,7 @@ DOUBLE=double
 	dims  = ndims eq 0 ? 0 : sz[1:ndims]
 	n     = sz[sz[0]+2]
 	type  = sz[sz[0]+1]
-	
+
 	;Describe output
 	if type eq 5 || keyword_set(double) $
 		then B = double(A) $
@@ -67,9 +67,9 @@ DOUBLE=double
 	;Nx3
 	endif else if ndims eq 2 && dims[1] eq 3 then begin
 		mag    = sqrt(total(B^2, 2))
-		B[0,*] = B[0,*] / mag
-		B[1,*] = B[1,*] / mag
-		B[2,*] = B[2,*] / mag
+		B[*,0] = B[*,0] / mag
+		B[*,1] = B[*,1] / mag
+		B[*,2] = B[*,2] / mag
 		
 	;A must be a 3 element vector or a 3xN array
 	endif else message, 'Input must be 3xN or Nx3.'
