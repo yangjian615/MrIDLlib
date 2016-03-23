@@ -10,7 +10,7 @@
 ;
 ; :Params:
 ;       N:                  in, required, type=numeric array
-;                           Plasma density in units of particles per meter cubed (m^{-3}).
+;                           Plasma density in units of particles per centimeter cubed (cm^{-3}).
 ;       PARTICLE:           in, required, type=string, default='H+'
 ;                           The name of the particle for which the cyclotron frequency
 ;                               is to be calculated. Options are::
@@ -37,13 +37,13 @@
 ;       07/15/2013  -   Units are assumed to be cm^-3, km.
 ;-
 function inertial_length, n, particle
-    compile_opt idl2
-    on_error, 2
-    
-	;compute the inertial length
-	omega_p = w_plasma(n, particle)
-	lambda = constants('c') / (2*!pi*omega_p)
-	
-	return, lambda * 1e-3       ;m -> km
+	compile_opt idl2
+	on_error, 2
 
+	;compute the inertial length
+	;   - Multiply by 1e-3 for m -> km
+	omega_p = w_plasma(n, particle)
+	lambda = ( 1e-3 * constants('c') * 2 * !pi ) / omega_p
+	
+	return, lambda
 end
