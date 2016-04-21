@@ -44,6 +44,18 @@
 ; :Keywords:
 ;       INDEX:          out, optional, type=long
 ;                       Index into X of the nearest neighbor to each value in Y.
+;
+; :Author:
+;    Matthew Argall::
+;       University of New Hampshire
+;       Morse Hall, Room 348
+;       8 College Rd.
+;       Durham, NH, 03824
+;       matthew.argall@unh.edu
+;
+; :History:
+;   Modification History::
+;       2016/02/10  -   Written by Matthew Argall
 ;-
 function MrNearestNeighbor, x, y
 	compile_opt idl2

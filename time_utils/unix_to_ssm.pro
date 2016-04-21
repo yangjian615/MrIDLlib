@@ -22,14 +22,13 @@
 ; :Author:
 ;    Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Modification History::
-;
 ;       02/20/2013  -   Written by Matthew Argall
 ;-
 function unix_to_ssm, unix_time
