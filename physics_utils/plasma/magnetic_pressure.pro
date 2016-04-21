@@ -29,20 +29,19 @@
 ;       07/15/2013  -   Units are now assumed to be nT and nP.
 ;-
 function magnetic_pressure, B
-    compile_opt idl2
-    on_error, 2
-    
-    ;Determine if B is a vector or scalar (magnitude) array
-    if MrIsA(B, /ROW) || MrIsA(B, /COLUMN) || MrIsA(B, /SCALAR) $
-        then magnitude = 1 $
-        else magnitude = 0
+	compile_opt idl2
+	on_error, 2
+
+	;Determine if B is a vector or scalar (magnitude) array
+	if MrIsA(B, /ROW) || MrIsA(B, /COLUMN) || MrIsA(B, /SCALAR) $
+		then magnitude = 1 $
+		else magnitude = 0
 
 	;compute the magnetic pressure
 	;units: nT^2 / (2 mu_0) = 10e-18 Pa = 1e-9 nPa
 	if magnitude eq 0 $
-	    then magnetic_pressure = dot_product(B, B) / (2 * constants('mu_0')) $
-	    else magnetic_pressure = B^2 / (2 * constants('mu_0'))
+		then magnetic_pressure = dot_product(B, B) / (2 * constants('mu_0')) $
+		else magnetic_pressure = B^2 / (2 * constants('mu_0'))
 
 	return, magnetic_pressure * 1e-9    ;Pa -> nPa
-
 end
