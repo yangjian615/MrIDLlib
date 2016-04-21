@@ -1,7 +1,7 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       ISMEMBER
+;       MrIsMember
 ;
 ;*****************************************************************************************
 ;   Copyright (c) 2013, Matthew Argall                                                   ;
@@ -103,7 +103,8 @@
 ;       2014/11/01  -   Added the REMOVE_SPACE keyword. - MRA
 ;       2014/11/11  -   Renamed from isMember.pro to MrIsMember.pro. Renamed keywords
 ;                           NONMEMBER_INDS to COMPLEMENT, N_NONMEMBERS to NCOMPLEMENT, and
-;                           N_MATCHES to COUNT to be more like the where() function. - MRA.
+;                           N_MATCHES to COUNT to be more like the Where() function. - MRA.
+;       2016/02/14  -   Handle objects by comparing their heap identifiers. - MRA.
 ;-
 function MrIsMember, A, B, B_indices, $
 A_INDICES = a_indices, $
@@ -117,7 +118,7 @@ REMOVE_SPACE = remove_space
     on_error, 2
 
     A_type = size(A, /TNAME)
-    null = keyword_set(null)
+    null   = keyword_set(null)
 
     if null and !version.release lt '8.0' then begin
         message, 'IDL Version < 8.0. Setting NULL=0', /INFORMATIONAL
@@ -134,7 +135,7 @@ REMOVE_SPACE = remove_space
     AA = A
     BB = B
 
-    ;For strings, make the search case-insensitive if requested.
+    ;STRINGS: make the search case-insensitive if requested.
     if (A_type eq 'STRING') then begin
         if keyword_set(fold_case) then begin
             AA = strupcase(A)
@@ -145,7 +146,12 @@ REMOVE_SPACE = remove_space
             AA = strcompress(AA, /REMOVE_ALL)
             BB = strcompress(BB, /REMOVE_ALL)
         endif
-    endif 
+        
+    ;OBJECTS: Compare heap identifiers
+    endif else if A_type eq 'OBJREF' then begin
+        AA = obj_valid(AA, /GET_HEAP_IDENTIFIER)
+        BB = obj_valid(BB, /GET_HEAP_IDENTIFIER)
+    endif
     
     nAA = n_elements(AA)
     nBB = n_elements(BB)
@@ -157,7 +163,7 @@ REMOVE_SPACE = remove_space
         ;Compare the members of B directly with A. Careful of objects
         ;with bracket overloading and comparisons with arrays with one
         ;elements.
-        if IsA(AA, /SCALAR) $
+        if MrIsA(AA, /SCALAR) $
             then tf_isMember = BB eq AA $
             else tf_isMember = BB eq AA[0]
         
@@ -168,67 +174,41 @@ REMOVE_SPACE = remove_space
         ;sort A
         AA_sorted = AA[sort(AA)]
 
-    ;---------------------------------------------------------------------
-    ;Were objects given? /////////////////////////////////////////////////
-    ;---------------------------------------------------------------------
-        if (A_type eq 'OBJREF') then begin
-            tf_isMember = bytarr(nBB)
-            count = 0
-            
-            ;Step through each element of B and determine if it is an element of A.
-            ;B_INCICES, COUNT, NCOMPLEMENT, and COMPLEMENT could be determined
-            ;here. However, I choose a different approach below which also works if A_IN
-            ;is not an object.
-            
-            ;If BB is a scalar, avoid bracket overloading by doing a direct comparison.
-            if nBB eq 1 then begin
-                tf_isMember = AA eq BB
-                count   = total(tf_isMember)
-                
-            ;If not, step through all elements in the array.
-            endif else begin
-                for i = 0, nBB - 1 do begin
-                    if (max(AA eq BB[i], iMax) eq 1) then begin
-                        tf_isMember[i] = 1B
-                        count += 1
-                    endif
-                endfor
-            endelse
-        
-    ;---------------------------------------------------------------------
-    ;Non-objects /////////////////////////////////////////////////////////
-    ;---------------------------------------------------------------------
-        endif else begin
-            ;Use VALUE_LOCATE to find matches...
-            ;  - VALUE_LOCATE rounds down if an exact match was not found.
-            ;  - Check if the results of VALUE_LOCATE are exact matches of B.
-            ;  - If BB < AA value locate returns -1. Return 0 instead.
-            element = value_locate(AA_sorted, BB) > 0
-            tf_isMember = AA_sorted[element] eq BB
-        endelse
+        ;Use VALUE_LOCATE to find matches...
+        ;  - VALUE_LOCATE rounds down if an exact match was not found.
+        ;  - Check if the results of VALUE_LOCATE are exact matches of B.
+        ;  - If BB < AA value locate returns -1. Return 0 instead.
+        element = value_locate(AA_sorted, BB) > 0
+        tf_isMember = AA_sorted[element] eq BB
     endelse
 
 ;---------------------------------------------------------------------
 ;Get Matching Indices ////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-    
+
     ;Pick out the indices corresponding to the values of B that are members of A. If there
     ;are none, return !Null
-    B_Indices = where(tf_isMember eq 1, count, $
-                      COMPLEMENT=complement, $
-                      NCOMPLEMENT=nComplement)
-    if count eq 0 then B_Indices = null_return
+    if arg_present(B_indices) || arg_present(complement) || arg_present(nComplement) then begin
+        B_Indices = where(tf_isMember eq 1, count, $
+                          COMPLEMENT  = complement, $
+                          NCOMPLEMENT = nComplement)
+        if count eq 0 then B_Indices = null_return
+    endif else begin
+        count       = total(tf_isMember)
+    endelse
 
     ;Which elements of A are contained within B?
-    if arg_present(A_Indices) then tf_A_in_B = MrIsMember(B, A, A_Indices, $
-                                                          FOLD_CASE=fold_case, $
-                                                          REMOVE_SPACE=remove_space)
+    if arg_present(A_Indices) then begin
+        tf_A_in_B = MrIsMember(B, A, A_Indices, $
+                               FOLD_CASE    = fold_case, $
+                               REMOVE_SPACE = remove_space)
+    endif
 
     ;Return scalars instead of 1-element arrays
-    if (n_elements(A_Indice) eq 1) then A_Indices   = A_Indices[0]
-    if (count                eq 1) then B_Indices   = B_Indices[0]
-    if (nComplement          eq 1) then complement  = complement[0]
-    if (nBB                  eq 1) then tf_isMember = tf_isMember[0]
+    if (n_elements(A_Indices)   eq 1) then A_Indices   = A_Indices[0]
+    if (n_elements(B_Indices)   eq 1) then B_Indices   = B_Indices[0]
+    if (n_elements(complement)  eq 1) then complement  = complement[0]
+    if (nBB                     eq 1) then tf_isMember = tf_isMember[0]
 
     return, tf_isMember
 end

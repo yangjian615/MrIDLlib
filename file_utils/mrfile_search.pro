@@ -217,6 +217,7 @@
 function MrFile_Search, file_path, $
 CLOSEST=closest, $
 COUNT=count, $
+MIN_VERSION=min_version, $
 NEWEST=newest, $
 DIRECTORY=directory, $
 TIMEORDER=timeOrder, $
@@ -243,20 +244,22 @@ VREGEX=vRegex
 	;Defaults
 	closest   = keyword_set(closest)
 	directory = ''
-	if n_elements(timeOrder) eq 0 then timeOrder = '%Y%M%d%H%m%S'
-	if n_elements(tstart)    eq 0 then tstart    = ''
-	if n_elements(tend)      eq 0 then tend      = ''
-	if n_elements(tpattern)  eq 0 then tpattern  = '%Y-%M-%dT%H:%m:%S'
-	if n_elements(version)   eq 0 then version   = ''
-	if n_elements(vRegex)    eq 0 then vRegex    = '([0-9]+)\.([0-9]+)\.([0-9]+)'
+	if n_elements(min_version) eq 0 then min_version = ''
+	if n_elements(timeOrder)   eq 0 then timeOrder   = '%Y%M%d%H%m%S'
+	if n_elements(tstart)      eq 0 then tstart      = ''
+	if n_elements(tend)        eq 0 then tend        = ''
+	if n_elements(tpattern)    eq 0 then tpattern    = '%Y-%M-%dT%H:%m:%S'
+	if n_elements(version)     eq 0 then version     = ''
+	if n_elements(vRegex)      eq 0 then vRegex      = '([0-9]+)\.([0-9]+)\.([0-9]+)'
 	
 	;Pick the newest
-	if n_elements(newest) eq 0 && version eq '' $
+	if n_elements(newest) eq 0 && version eq '' && min_version eq '' $
 		then newest = 1B $
 		else newest = 0B
 	
 	;Cannost specify VERSION and NEWEST
-	if newest && version ne '' then message, 'NEWEST and VERSION are mutually exclusive.'
+	if newest + (version ne '') + (min_version ne '') gt 0 $
+		then message, 'NEWEST, VERSION, and MIN_VERSION are mutually exclusive.'
 
 ;-------------------------------------------
 ; Find Files ///////////////////////////////
@@ -278,10 +281,11 @@ VREGEX=vRegex
 ; Filter by Version ////////////////////////
 ;-------------------------------------------
 	if count gt 0 && ( newest || (version ne '') ) then begin
-		;Replace the version number with the empty string
+		;Position in the file names where the version number begins
 		vpos = stregex(allFiles, vRegex, LENGTH=vlen)
 	
-		;Concatenate the parts before and after the version number
+		;Replace version number with the empty string
+		;   - Concatenate the parts before and after the version number
 		files_noversion = strmid(allFiles, 0, transpose(vpos)) + $
 		                  strmid(allFiles, transpose(vpos) + transpose(vlen))
 
@@ -318,6 +322,23 @@ VREGEX=vRegex
 				dirsFound[i]  = newestDir
 				filesFound[i] = newestFile
 			endfor
+
+	;-------------------------------------------
+	; Filter by Version -- Minimum /////////////
+	;-------------------------------------------
+		endif else if min_version ne '' then begin
+			;Search for files with versions GE MIN_VERSION
+			vgt = MrFile_VersionCompare(allFiles, min_version, vRegex)
+			iFiles = where(vge gt 0, count)
+			
+			;Select matching files
+			if count gt 0 then begin
+				dirsFound  = allDirs[iFiles]
+				filesFound = allFiles[iFiles]
+			endif else begin
+				dirsFound  = ''
+				filesFound = ''
+			endif
 
 	;-------------------------------------------
 	; Filter by Version -- Version /////////////

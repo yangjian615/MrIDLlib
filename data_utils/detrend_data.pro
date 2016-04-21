@@ -72,9 +72,16 @@ _REF_EXTRA = extra
     if n_elements(edge_truncate) eq 0 then edge_truncate = 1
     
     ;Set the width so that Smooth acts over the proper dimension.
+    dims  = size(data, /DIMENSIONS)
     ndims = size(data, /N_DIMENSIONS)
     width = lonarr(ndims)
     width[dimension-1] = navg
+    
+    ;Error with regard to smooth
+    if navg gt dims[dimension-1] then begin
+        message, string(navg, dims[dimension-1], $
+                        FORMAT='(%"NDETREND (%i) must be less than length of data dimension (%i)")')
+    endif
     
     ;Smooth the data to get a sense of the backgound
     background = smooth(data, width, EDGE_TRUNCATE=edge_truncate, _STRICT_EXTRA=extra)
