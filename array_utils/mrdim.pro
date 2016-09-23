@@ -1,10 +1,10 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrGapsX
+;       MrDims
 ;
 ;*****************************************************************************************
-;   Copyright (c) 2015, Matthew Argall                                                   ;
+;   Copyright (c) 2016, Matthew Argall                                                   ;
 ;   All rights reserved.                                                                 ;
 ;                                                                                        ;
 ;   Redistribution and use in source and binary forms, with or without modification,     ;
@@ -33,34 +33,32 @@
 ;
 ; PURPOSE:
 ;+
-;   Find gaps in a monotoically increasing, evenly spaced array.
+;   Get the dimension sizes of a variable. Same as Size(X, /DIMENSIONS), but with
+;   the added ability to return the size of a single dimension.
+;
+;   NOTE:
+;       The dimensions of an undefined variable and scalar are both 0
+;           IDL> print, size(undefinedVariable, /DIMENSIONS)
+;                      0
+;           IDL> print, size(3, /DIMENSIONS)
+;                      0
 ;
 ; :Categories:
-;       Array Utilities
+;   Coordinate Systems
 ;
 ; :Params:
-;       ARRAY:              in, required, type=string/long
-;                           Monotonically increasing, uniformly spaced array.
-;       DX:                 in, optional, type=float, default=Median(ARRAY[1:*] - ARRAY)
-;                           Spacing between elements of `ARRAY`. If not provided, the
-;                               median separation of data points is used.
-;
-; :Keywords:
-;       COUNT:              in, optional, type=intarr
-;                           Number of gaps found.
-;       GAPSIZE:            out, optional, type=integer/intarr
-;                           Number of data points in each gap, in units of `DX`. If
-;                               `COUNT` is 0 then GAPSIZE=0.
+;       X:              in, required, type=any
+;                       Variable for which the dimension sizes are desired.
+;       DIM:            in, optional, type=integer
+;                       The dimension for which the size is retured. If DIM is greater
+;                           than the number of dimensions in `X`, then zero is returned.
 ;
 ; :Returns:
-;       IGAPS:              Indices into `ARRAY` where data gaps begin and end.
-;                               IGAPS[*,0] indicate the last point in `ARRAY` before
-;                               a gap, while `IGAPS[*,1] indicate the first point in
-;                               `ARRAY` after the data gap. If `ARRAY` does not contain
-;                               any gaps, -1 is returned and `COUNT`=0.
-;       
+;       DIMSIZE:        out, required, type=integer/intarr
+;                       Dimension size(s).
+;
 ; :Author:
-;   Matthew Argall::
+;       Matthew Argall::
 ;       University of New Hampshire
 ;       Morse Hall, Room 348
 ;       8 College Rd.
@@ -69,44 +67,24 @@
 ;
 ; :History:
 ;   Modification History::
-;       2014/04/30  -   Written by Matthew Argall
-;       2016/02/11  -   Fixed indexing error when retrieving gap size. - MRA
-;       2016/07/24  -   GAPSIZE is now an integer, not a float. - MRA
+;       2016/08/29  -   Written by Matthew Argall
 ;-
-function MrGapsX, array, dx, $
-GAPSIZE=gapsize, $
-COUNT=count
+function MrDim, x, dim
 	compile_opt idl2
 	on_error, 2
-
-;-----------------------------------------------------
-; Sampling Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-;-----------------------------------------------------
-	;Take the difference between adjacent points
-	;   - The last point will be truncated
-	darr = array[1:*] - array
 	
-	;Sampling interval
-	if n_elements(dx) eq 0 then dx = median(darr)
-
-;-----------------------------------------------------
-; Find Gaps \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-;-----------------------------------------------------
+	;Get the dimensions
+	dimSize = size(x, /DIMENSIONS)
 	
-	;Number of samples between points.
-	;  - Round to remove systematic noise
-	gapSize = floor(darr / dx)
+	;Return a single dimension
+	nDim = n_elements(dim)
+	if nDim gt 0 then begin
+		if nDim gt 1 then message, 'DIM must be a scalar integer.'
+		if dim  le 0 then message, 'DIM must be > 0.'
+		if dim  gt 8 then message, 'DIM must be <= 8.'
+		dimSize = dim gt n_elements(dimSize) ? 0 : dimSize[dim-1]
+	endif
 	
-	;Location of the data gaps
-	igaps = where(gapSize gt 1, count)
-
-	;Start and stop of each gap
-	if count gt 0 then begin
-		gapSize = gapSize[iGaps]
-		igaps = [[igaps], [igaps+1]]
-	endif else begin
-		gapsize = 0
-	endelse
-
-	return, igaps
+	;Return
+	return, dimSize
 end
