@@ -109,6 +109,7 @@ PATHSEP=pathsep
 	endif
 	
 	;Get the current directory for save keeping
+	count = 0
 	cd, CURRENT=pwd
 	if n_elements(pathsep) eq 0 then pathsep = path_sep()
 
@@ -165,9 +166,10 @@ PATHSEP=pathsep
 ;---------------------------------------------------------------------
 ; Parse This Piece ///////////////////////////////////////////////////
 ;---------------------------------------------------------------------
-
 	;Change to the directory
-	cd, root
+	if file_test(root) $
+		then cd, root $
+		else return, ''
 	
 	;Get all of the files in the current directory
 	MrLS, subpattern, COUNT=count, OUTPUT=pathOut, /REGEX
