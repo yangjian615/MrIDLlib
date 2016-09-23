@@ -270,7 +270,6 @@ WINDOW = window
 	endif
 	
 	nf_tot = 0
-	
 ;-----------------------------------------------------
 ; Step Through Intervals \\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -394,7 +393,7 @@ WINDOW = window
 		df[i]               = 1.0 / (nfft * SI)
 		
 		;Time stamp
-		if tf_time then time[i] = i eq 0 ? t0 : time[i-1] + nshift*dt_median[i-1]
+		if tf_time then time[i] = (i eq 0) ? t0 : time[i-1] + nshift*dt_median[i-1]
 
 	;-----------------------------------------------------
 	; Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -423,9 +422,10 @@ WINDOW = window
 		;Otherwise:
 		;   - Total number of points less one FFT interval,
 		;     multiplied by constant sampling interval
-		if tf_calc_dt $
-			then time[n_int-1] = dt[n1-1] - nfft*dt_median[n_int-1] $
-			else time[n_int-1] = (n1 - nfft) * dt_median[n_int-1]
+;		if tf_calc_dt $
+;			then time[n_int-1] = dt[n1-1] - nfft*dt_median[n_int-1] $
+;			else time[n_int-1] = (n1 - nfft) * dt_median[n_int-1]
+;		if ~tf_calc_dt then time[n_int-1] = (n1 - nfft + nshift) * dt_median[n_int-1]
 	endif
 	
 	;Reduce dimensions if sampling interval never changed
@@ -433,7 +433,7 @@ WINDOW = window
 	;   - NFFT is constant, but DT is permitted to vary
 	;   - If DT changes, then we must keep track of FN as a function of time
 	;   - If not, then FN and F do not vary with time, and we can reduce to one copy
-	if ~tf_calc_dt || total( (dt_median - dt_median[0]) lt 0.1*dt_median[0] ) eq 0 then begin
+	if ~tf_calc_dt || total( (dt_median - dt_median[0]) gt 0.1*dt_median[0] ) eq 0 then begin
 		freqs     = reform(freqs[0,*])
 		df        = df[0]
 		dt_median = dt_median[0]
