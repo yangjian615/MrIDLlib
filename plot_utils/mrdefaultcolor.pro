@@ -113,10 +113,10 @@
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Change History::
@@ -156,8 +156,8 @@ TRIPLE=triple
 	nDefaults  = n_elements(default)
 	nColorsOut = n_elements(nColors)
 	if nColorsIn + nDefaults + nColorsOut eq 0 then begin
-	    default   = cgDefaultColor(TRADITIONAL=traditional, BACKGROUND=background)
-	    nDefaults = 1
+		default   = cgDefaultColor(TRADITIONAL=traditional, BACKGROUND=background)
+		nDefaults = 1
 	endif
 	if nColorsOut eq 0 then nColors = nColorsIn
 	if nColorsOut eq 0 then nColors = nDefaults
@@ -201,7 +201,7 @@ TRIPLE=triple
 		endif
 		
 		return, colorsOut
-    endif
+	endif
 
 ;---------------------------------------------------------------------
 ; Take from Color Table //////////////////////////////////////////////
