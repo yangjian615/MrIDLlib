@@ -754,7 +754,7 @@ OFFSET=offset
             
             ;Time Zone
             'z': begin
-                if time_zone eq '' then if offset ne '' $
+                if time_zone[0] eq '' then if offset[0] ne '' $
                     then time_zone = MrTimeZoneOffsetToName(offset) $
                     else time_zone = 'Z'
                 
@@ -763,8 +763,8 @@ OFFSET=offset
             
             ;Offset
             'o': begin
-                if offset eq '' then begin
-                    if offset ne '' $
+                if offset[0] eq '' then begin
+                    if time_zone[0] ne '' $
                         then offset = MrTimeZoneNameToOffset(time_zone) $
                         else offset = '+00:00'
                 endif

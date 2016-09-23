@@ -69,26 +69,28 @@
 ;                                   'ROW', or any other type accepted by IDL's ISA function.
 ;
 ; :Keywords:
+;       ARRAY:                  in, optional, type=boolean, default=0
+;                               If set, return 1 if `X` is an array.
+;       COLUMN:                 in, optional, type=boolean, default=0
+;                               If set, determine if `X` is a column vector (i.e. 1xN).
+;       COMPLEX:                in, optional, type=boolean, default=0
+;                               If set, determine if `X` is a complex numeric type.
 ;       DECIMAL:                in, optional, type=boolean, default=0
 ;                               If set, determine if `X` is a decimal number (non-integer)
+;       DOUBLE:                 in, optional, type=boolean, default=0
+;                               If set, determine if `X` is a double numeric type.
+;       FILE:                   in, optional, type=boolean, default=0
+;                               If set, determine if `X` is a file (with ASSOC).
 ;       INTEGER:                in, optional, type=boolean, default=0
 ;                               If set, determine if `X` is any integer class.
+;       NULL:                   in, optional, type=boolean, default=0
+;                               If set, determine if `X` is equal to the !NULL.
 ;       NUMBER:                 in, optional, type=boolean, default=0
 ;                               If set, determine if `X` is a numeric type.
 ;       REAL:                   in, optional, type=boolean, default=0
 ;                               If set, determine if `X` is a real numeric type.
-;       COMPLEX:                in, optional, type=boolean, default=0
-;                               If set, determine if `X` is a complex numeric type.
-;       DOUBLE:                 in, optional, type=boolean, default=0
-;                               If set, determine if `X` is a double numeric type.
-;       COLUMN:                 in, optional, type=boolean, default=0
-;                               If set, determine if `X` is a column vector (i.e. 1xN).
 ;       ROW:                    in, optional, type=boolean, default=0
 ;                               If set, determine if `X` is a row vector (i.e. Nx0)
-;       FILE:                   in, optional, type=boolean, default=0
-;                               If set, determine if `X` is a file (with ASSOC).
-;       ARRAY:                  in, optional, type=boolean, default=0
-;                               If set, return 1 if `X` is an array.
 ;       SCALAR:                 in, optional, type=boolean, default=0
 ;                               If set, return 1 if `X` is a scalar.
 ;
@@ -99,10 +101,10 @@
 ; :Author:
 ;   Matthew Argall::
 ;       University of New Hampshire
-;       Morse Hall, Room 113
+;       Morse Hall, Room 348
 ;       8 College Rd.
 ;       Durham, NH, 03824
-;       matthew.argall@wildcats.unh.edu
+;       matthew.argall@unh.edu
 ;
 ; :History:
 ;   Modification History::
@@ -118,6 +120,7 @@
 ;       2015/11/15  -   Null pointer/object returns true if /SCALAR is set. Special
 ;                           treatment of pointers and objects is limited to when they
 ;                           are scalars. - MRA
+;       2016/07/22  -   Unintentional dependencies of NULL keyword on others. Fixed. - MRA
 ;-
 function MrIsA, x, type, $
  COLUMN  = column, $
@@ -321,12 +324,14 @@ function MrIsA, x, type, $
 ; Null \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
     if null then begin
-        ;Help will split the output into a two-element array if the variable
-        ;name is very long.
+        ;Parse the Help string
+        ;   - [variable name]   UNDEFINED = !Null
+        ;   - /NULL cannot be used with any other keyword, so ignore
+        ;     any previous value of TF_ISA
+        ;   - The Help output can some times have more than one element.
+        ;     "!NULL" is always contained in the last.
         help, x, OUTPUT=helpStr
-        if strpos(helpStr[n_elements(helpStr)-1], '!NULL') ne -1 $
-            then tf_isa = 1 and tf_isa $
-            else tf_isa = 0
+        tf_isa = stregex(helpStr[n_elements(helpStr)-1], '!NULL', /BOOLEAN, /FOLD_CASE)
     endif
 
 ;-----------------------------------------------------
@@ -396,7 +401,7 @@ end
 ;Main Level Example Program \\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
 
-print, FORMAT='(a25, 4x, a-18, 2x, a6)',  'VARIABLE',                 'IsA()',           'RESULT'
+print, FORMAT='(a25, 4x, a-18, 2x, a6)',  'VARIABLE',                 'MrIsA()',          'RESULT'
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '<undefined>',              '',                 MrIsA(foo)
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/NUMBER',          MrIsA(1.0d, /NUMBER)
 print, FORMAT='(a25, 4x, a-20, 2x, i1)',  '1.0d',                     '/FLOAT',           MrIsA(1.0d, /FLOAT)

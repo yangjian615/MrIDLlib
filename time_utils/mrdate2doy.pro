@@ -7,6 +7,10 @@
 ;+
 ;   Convert day-of-year to a date.
 ;
+;   Calling Sequence:
+;       doy = MrDate2DOY(month, day[, year])
+;       doy = MrDate2DOY(date)
+;
 ; :Categories:
 ;   Time Utility
 ;
@@ -16,9 +20,9 @@
 ;
 ;
 ; :Params:
-;       MONTH:  in, required, type=integer/intarr
-;               Month. Ranges from 1-12.
-;       DAY:    in, required, type=integer/intarr
+;       MONTH:  in, required, type=integer/intarr/string
+;               Month. Ranges from 1-12, or a date-string formatted as 'YYYY-MM-DD'.
+;       DAY:    in, optional, type=integer/intarr
 ;               Day of month. Can range from 1-31.
 ;       YEAR:   in, optional, type=integer/intarr, default=1991
 ;               Year in which `DOY` resides. Used to calculate. If not given, a
@@ -38,17 +42,40 @@
 ; :History:
 ;   Modification History
 ;       2015-06-29:     Written by Matthew Argall
+;       2015-07-19:     A date-string may be given.
 ;-
 function MrDate2DOY, month, day, year
 	compile_opt idl2
 	on_error, 2
+
+;-----------------------------------------------------
+; Check Inputs \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
+	
+	;Accept a month, formatted as 'YYYY-MM-DD'
+	if size(month, /TNAME) eq 'STRING' then begin
+		;Make sure it fits
+		if ~array_equal(stregex(month, '[0-9]{4}-[0-9]{2}-[0-9]{2}', /BOOLEAN), 1) $
+			then message, 'DATE must be formatted as "YYYY-MM-DD".'
+		
+		;Extract the date
+		year   = fix(strmid(month, 0, 4))
+		_month = fix(strmid(month, 5, 2))
+		day    = fix(strmid(month, 8, 2))
+	endif else begin
+		_month = month
+	endelse
 	
 	;Default to non-leap year
 	_year = n_elements(year) eq 0 ? 1991 : year
+
+;-----------------------------------------------------
+; Compute DOY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+;-----------------------------------------------------
 	
 	;Calculate the Julian year
 	jul_newyear  = julday(1, 1, _year)
-	jul_thisyear = julday(month, day, _year)
+	jul_thisyear = julday( temporary(_month), day, temporary(_year) )
 	
 	;Subtract to get the day-of-year (add 1 to get Jan 1)
 	doy = jul_thisyear - jul_newyear + 1

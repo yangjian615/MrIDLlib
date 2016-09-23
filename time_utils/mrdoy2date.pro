@@ -31,6 +31,7 @@
 ; :History:
 ;   Modification History
 ;       2015-06-29:     Written by Matthew Argall
+;       2016-07-24:     Julian dates start at noon, not midnight. - MRA
 ;-
 function MrDOY2Date, doy, year
 	compile_opt idl2
@@ -43,8 +44,10 @@ function MrDOY2Date, doy, year
 	jul_newyear = julday(1, 1, _year)
 	
 	;Add the number of days (do not count Jan 1 twice!)
-	jul_date = jul_newyear + doy - 1
-	caldat, jul_date, month, day
-	
+	;   - JUL_DATE must be a double to have enough significant digits
+	;   - Subtract an extra 0.5 because julian dates start at noon, not midnight
+	jul_date = double(jul_newyear) + doy - 1.5D
+	caldat, jul_date, month, day, year, hour, minute, second
+
 	return, transpose([[day], [month]])
 end
