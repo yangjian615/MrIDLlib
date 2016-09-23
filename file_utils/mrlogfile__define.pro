@@ -95,6 +95,7 @@
 ;       2015/12/03  -   Added the ADD_FILES and WARN_TRACEBACK properties.
 ;       2015/12/04  -   Fixed problem with multi-line error messages. - MRA
 ;       2016/01/16  -   Allocate memory error does not have caller. Handled. - MRA
+;       2016/06/11  -   Use Print in demo-mode when possible to by-pass error. - MRA
 ;-
 ;*****************************************************************************************
 ;+
@@ -199,15 +200,15 @@ ADD_CALLER=add_caller
 	IF N_Elements(theText) EQ 0 THEN RETURN
 	
 	;Defaults
-	doPrint    = keyword_set(print)
-	add_caller = keyword_set(add_caller)
+	tf_print      = keyword_set(print)
+	tf_add_caller = keyword_set(add_caller)
 
 	; Make sure these are strings we are writing.
 	thisType = Size(theText, /TNAME)
 	IF thisType NE 'STRING' THEN Message, 'Only strings can be written into the error log file.'
 
 	;Add the caller
-	IF add_caller THEN BEGIN
+	IF tf_add_caller THEN BEGIN
 		void    = self -> Callstack(3, CALLER=caller)
 		theText = caller + ': ' + theText
 	ENDIF
@@ -218,15 +219,37 @@ ADD_CALLER=add_caller
 		IF ~success THEN Message, 'Cannot successfully open the error log file.'
 	ENDIF
 	
+	
+	;
+	; In Demo mode, PrintF is not allowed and an error will be thrown.
+	; If it is, return here, set the demo-mode flag, and try again with
+	; the regular Print procedure. If that fails, then issue error.
+	;
+	catch, the_error
+	if the_error ne 0 then tf_demo_mode = 1 else tf_demo_mode = 0
+	
 	; Write each line
 	numLines = N_Elements(theText)
 	FOR j=0L, N_Elements(theText) -1 DO BEGIN
-		PrintF, self.lun, theText[j]
-		IF doPrint THEN Print, theText[ j ]
+		
+		;DEMO-MODE?
+		if tf_demo_mode then begin
+			catch, /CANCEL
+
+			;Use Print for LUN = -2, -1, otherwise throw error
+			if self.lun lt 0 $
+				then print, theText[j] $
+				else message, /REISSUE_LAST
+		
+		;NORMAL-MODE
+		endif else begin
+			PrintF, self.lun, theText[j]
+			IF tf_print THEN Print, theText[ j ]
+		endelse
 	ENDFOR
 
 	; Write to disk immediately?
-	IF self.immediate NE 0  THEN self -> Flush
+	IF self.immediate NE 0 THEN self -> Flush
 
 	; Update the error logger status to normal. If this method is called
 	; from AddError, then when we return to AddError, the status will be

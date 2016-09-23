@@ -84,6 +84,8 @@
 ;       2015/10/29  -   Written by Matthew Argall
 ;       2015/12/03  -   If no string is provided, stderr writes the last error
 ;                           message. - MRA
+;       2016/06/11  -   PrintF is disabled in demo mode, so use Print for LUN of -1
+;                           or -2 (stderr/stdout). Issue error otherwise. - MRA
 ;-
 pro MrPrintF, lun,  arg1,  arg2,  arg3,  arg4,  arg5,  arg6,  arg7,  arg8,  arg9, arg10, $
                    arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20, $
@@ -229,5 +231,27 @@ _REF_EXTRA=extra
 ;-----------------------------------------------------
 ; Write to File \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
-	if n_elements(theLUN) gt 0 then printf, theLUN, str
+	if n_elements(theLUN) gt 0 then begin
+		
+		;
+		; PrintF is disabled in demo mode, so opt for printing
+		; to standard out (the command line).
+		;
+		catch, the_error
+		
+		;Try using PrintF to print the message, even if text is directed to
+		;standard in/out/err
+		if the_error eq 0 then begin
+			printf, theLUN, str
+		
+		;Skip using PrintF and go straight to Print.
+		endif else begin
+			catch, /CANCEL
+			
+			;Print if THELUN is -1 or -2 (stdout/stderr). Issue an error otherwise.
+			if theLUN lt 0 $
+				then print, str $
+				else message, /REISSUE_LAST
+		endelse
+	endif
 end
