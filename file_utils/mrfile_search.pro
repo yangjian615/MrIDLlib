@@ -258,7 +258,7 @@ VREGEX=vRegex
 		else newest = 0B
 	
 	;Cannost specify VERSION and NEWEST
-	if newest + (version ne '') + (min_version ne '') gt 0 $
+	if newest + (version ne '') + (min_version ne '') gt 1 $
 		then message, 'NEWEST, VERSION, and MIN_VERSION are mutually exclusive.'
 
 ;-------------------------------------------
@@ -338,7 +338,7 @@ VREGEX=vRegex
 			endif else begin
 				dirsFound  = ''
 				filesFound = ''
-			endif
+			endelse
 
 	;-------------------------------------------
 	; Filter by Version -- Version /////////////
