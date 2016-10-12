@@ -23,7 +23,7 @@
 ;                           The mass of a particle species in kilograms (Kg).
 ;
 ; :Returns:
-;       V:                  Velocity of the particle. (m/s)
+;       V:                  Velocity of the particle. (km/s)
 ;
 ; :Author:
 ;   Matthew Argall::
@@ -36,6 +36,7 @@
 ; :History:
 ;   Modification History::
 ;       2015/10/31  -   Written by Matthew Argall
+;       2016/03/12  -   Velocity is returned with units of km/s. - MRA
 ;-
 function mrrel_velocity, E, m
 	compile_opt strictarr
@@ -52,5 +53,5 @@ function mrrel_velocity, E, m
 	;Relativistic velocity
 	v = c * sqrt( 1.0 - ( E0 / (E_J + E0) )^2 )
 
-	return, v
+	return, v * 1e-3
 end

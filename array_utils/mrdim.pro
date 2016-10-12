@@ -1,10 +1,10 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrNearestNeighbor
+;       MrDims
 ;
 ;*****************************************************************************************
-;   Copyright (c) 2015, Matthew Argall                                                   ;
+;   Copyright (c) 2016, Matthew Argall                                                   ;
 ;   All rights reserved.                                                                 ;
 ;                                                                                        ;
 ;   Redistribution and use in source and binary forms, with or without modification,     ;
@@ -33,20 +33,32 @@
 ;
 ; PURPOSE:
 ;+
-;   Find the nearest neighbor of Y in X
+;   Get the dimension sizes of a variable. Same as Size(X, /DIMENSIONS), but with
+;   the added ability to return the size of a single dimension.
+;
+;   NOTE:
+;       The dimensions of an undefined variable and scalar are both 0
+;           IDL> print, size(undefinedVariable, /DIMENSIONS)
+;                      0
+;           IDL> print, size(3, /DIMENSIONS)
+;                      0
+;
+; :Categories:
+;   Coordinate Systems
 ;
 ; :Params:
-;       X:              in, required, type=numarr
-;                       A vector of monotonically increasing or decreasing values.
-;       Y:              in, required, type=numarr
-;                       Values for which the location is required.
+;       X:              in, required, type=any
+;                       Variable for which the dimension sizes are desired.
+;       DIM:            in, optional, type=integer
+;                       The dimension for which the size is retured. If DIM is greater
+;                           than the number of dimensions in `X`, then zero is returned.
 ;
-; :Keywords:
-;       INDEX:          out, optional, type=long
-;                       Index into X of the nearest neighbor to each value in Y.
+; :Returns:
+;       DIMSIZE:        out, required, type=integer/intarr
+;                       Dimension size(s).
 ;
 ; :Author:
-;    Matthew Argall::
+;       Matthew Argall::
 ;       University of New Hampshire
 ;       Morse Hall, Room 348
 ;       8 College Rd.
@@ -55,31 +67,24 @@
 ;
 ; :History:
 ;   Modification History::
-;       2016/02/10  -   Written by Matthew Argall
+;       2016/08/29  -   Written by Matthew Argall
 ;-
-function MrNearestNeighbor, x, y
+function MrDim, x, dim
 	compile_opt idl2
 	on_error, 2
-
-	nx = n_elements(x)
-	ny = n_elements(y)
-
-	;Locate y in x
-	;   - Make sure they are all within range
-	if nx eq 1 $
-		then index = replicate(0, n_elements(y)) $
-		else index = value_locate(x, y) > 0
 	
-	;Always return a row vector (Nx1)
-	if size(index, /N_DIMENSIONS) eq 2 then index = reform(index)
-
-	;Find the neighboring index
-	;   - Make sure they are all in range
-	iup = (index + 1) < (nx - 1)
+	;Get the dimensions
+	dimSize = size(x, /DIMENSIONS)
 	
-	;Which is closer?
-	ichange = where( abs(x[iup] - y) lt abs(x[index] - y), nchange)
-	if nchange gt 0 then index[ichange] = index[ichange] + 1
+	;Return a single dimension
+	nDim = n_elements(dim)
+	if nDim gt 0 then begin
+		if nDim gt 1 then message, 'DIM must be a scalar integer.'
+		if dim  le 0 then message, 'DIM must be > 0.'
+		if dim  gt 8 then message, 'DIM must be <= 8.'
+		dimSize = dim gt n_elements(dimSize) ? 0 : dimSize[dim-1]
+	endif
 	
-	return, index
+	;Return
+	return, dimSize
 end

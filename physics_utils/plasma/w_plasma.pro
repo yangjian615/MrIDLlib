@@ -38,16 +38,16 @@
 ;       07/15/2013  -   Units are assumed to be cm^-3 - MRA
 ;-
 function w_plasma, n, particle
-    compile_opt idl2
-    on_error, 2
+	compile_opt idl2
+	on_error, 2
 
 	;electron or ion cyclotron frequency?
 	case particle of
-	    'H+': m = constants('m_p', /DOUBLE)
-	    'He+': m = constants('m_He', /DOUBLE)
-	    'O+': m = constants('m_O', /DOUBLE)
-	    'e-': m = constants('m_e', /DOUBLE)
-	    else: message, 'Particle type ' + particle + ' not recognized.'
+		'H+': m = constants('m_p', /DOUBLE)
+		'He+': m = constants('m_He', /DOUBLE)
+		'O+': m = constants('m_O', /DOUBLE)
+		'e-': m = constants('m_e', /DOUBLE)
+		else: message, 'Particle type ' + particle + ' not recognized.'
 	endcase
 
 	;compute the plasma beta

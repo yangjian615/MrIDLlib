@@ -157,7 +157,7 @@ pro MrPixelPoints_CenterPixel, X0, Xmin1, Xmax1
         
             ;Values that are <= 0 will be set explicitly to 0. Take the log of all
             ;other values. X is exponentially spaced, so ALOGX will be linearly spaced.
-            alogX = MrLog(X, MISSING_VALUE=0)            
+            alogX = MrLog(X, MISSING_VALUE=0)
             
             ;Create a linearly spaced array from 0 to nX-1
             Xt = dindgen(nX)

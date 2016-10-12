@@ -1,10 +1,10 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrNearestNeighbor
+;       MrIsMonotonic
 ;
 ;*****************************************************************************************
-;   Copyright (c) 2015, Matthew Argall                                                   ;
+;   Copyright (c) 2016, University of New Hampshire                                      ;
 ;   All rights reserved.                                                                 ;
 ;                                                                                        ;
 ;   Redistribution and use in source and binary forms, with or without modification,     ;
@@ -15,9 +15,9 @@
 ;       * Redistributions in binary form must reproduce the above copyright notice,      ;
 ;         this list of conditions and the following disclaimer in the documentation      ;
 ;         and/or other materials provided with the distribution.                         ;
-;       * Neither the name of the <ORGANIZATION> nor the names of its contributors may   ;
-;         be used to endorse or promote products derived from this software without      ;
-;         specific prior written permission.                                             ;
+;       * Neither the name of the University of New Hampshire nor the names of its       ;
+;         contributors may be used to endorse or promote products derived from this      ;
+;         software without specific prior written permission.                            ;
 ;                                                                                        ;
 ;   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY  ;
 ;   EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES ;
@@ -33,17 +33,26 @@
 ;
 ; PURPOSE:
 ;+
-;   Find the nearest neighbor of Y in X
+;   Determine if elements in an array are monotonic. An array is monotonically
+;   increasing (decreasing) if the difference between adjacent elements is always
+;   positive (negative). Equal values are not strictly monotonic.
+;
+; :Categories:
+;   Array utilities
 ;
 ; :Params:
-;       X:              in, required, type=numarr
-;                       A vector of monotonically increasing or decreasing values.
-;       Y:              in, required, type=numarr
-;                       Values for which the location is required.
+;       ARRAY:      in, required, type=numeric
+;                   Array for which to determine monotonicity
 ;
 ; :Keywords:
-;       INDEX:          out, optional, type=long
-;                       Index into X of the nearest neighbor to each value in Y.
+;       DECREASE:   in, required, type=boolean, default=0
+;                   If set, check for monotonically decreasing.
+;       NAN:        in, required, type=boolean, default=0
+;                   If set, NaN values are ignored.
+;
+; :Returns:
+;       TF_MONO:    out, required, type=boolean
+;                   Returns true (1) if monotonic and 0 otherwise.
 ;
 ; :Author:
 ;    Matthew Argall::
@@ -55,31 +64,48 @@
 ;
 ; :History:
 ;   Modification History::
-;       2016/02/10  -   Written by Matthew Argall
+;       2016-07-25  -   Written by Matthew Argall
 ;-
-function MrNearestNeighbor, x, y
+function MrIsMonotonic, array, $
+NAN=nan, $
+DECREASE=decrease
 	compile_opt idl2
 	on_error, 2
-
-	nx = n_elements(x)
-	ny = n_elements(y)
-
-	;Locate y in x
-	;   - Make sure they are all within range
-	if nx eq 1 $
-		then index = replicate(0, n_elements(y)) $
-		else index = value_locate(x, y) > 0
 	
-	;Always return a row vector (Nx1)
-	if size(index, /N_DIMENSIONS) eq 2 then index = reform(index)
-
-	;Find the neighboring index
-	;   - Make sure they are all in range
-	iup = (index + 1) < (nx - 1)
+	;Make sure the array is a column or row vector
+	sz = size(array)
+	if ~(sz[0] le 1) && ~(sz[0] eq 2 && sz[1] eq 1) then message, 'ARRAY must be 1xN or Nx1.'
 	
-	;Which is closer?
-	ichange = where( abs(x[iup] - y) lt abs(x[index] - y), nchange)
-	if nchange gt 0 then index[ichange] = index[ichange] + 1
+	;If there is only one value
+	if sz[sz[0]+2] eq 1 then tf_mono = finite(array)
 	
-	return, index
+	;Defaults
+	tf_dec  = keyword_set(decrease)
+	tf_nan  = keyword_set(nan)
+	tf_mono = 0B
+	
+	;Ignore NaNs
+	if tf_nan then begin
+		;Look for non-NaN values
+		iGood = where(finite(array), nGood)
+		if nGood gt 0 then begin
+			;Pick out the good points
+			temp = array[iGood]
+			
+			;Check for monotonicity
+			if tf_dec $
+				then tf_mono = array_equal( (temp[1:*] - temporary(temp)) lt 0, 1 ) $
+				else tf_mono = array_equal( (temp[1:*] - temporary(temp)) gt 0, 1 )
+		endif
+	
+	;Keep NaNs
+	endif else begin
+		;Check for monotonicity
+		if tf_dec $
+			then tf_mono = array_equal( (array[1:*] - array) lt 0, 1 ) $
+			else tf_mono = array_equal( (array[1:*] - array) gt 0, 1 )
+	endelse
+	
+	;Return the monotonicity result
+	return, tf_mono
 end

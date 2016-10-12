@@ -36,7 +36,7 @@
 ;   Find gaps in a monotoically increasing, evenly spaced array.
 ;
 ; :Categories:
-;       Arrau Utilities
+;       Array Utilities
 ;
 ; :Params:
 ;       ARRAY:              in, required, type=string/long
@@ -49,8 +49,8 @@
 ;       COUNT:              in, optional, type=intarr
 ;                           Number of gaps found.
 ;       GAPSIZE:            out, optional, type=integer/intarr
-;                           Size of each gap, in units of `DX`. If `COUNT` is 0, then
-;                               GAPSIZE=0.
+;                           Number of data points in each gap, in units of `DX`. If
+;                               `COUNT` is 0 then GAPSIZE=0.
 ;
 ; :Returns:
 ;       IGAPS:              Indices into `ARRAY` where data gaps begin and end.
@@ -71,6 +71,7 @@
 ;   Modification History::
 ;       2014/04/30  -   Written by Matthew Argall
 ;       2016/02/11  -   Fixed indexing error when retrieving gap size. - MRA
+;       2016/07/24  -   GAPSIZE is now an integer, not a float. - MRA
 ;-
 function MrGapsX, array, dx, $
 GAPSIZE=gapsize, $
@@ -94,18 +95,15 @@ COUNT=count
 	
 	;Number of samples between points.
 	;  - Round to remove systematic noise
-	ndx = round(darr / dx)
+	gapSize = floor(darr / dx)
 	
 	;Location of the data gaps
-	igaps = where(ndx gt 1, count)
-	
-	if count gt 0 then begin
-		;Start and stop of each gap
-		igaps = [[igaps], [igaps+1]]
+	igaps = where(gapSize gt 1, count)
 
-		;Size of each gap
-		if arg_present(gapsize) $
-			then gapsize = ( array[igaps[*,1]] - array[igaps[*,0]] ) / dx
+	;Start and stop of each gap
+	if count gt 0 then begin
+		gapSize = gapSize[iGaps]
+		igaps = [[igaps], [igaps+1]]
 	endif else begin
 		gapsize = 0
 	endelse

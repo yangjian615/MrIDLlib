@@ -164,7 +164,7 @@ FMIN = fmin, $
 FMAX = fmax, $
 FREQUENCIES = freqs, $
 INTERP_PCT = interp_pct, $
-NFFT = nfft, $
+NFFT = nfft_in, $
 NSHIFT = nshift, $
 PHASE = phase, $
 T0 = t0, $
@@ -200,17 +200,17 @@ WINDOW = window
 	tf_tcenter  = keyword_set(tcenter)
 	tf_verbose  = keyword_set(verbose)
 	tf_window   = keyword_set(window)
-	tf_double   = n_elements(double) eq 0 ? (type eq 'DOUBLE') : keyword_set(double)
-	tf_frange   = n_elements(fmin) gt 0 || n_elements(fmax) gt 0
+	tf_double   = n_elements(double)  eq 0 ? (type eq 'DOUBLE') : keyword_set(double)
+	tf_frange   = n_elements(fmin)    gt 0 || n_elements(fmax) gt 0
+	nfft        = n_elements(nfft_in) eq 0 ? (n1 - (n1 mod 2)) : nfft_in
 	if n_elements(interp_pct) eq 0 then interp_pct = 0.0
-	if n_elements(nfft)       eq 0 then nfft       = n1
 	if n_elements(nshift)     eq 0 then nshift     = floor(nfft/2)
 
 	;Make sure at least one FFT can be done.
 	if nfft gt n1 then begin
+		nfft = (n1 - (n1 mod 2))
 		message, string(FORMAT='(%"NFFT (%i) is longer than the data interval (%i). ' + $
-		                'Setting NFFT=%i.")', nfft, n1, n1), /INFORMATIONAL
-		nfft = n1
+		                'Setting NFFT=%i.")', nfft_in, n1, nfft), /INFORMATIONAL
 	endif
 
 	;Check how to window the data. Default to a "Hanning" window.
@@ -270,7 +270,6 @@ WINDOW = window
 	endif
 	
 	nf_tot = 0
-	
 ;-----------------------------------------------------
 ; Step Through Intervals \\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ;-----------------------------------------------------
@@ -354,8 +353,8 @@ WINDOW = window
 		if tf_window then begin
 			;Create the window function
 			theWindow = hanning(nfft, ALPHA=alpha)
-			if ndims eq 2 then theWindow = rebin(theWindow, [nfft, dims[1]])
-		
+			if ndims eq 2 then theWindow = rebin(theWindow, [nfft, n2])
+
 			;If the second dimension is empty, IDL will ignore it.
 			dtemp *= theWindow
 		endif
@@ -394,7 +393,7 @@ WINDOW = window
 		df[i]               = 1.0 / (nfft * SI)
 		
 		;Time stamp
-		if tf_time then time[i] = i eq 0 ? t0 : time[i-1] + nshift*dt_median[i-1]
+		if tf_time then time[i] = (i eq 0) ? t0 : time[i-1] + nshift*dt_median[i-1]
 
 	;-----------------------------------------------------
 	; Next Interval \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -423,9 +422,10 @@ WINDOW = window
 		;Otherwise:
 		;   - Total number of points less one FFT interval,
 		;     multiplied by constant sampling interval
-		if tf_calc_dt $
-			then time[n_int-1] = dt[n1-1] - nfft*dt_median[n_int-1] $
-			else time[n_int-1] = (n1 - nfft) * dt_median[n_int-1]
+;		if tf_calc_dt $
+;			then time[n_int-1] = dt[n1-1] - nfft*dt_median[n_int-1] $
+;			else time[n_int-1] = (n1 - nfft) * dt_median[n_int-1]
+;		if ~tf_calc_dt then time[n_int-1] = (n1 - nfft + nshift) * dt_median[n_int-1]
 	endif
 	
 	;Reduce dimensions if sampling interval never changed
@@ -433,7 +433,7 @@ WINDOW = window
 	;   - NFFT is constant, but DT is permitted to vary
 	;   - If DT changes, then we must keep track of FN as a function of time
 	;   - If not, then FN and F do not vary with time, and we can reduce to one copy
-	if ~tf_calc_dt || total( (dt_median - dt_median[0]) lt 0.1*dt_median[0] ) eq 0 then begin
+	if ~tf_calc_dt || total( (dt_median - dt_median[0]) gt 0.1*dt_median[0] ) eq 0 then begin
 		freqs     = reform(freqs[0,*])
 		df        = df[0]
 		dt_median = dt_median[0]

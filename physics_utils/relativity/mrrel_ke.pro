@@ -9,12 +9,12 @@
 ;
 ; :Params:
 ;       V:                  in, required, type=fltarr
-;                           Velocity of the object (m/s)
+;                           Velocity of the object (km/s)
 ;       M:                  in, required, type=float
 ;                           The mass of a particle species in kilograms (Kg).
 ;
 ; :Returns:
-;       V:                  Velocity of the particle.
+;       E:                  Energy of the particle in eV.
 ;
 ; :Author:
 ;   Matthew Argall::
@@ -31,13 +31,17 @@
 function mrrel_ke, v, m
 	compile_opt strictarr
 	on_error, 2
+	
+	;Conversion factor
+	eV2Joule = 1.60218e-19
+	km2m     = 1e3
 
 	;Compute the gamma factor
 	c    = constants('c')
-	gam  = mrrel_gamma(v)
+	gam  = mrrel_gamma(v * km2m)
 
 	;Kinetic energy
 	KE = m * c^2 * (gam - 1.0)
 
-	return, KE
+	return, KE/eV2Joule
 end

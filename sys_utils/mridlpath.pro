@@ -1,10 +1,10 @@
 ; docformat = 'rst'
 ;
 ; NAME:
-;       MrTokens_IsMatch
+;       MrIDLPath
 ;
 ;*****************************************************************************************
-;   Copyright (c) 2015, Matthew Argall                                                   ;
+;   Copyright (c) 2016, Matthew Argall                                                   ;
 ;   All rights reserved.                                                                 ;
 ;                                                                                        ;
 ;   Redistribution and use in source and binary forms, with or without modification,     ;
@@ -33,23 +33,18 @@
 ;
 ; PURPOSE:
 ;+
-;   Determine if a string matches a MrTokens pattern.
+;   Print the IDL path in an easy to read manner.
 ;
-; :Example:
-;   See the example program at the end of this document::
-;       IDL> .run MrTokens_IsMatch
+; :Categories:
+;       System Utilities
 ;
 ; :Params:
-;       STR:                in, required, type=string
-;                           String that should match `PATTERN`.
-;       PATTERN:            in, required, type=string
-;                           Pattern of MrTokens that represents `STR`.
-;
-; :Returns:
-;       TF_MATCH:           Returns True for matches, false otherwise.
-;
+;       PATH:               out, optional, type=string/strarr
+;                           Directories in the current IDL path. If present, the path
+;                               will not be printed.
+;       
 ; :Author:
-;       Matthew Argall::
+;   Matthew Argall::
 ;       University of New Hampshire
 ;       Morse Hall, Room 348
 ;       8 College Rd.
@@ -58,16 +53,14 @@
 ;
 ; :History:
 ;   Modification History::
-;       2015/06/04  -   Written by Matthew Argall
+;       2014/08/23  -   Written by Matthew Argall
 ;-
-function MrTokens_IsMatch, str, pattern
+pro MrIDLPath, path
 	compile_opt idl2
 	on_error, 2
 	
-	;Start by converting the pattern to a regular expression
-	regex = MrTokens_ToRegex(pattern)
-	
-	;Determine if the pattern matches the string
-	tf_match = stregex(str, regex, /BOOLEAN)
-	return, tf_match
+	;Print or return the path?
+	if arg_present(path) $
+		then path = strsplit(!path, path_sep(/SEARCH_PATH), /EXTRACT) $
+		else print, transpose(strsplit(!path, path_sep(/SEARCH_PATH), /EXTRACT))
 end

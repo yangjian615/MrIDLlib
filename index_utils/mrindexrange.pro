@@ -58,10 +58,10 @@
 ; :Author:
 ;    Matthew Argall::
 ;    University of New Hampshire
-;    Morse Hall Room 113
+;    Morse Hall Room 348
 ;    8 College Road
 ;    Durham, NH 03824
-;    matthew.argall@wildcats.unh.edu
+;    matthew.argall@unh.edu
 ;
 ; :History:
 ;    Modification History::
@@ -86,6 +86,7 @@
 ;       2015/06/23  -   If the range is beyond the data, set STATUS = 1. - MRA
 ;       2015/10/18  -   Check if ascending/descending using first and last point instead
 ;                          of first and second point. More forgiving of repeated values. - MRA
+;       2016/04/03  -   Full check for monotonicity. - MRA
 ;-
 function MrIndexRange, data, range, $
 LEFT_EXCLUSIVE=left_exclusive, $
@@ -104,8 +105,6 @@ STRIDE=stride
 	right_exclusive = keyword_set(right_exclusive)
 	if nPts              eq 0 then message, 'DATA must have at least 1 element.'
 	if n_elements(range) ne 2 then message, 'RANGE must have 2 elements: [min, max].'
-	if data[0] eq data[nPts-1] then $
-		message, 'First and last points are equal. Cannot determine if ascending or descending.'
 
 	;Descending order?
 	highLow = range[0] gt range[1] ? 1 : 0
@@ -167,7 +166,6 @@ STRIDE=stride
 
 	;If RANGE is smaller than DATA[0], then take index 0
 	irange = 0 > irange < (nPts-1)
-
 	if ascending then begin
 		;Descending Range
 		if highLow then begin

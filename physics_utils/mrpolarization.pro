@@ -827,7 +827,7 @@ _REF_EXTRA = extra
     ;   |J| = (Jxx * Jyy) - (Jxy * Jyx)
     ; => plrz = { 1 - [ (4*|J|) / (Jxx + Jyy)^2 ] }^(1/2)
     det_Js = real_part(Js[*,0,0]*Js[*,1,1] - Js[*,1,0]*Js[*,0,1])
-    
+
     ;Save the polarization
     if nPol gt 0 then pzation[iPol] = sqrt( 1 - ((4*det_Js[iPol]) / real_part(Js[iPol,0,0] + Js[iPol,1,1])^2) )
     if nLin gt 0 then pzation[iLin] = !values.f_nan
